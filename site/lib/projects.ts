@@ -1,8 +1,8 @@
 import {
+  getProjectPublicEntries,
   type ProjectCatalogItem,
   type ProjectDomain,
   type ProjectPublicEntry,
-  type ProjectPublicEntryKind,
   type ProjectRelatedEntry,
   projectCatalog,
   projectDomains,
@@ -33,29 +33,7 @@ export function getProjectDomainDefinition(domain: ProjectDomain) {
   return projectDomains.find((item) => item.id === domain) ?? projectDomains[0];
 }
 
-const publicEntryMeta: Record<ProjectPublicEntryKind, { label: string }> = {
-  site: { label: "项目站点" },
-  demo: { label: "Demo" },
-  officialDocs: { label: "官方文档" },
-  docs: { label: "文档" },
-  repository: { label: "开源仓库" },
-};
-
-/** Return verified public destinations in the detail-sidebar order. */
-export function getProjectPublicEntries(project: ProjectCatalogItem): ProjectPublicEntry[] {
-  const legacy = new Map(project.links.map((link) => [link.kind, link.href]));
-  const values: Array<[ProjectPublicEntryKind, string | undefined]> = [
-    ["site", project.site ?? legacy.get("site")],
-    ["demo", project.demo ?? legacy.get("demo")],
-    ["officialDocs", project.officialDocs ?? legacy.get("docs")],
-    ["docs", project.docs],
-    ["repository", project.repository ?? legacy.get("github")],
-  ];
-
-  return values
-    .filter((entry): entry is [ProjectPublicEntryKind, string] => Boolean(entry[1]))
-    .map(([kind, href]) => ({ kind, href, label: publicEntryMeta[kind].label }));
-}
+export { getProjectPublicEntries };
 
 /** Return one representative destination for the compact project-card actions. */
 export function getProjectCardEntries(project: ProjectCatalogItem): ProjectPublicEntry[] {

@@ -23,8 +23,8 @@
     "docs/specs/site-knowledge-assistant/HISTORY.md": "3cccc3269def799be880248445303a9198b0d60d",
     "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "ab51410ada40fd85aafadd7fbcbfc9251e402c4d",
     "docs/specs/site-knowledge-assistant/SPEC.md": "8c65ecb350cd07a924facc9804a9749eab6aae73",
-    "drizzle/0021_site_knowledge_assistant_contracts.sql": "fd3206629fcb753e68183162ecaf446b41c3f55d",
-    "drizzle/0022_frontend_session_auth_source.sql": "d5f9b74113528bc0c2b1ce44954ff0403d21ef3a",
+    "drizzle/0026_site_knowledge_assistant_contracts.sql": "fd3206629fcb753e68183162ecaf446b41c3f55d",
+    "drizzle/0027_frontend_session_auth_source.sql": "d5f9b74113528bc0c2b1ce44954ff0403d21ef3a",
     "drizzle/meta/0021_snapshot.json": "e92824ad3e99987a1955fa4b933434ab2a0d2f0f",
     "drizzle/meta/0022_snapshot.json": "841c1de352c2d4585f9d56d7a7be60ae55726bbb",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
@@ -94,12 +94,12 @@
           "command": "SQLite-owned conversation/message/generation storage with atomic idempotent writes, ownership checks, and role/conversation validation"
         },
         {
-          "path": "drizzle/0021_site_knowledge_assistant_contracts.sql",
+          "path": "drizzle/0026_site_knowledge_assistant_contracts.sql",
           "blob": "fd3206629fcb753e68183162ecaf446b41c3f55d",
           "command": "Forward DDL adds assistant state tables and nullable comment frontend ownership"
         },
         {
-          "path": "drizzle/0022_frontend_session_auth_source.sql",
+          "path": "drizzle/0027_frontend_session_auth_source.sql",
           "blob": "d5f9b74113528bc0c2b1ce44954ff0403d21ef3a",
           "command": "Forward migration records whether a frontend session originated from native admin auth or GitHub reader binding"
         },
@@ -313,7 +313,7 @@
           "command": "bun test --isolate tests/lib/site-assistant-migration.test.ts (legacy identity and SET NULL delete behavior)"
         },
         {
-          "path": "drizzle/0021_site_knowledge_assistant_contracts.sql",
+          "path": "drizzle/0026_site_knowledge_assistant_contracts.sql",
           "blob": "fd3206629fcb753e68183162ecaf446b41c3f55d",
           "command": "bun run db:migrations:validate and full in-memory Drizzle migration application"
         }

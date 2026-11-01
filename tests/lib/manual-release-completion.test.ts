@@ -3,9 +3,11 @@ import contractJson from "../../.github/release-contract.json";
 import {
   assertReleaseRecoverySource,
   assertRetryableProductRelease,
+  mainEvaluationResult,
   manualRecoveryRunCanTakeOver,
   manualReleaseWorkflowRun,
   productReleaseWorkflowPath,
+  readQuality,
   releaseRecoveryEventSchema,
 } from "../../src/lib/release/completion";
 import { GitHubRelease } from "../../src/lib/release/github";
@@ -16,6 +18,7 @@ const contract = contractSchema.parse(contractJson);
 const sourceSha = "a".repeat(40);
 const preparationHead = "b".repeat(40);
 const mergeSha = "c".repeat(40);
+const quality = readQuality();
 
 function pull(number: number, sha = mergeSha) {
   return {
@@ -70,6 +73,62 @@ function githubFor(numbers: number[]) {
   });
 }
 
+function evaluationGithub(e2eStatus: "completed" | "in_progress", e2eConclusion: string | null) {
+  const ciChecks = quality.main_required_checks.filter((name) => !name.startsWith("Playwright"));
+  const e2eChecks = quality.main_required_checks.filter((name) => name.startsWith("Playwright"));
+  const run = (
+    id: number,
+    workflowId: number,
+    path: string,
+    status: string,
+    conclusion: string | null
+  ) => ({
+    id,
+    workflow_id: workflowId,
+    run_attempt: 1,
+    head_sha: mergeSha,
+    head_branch: "main",
+    event: "workflow_dispatch",
+    status,
+    conclusion,
+    path,
+    head_repository: { full_name: contract.repository },
+  });
+  const jobs = (names: string[], failed = false) =>
+    names.map((name, index) => ({
+      name,
+      head_sha: mergeSha,
+      status: "completed",
+      conclusion: failed && index === 0 ? "failure" : "success",
+    }));
+  return new GitHubRelease(contract, "github-actions", {
+    request(endpoint) {
+      if (endpoint.endsWith("/actions/workflows/ci.yml"))
+        return { id: 101, path: ".github/workflows/ci.yml" };
+      if (endpoint.endsWith("/actions/workflows/e2e.yml"))
+        return { id: 102, path: ".github/workflows/e2e.yml" };
+      if (endpoint.includes("/actions/workflows/101/runs?"))
+        return [
+          { workflow_runs: [run(201, 101, ".github/workflows/ci.yml", "completed", "success")] },
+        ];
+      if (endpoint.includes("/actions/workflows/102/runs?"))
+        return [
+          {
+            workflow_runs: [run(202, 102, ".github/workflows/e2e.yml", e2eStatus, e2eConclusion)],
+          },
+        ];
+      if (endpoint.includes("/actions/runs/201/attempts/1/jobs?"))
+        return [{ jobs: jobs(ciChecks) }];
+      if (endpoint.includes("/actions/runs/202/attempts/1/jobs?"))
+        return [{ jobs: jobs(e2eChecks, e2eConclusion !== "success") }];
+      throw new Error(`Unexpected evaluation endpoint ${endpoint}`);
+    },
+    command() {
+      throw new Error("Evaluation inspection must not issue commands");
+    },
+  });
+}
+
 describe("manual product release resolution", () => {
   test("release cleanup accepts both workflow-triggered run event types", () => {
     expect(releaseRecoveryEventSchema.parse("workflow_run")).toBe("workflow_run");
@@ -91,6 +150,17 @@ describe("manual product release resolution", () => {
     expect(() => manualReleaseWorkflowRun(githubFor([4, 5]), fixture([4, 5]), 99)).toThrow(
       "exactly one active merged identity"
     );
+  });
+
+  test("distinguishes terminal main gate failure from a pending evaluation", () => {
+    expect(
+      mainEvaluationResult(evaluationGithub("completed", "failure"), mergeSha, quality)
+    ).toEqual(
+      expect.objectContaining({ state: "failed", failedRun: expect.objectContaining({ id: 202 }) })
+    );
+    expect(
+      mainEvaluationResult(evaluationGithub("in_progress", null), mergeSha, quality).state
+    ).toBe("pending");
   });
 
   test("allows a new manual run to take over an unfrozen failed manual run", () => {

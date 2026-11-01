@@ -501,7 +501,7 @@ export interface LedgerReadOptions {
 export interface LedgerStore {
   read(
     options?: LedgerReadOptions
-  ): Promise<{ sha: string; ledger: ReleaseLedger; legacySha?: string }>;
+  ): Promise<{ sha: string; ledger: ReleaseLedger; legacySha?: string; recoverySha?: string }>;
   compareAndSwap(expectedSha: string, ledger: ReleaseLedger, recoverySha?: string): Promise<string>;
 }
 

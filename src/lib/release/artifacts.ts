@@ -101,6 +101,20 @@ export const serverArtifactSchema = z.object({
 });
 export type ServerArtifact = z.infer<typeof serverArtifactSchema>;
 
+export function findRepositoryArtifact(
+  github: GitHubRelease,
+  name: string
+): ServerArtifact | undefined {
+  const artifacts = github
+    .pages(
+      `${github.root}/actions/artifacts?name=${encodeURIComponent(name)}&per_page=100`,
+      "artifacts"
+    )
+    .map((raw) => serverArtifactSchema.parse(raw));
+  if (artifacts.length > 1) throw new Error("Multiple immutable artifacts claim the same identity");
+  return artifacts[0];
+}
+
 export function findServerArtifact(
   github: GitHubRelease,
   entry: ReleaseEntry,

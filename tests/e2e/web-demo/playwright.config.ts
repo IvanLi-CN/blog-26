@@ -11,7 +11,9 @@ export default defineConfig({
     viewport:
       process.env.WEB_DEMO_VIEWPORT === "mobile"
         ? { width: 393, height: 852 }
-        : { width: 1440, height: 1000 },
+        : process.env.WEB_DEMO_VIEWPORT === "tablet"
+          ? { width: 1024, height: 900 }
+          : { width: 1440, height: 1000 },
   },
   reporter: [
     ["list"],

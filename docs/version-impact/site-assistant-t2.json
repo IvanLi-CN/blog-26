@@ -6,7 +6,7 @@
     "docs/adr/0035-personal-assistant-quota-and-sitewide-ai-metering.md": "ee6b4ca3dfd153104f645ad561419009b2465911",
     "docs/specs/site-knowledge-assistant/SPEC.md": "8c65ecb350cd07a924facc9804a9749eab6aae73",
     "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "ab51410ada40fd85aafadd7fbcbfc9251e402c4d",
-    "drizzle/0024_ai_usage_daily_result_counts.sql": "51839b875299f08f972d16fb8c137e542ef82558",
+    "drizzle/0029_ai_usage_daily_result_counts.sql": "51839b875299f08f972d16fb8c137e542ef82558",
     "drizzle/meta/0024_snapshot.json": "35b706bb2b291a762c8beabce4a50640b5f81dfe",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
     "src/lib/assistant-contracts.ts": "1a73ac705a9a86f9b7fe58febbe3379f1d47bbff",
@@ -202,7 +202,7 @@
           "command": "bunx tsc --noEmit filtered to changed surfaces; no diagnostic from the new metering module or provider integration code"
         },
         {
-          "path": "drizzle/0024_ai_usage_daily_result_counts.sql",
+          "path": "drizzle/0029_ai_usage_daily_result_counts.sql",
           "blob": "51839b875299f08f972d16fb8c137e542ef82558",
           "command": "bun run db:migrations:validate; additive migration journal and SQL are present for the three daily result-count columns"
         }
@@ -340,7 +340,7 @@
       ],
       "evidence": [
         {
-          "path": "drizzle/0024_ai_usage_daily_result_counts.sql",
+          "path": "drizzle/0029_ai_usage_daily_result_counts.sql",
           "blob": "51839b875299f08f972d16fb8c137e542ef82558",
           "command": "Adds three NOT NULL integer result-count columns with DEFAULT 0, so rows created by the pre-migration schema remain readable"
         },

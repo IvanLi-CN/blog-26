@@ -148,6 +148,7 @@ function getString(value: string | null): string | undefined {
 }
 
 function getNumber(value: string | null, fallback: number): number {
+  if (value === null || value.trim() === "") return fallback;
   const raw = Number(value);
   return Number.isFinite(raw) ? raw : fallback;
 }
@@ -576,6 +577,22 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       );
     }
 
+    if (pathname === "/project-status/overview") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(await caller.admin.projectStatus.overview(), { status: 200 }, resHeaders);
+    }
+
+    if (pathname === "/project-status/history") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(
+        await caller.admin.projectStatus.history({
+          limit: getNumber(url.searchParams.get("limit"), 30),
+        }),
+        { status: 200 },
+        resHeaders
+      );
+    }
+
     const userQuotaResetMatch = pathname.match(/^\/users\/([^/]+)\/(?:quota-reset|reset-quota)$/u);
     if (userQuotaResetMatch) {
       if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
@@ -601,6 +618,18 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         );
       }
       return json({ success: true, ...result }, { status: 200 }, resHeaders);
+    }
+
+    if (pathname === "/project-status/trigger") {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      if (!hasTrustedSameOriginNavigation(request)) {
+        return json(
+          { error: { code: "FORBIDDEN", message: "请求来源不受信任" } },
+          { status: 403 },
+          resHeaders
+        );
+      }
+      return json(await caller.admin.projectStatus.trigger(), { status: 202 }, resHeaders);
     }
 
     if (pathname === "/ai-usage" || pathname === "/ai-usage/overview") {

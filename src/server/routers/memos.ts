@@ -1314,7 +1314,7 @@ export const memosRouter = router({
 
     try {
       if (isTestEnv) {
-        void triggerIncrementalSync();
+        await triggerIncrementalSync();
       } else {
         await triggerIncrementalSync({ throwOnError: true });
       }
@@ -1521,7 +1521,7 @@ export const memosRouter = router({
 
       // 触发增量数据同步
       if (isTestEnv) {
-        void triggerIncrementalSync();
+        await triggerIncrementalSync();
       }
 
       const updatedRow: MemoRow = { ...existingMemo, ...updateData } as MemoRow;
@@ -1650,7 +1650,7 @@ export const memosRouter = router({
 
       // 触发增量数据同步
       if (isTestEnv) {
-        void triggerIncrementalSync();
+        await triggerIncrementalSync();
       }
 
       return { success: true, id };

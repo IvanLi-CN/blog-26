@@ -1,0 +1,1 @@
+ALTER TABLE `project_status_runs` ADD `scheduler_owner_token` text;

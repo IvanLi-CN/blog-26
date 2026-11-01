@@ -13,9 +13,9 @@ const piFixturePath = path.resolve("tests/fixtures/site-assistant-pi-discussions
 const legacyPiFixturePath = path.resolve("tests/fixtures/site-assistant-pi-legacy.sql");
 const migrationPaths = [
   "drizzle/0011_memo_clipping.sql",
-  "drizzle/0021_site_knowledge_assistant_contracts.sql",
-  "drizzle/0022_frontend_session_auth_source.sql",
-  "drizzle/0023_assistant_discussion_migration.sql",
+  "drizzle/0026_site_knowledge_assistant_contracts.sql",
+  "drizzle/0027_frontend_session_auth_source.sql",
+  "drizzle/0028_assistant_discussion_migration.sql",
 ].map((file) => path.resolve(file));
 
 function applySqliteMigration(sqlite: Database, file: string) {

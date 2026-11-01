@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const fixturePath = path.resolve("tests/fixtures/site-assistant-legacy.sql");
-const migrationPath = path.resolve("drizzle/0021_site_knowledge_assistant_contracts.sql");
+const migrationPath = path.resolve("drizzle/0026_site_knowledge_assistant_contracts.sql");
 
 describe("site assistant migration compatibility", () => {
   it("upgrades a legacy comment database without rewriting its author", () => {

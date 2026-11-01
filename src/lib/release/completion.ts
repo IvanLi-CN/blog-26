@@ -119,13 +119,30 @@ export function mainChecksPassed(
   return evaluationChecksPassed(github, sourceSha, quality.main_required_checks, "main");
 }
 
-export function evaluationChecksPassed(
+export type EvaluationChecksState = "passed" | "failed" | "pending";
+
+export type EvaluationChecksResult = {
+  state: EvaluationChecksState;
+  failedRun?: WorkflowRun;
+};
+
+export function mainEvaluationResult(
+  github: GitHubRelease,
+  sourceSha: string,
+  quality: QualityPolicy
+): EvaluationChecksResult {
+  return evaluationChecksResult(github, sourceSha, quality.main_required_checks, "main");
+}
+
+function evaluationChecksResult(
   github: GitHubRelease,
   sourceSha: string,
   required: string[],
   branch: string
-): boolean {
+): EvaluationChecksResult {
   const checks = new Map<string, string | null>();
+  let pending = false;
+  let failedRun: WorkflowRun | undefined;
   for (const path of ["ci.yml", "e2e.yml"]) {
     const workflow = z
       .object({ id: z.number().int().positive(), path: z.string() })
@@ -139,7 +156,10 @@ export function evaluationChecksPassed(
       .filter((run) => ["push", "workflow_dispatch"].includes(run.event))
       .sort((a, b) => b.id - a.id);
     const selected = runs[0];
-    if (!selected) return false;
+    if (!selected) {
+      pending = true;
+      continue;
+    }
     if (
       selected.head_repository.full_name !== github.contract.repository ||
       selected.head_branch !== branch ||
@@ -148,9 +168,11 @@ export function evaluationChecksPassed(
     )
       throw new Error("Required evaluation has an untrusted source");
     if (selected.workflow_id !== workflow.id) throw new Error("Workflow identity changed");
-    if (selected.status !== "completed") return false;
-    if (selected.conclusion !== "success")
-      throw new Error("Required main evaluation failed; retry its original CI run");
+    if (selected.status !== "completed") {
+      pending = true;
+      continue;
+    }
+    if (selected.conclusion !== "success") failedRun ||= selected;
     const jobs = github.pages(
       `${github.root}/actions/runs/${selected.id}/attempts/${selected.run_attempt}/jobs?per_page=100`,
       "jobs"
@@ -167,9 +189,29 @@ export function evaluationChecksPassed(
       if (job.head_sha !== sourceSha) throw new Error("Required job has a different source SHA");
       if (checks.has(job.name)) throw new Error("Required check names must identify a unique job");
       checks.set(job.name, job.status === "completed" ? job.conclusion : null);
+      if (job.status === "completed" && job.conclusion !== "success") failedRun ||= selected;
     }
   }
-  return required.every((name) => checks.get(name) === "success");
+  for (const name of required) {
+    const conclusion = checks.get(name);
+    if (conclusion === undefined || conclusion === null) pending = true;
+  }
+  if (pending) return { state: "pending", failedRun };
+  if (required.some((name) => checks.get(name) !== "success"))
+    return { state: "failed", failedRun };
+  return { state: "passed" };
+}
+
+export function evaluationChecksPassed(
+  github: GitHubRelease,
+  sourceSha: string,
+  required: string[],
+  branch: string
+): boolean {
+  const result = evaluationChecksResult(github, sourceSha, required, branch);
+  if (result.failedRun && result.failedRun.conclusion !== "success")
+    throw new Error("Required main evaluation failed; retry its original CI run");
+  return result.state === "passed";
 }
 
 export function manualReleaseWorkflowRun(

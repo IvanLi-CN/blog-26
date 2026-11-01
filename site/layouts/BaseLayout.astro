@@ -17,6 +17,7 @@ interface Props {
   description?: string;
   pathname?: string;
   image?: string;
+  resizeForKeyboard?: boolean;
 }
 
 const {
@@ -24,6 +25,7 @@ const {
   description = SITE.description,
   pathname = "/",
   image = SITE.images.default,
+  resizeForKeyboard = false,
 } = Astro.props;
 const canonical = getCanonicalUrl(pathname);
 const isConsoleRuntime = process.env.CONSOLE_RUNTIME === "true";
@@ -50,7 +52,10 @@ const resolvedImage =
 >
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="viewport"
+      content={`width=device-width,initial-scale=1${resizeForKeyboard ? ",interactive-widget=resizes-content" : ""}`}
+    />
     <title>{title}</title>
     <meta name="description" content={description} />
     {isConsoleRuntime && <meta name="robots" content="noindex, nofollow" />}
@@ -236,7 +241,7 @@ const resolvedImage =
       </script>
     ) : null}
   </head>
-  <body>
+  <body class={resizeForKeyboard ? "system-share-body" : undefined}>
     <IconifyBoot client:load />
     <div class="nature-app-shell flex min-h-screen flex-col" data-testid="public-site-shell">
       <AmbientScene client:load />

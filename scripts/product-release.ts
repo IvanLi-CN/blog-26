@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import {
   findArtifact,
+  findRepositoryArtifact,
   findServerArtifact,
   restoreArtifact,
   verifyDirectory,
@@ -12,6 +13,7 @@ import {
   assertRetryableProductRelease,
   classifyMergeFollowup,
   evaluationChecksPassed,
+  mainEvaluationResult,
   manualReleaseWorkflowRun,
   readQuality,
   releaseRecoveryEventSchema,
@@ -503,6 +505,61 @@ if (command === "notification") {
     result: null,
   }));
   console.log(`Abandoned failed release ${entry.id}`);
+} else if (command === "abandon-failed-evaluation") {
+  const app = github();
+  const store = new GitHubLedgerStore(app);
+  const requestedId = process.env.RELEASE_ID || "";
+  if (!requestedId) throw new Error("RELEASE_ID is required");
+  const incidentReason = (process.env.RELEASE_INCIDENT_REASON || "").trim();
+  if (incidentReason.length < 10)
+    throw new Error("Failed-evaluation abandonment requires a meaningful incident reason");
+  const current = await store.read({ allowLegacyHead: true, allowLegacyAncestor: true });
+  const entry = current.ledger.entries.find((item) => item.id === requestedId);
+  if (!entry) throw new Error("Unknown release identity");
+  if (
+    entry.stage !== "pr_open" ||
+    !entry.prNumber ||
+    !entry.preparationHead ||
+    entry.mergeSha ||
+    entry.releaseRunId ||
+    entry.failure ||
+    entry.inputs ||
+    entry.products ||
+    entry.publication ||
+    entry.deployment
+  )
+    throw new Error(
+      "Only an unbound merged preparation without frozen or published artifacts can be abandoned"
+    );
+  const pull = app.pull(entry.prNumber);
+  assertReleasePull(app, entry, pull);
+  if (!pull.merged || !pull.merge_commit_sha)
+    throw new Error("Release preparation PR is not merged");
+  assertMerge(app, entry, pull, pull.merge_commit_sha);
+  verifyTrustedTags(app, current.ledger);
+  if (app.optional(`${app.root}/releases/tags/v${entry.version}`))
+    throw new Error("Cannot abandon a preparation with a published GitHub Release");
+  for (const kind of ["inputs", "products"] as const) {
+    if (findRepositoryArtifact(app, `release-${entry.id}-${kind}`))
+      throw new Error(`Cannot abandon a preparation with an uploaded ${kind} artifact`);
+  }
+  if (!app.reference(`heads/${contract.branch}`)) throw new Error("Default branch is missing");
+  const evaluation = mainEvaluationResult(app, pull.merge_commit_sha, quality);
+  if (evaluation.state !== "failed")
+    throw new Error("Exact main evaluations are not terminally failed; retry or wait instead");
+  const failure = evaluation.failedRun
+    ? {
+        phase: "resolve",
+        step: "Exact main release evaluation failed",
+        runId: String(evaluation.failedRun.id),
+        attempt: evaluation.failedRun.run_attempt,
+      }
+    : undefined;
+  await changeLedger(store, (ledger) => ({
+    ledger: updateRelease(ledger, entry.id, { stage: "abandoned", failure }),
+    result: null,
+  }));
+  console.log(`Abandoned failed release evaluation ${entry.id}: ${incidentReason}`);
 } else if (command === "abandon-cancelled") {
   const app = github();
   const store = new GitHubLedgerStore(app);

@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
-    "drizzle/0023_assistant_discussion_migration.sql": "2ac1b5b2adc42262ce390a96bafcd2a843a98e11",
+    "drizzle/0028_assistant_discussion_migration.sql": "2ac1b5b2adc42262ce390a96bafcd2a843a98e11",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
     "src/lib/assistant-discussion-migration.ts": "139819bffa42f17124fb629c0ee3463d70fd9a24",
     "scripts/migrate-assistant-discussions.ts": "6593074ba3ea86fecbbebd5d6402ba9d1341c13b",
@@ -48,7 +48,7 @@
           "command": "Read-only planning, deterministic identity mapping, per-conversation transactions, source-hash ledgering for every entry, raw quarantine, backup manifests, interruption-safe resume, stable target binding for same-URL clipping-version transitions, preserved bindings on conflicts, matching-current reading context, verification-gated cleanup, active-version and runtime/task protection"
         },
         {
-          "path": "drizzle/0023_assistant_discussion_migration.sql",
+          "path": "drizzle/0028_assistant_discussion_migration.sql",
           "blob": "2ac1b5b2adc42262ce390a96bafcd2a843a98e11",
           "command": "Forward-only migration adds assistant migration item and backup observability tables without changing T1 runtime tables"
         },
@@ -222,7 +222,7 @@
       ],
       "evidence": [
         {
-          "path": "drizzle/0023_assistant_discussion_migration.sql",
+          "path": "drizzle/0028_assistant_discussion_migration.sql",
           "blob": "2ac1b5b2adc42262ce390a96bafcd2a843a98e11",
           "command": "Forward DDL is additive and does not drop or alter existing T1/clipping tables"
         },

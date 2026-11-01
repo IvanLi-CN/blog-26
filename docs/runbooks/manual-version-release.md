@@ -18,6 +18,8 @@
 
 版本准备先写持久预留，再创建仅修改 VERSION 的 PR 并启用自动合并。GitHub 等全部 required checks 通过后合并。**Product Release**（`.github/workflows/product-release.yml`）不接受第二个人工版本输入，而是消费已登记且通过确切 main CI/E2E 检查的 release identity，构建并冻结两种产物，发布 GitHub Release 和 GHCR 镜像。正式版随后将同一静态产物部署到 EdgeOne，验证后推进 latest；所有带预发布标识的版本仅发布产物，Release 标记 prerelease，不部署站点、不推进正式 latest，也不接收 EdgeOne 部署密钥。
 
+如果准备 PR 已合并但确切 merge SHA 的 main CI/E2E 门禁失败，且 Product Release 尚未绑定该身份，不能把它当作可发布版本，也不能运行 Product Release retry。先运行 **Abandon Failed Release Evaluation**（`.github/workflows/abandon-failed-release-evaluation.yml`），只填写登记的 `release_id` 和 incident reason；入口会重新核验准备 PR、Verified 的 VERSION-only 合并、确切 main 失败，以及没有 Product Release run、artifact、GitHub Release 或 publication proof。成功后版本永久烧毁，重新运行 **Manual Product Release** 并将 `version` 留空即可取得新的稳定版本。
+
 旧的 PR-label/label-gate/release workflow 只作为迁移历史保留，不是当前操作入口；当前发布真相是手动 `version` 请求、登记身份和 Product Release 的消费边界。
 
 例如正式基线为 `2.7.0`、verified impact 为 minor，连续新请求可分配 `2.8.0-alpha.1` → `2.8.0-alpha.2` → `2.8.0-beta.1` → `2.8.0-rc.1` → `2.8.0`，允许跳过阶段。同核心进入 beta 后再请求 alpha 会停止；可显式填写更高的完整目标，例如 `2.9.0-alpha.1`。每个完整版本有独立身份、发布 PR、确切合并来源及冻结字节，不能将预发布产物直接改标正式版。Git tag 为 `v` 加完整版本；镜像 tag 同样带 `v`，仅将 metadata 分隔符 `+` 映射为 `_`，长度超出 registry 限制时预留前拒绝。

@@ -17,8 +17,12 @@
 - 已占用版本下界：所有已发布、预留及废弃身份的最高 SemVer 顺序，用于新身份的严格向前分配；与正式语义基线分别计算。
 - 版本文件：根目录 `VERSION`，由发布准备 PR 修改。
 - 发布登记：独立 `release-ledger` 分支上的签名状态链。
+- Ledger recovery marker：签名登记提交中的每一个 `Ledger-Recovery` marker 都必须是合法 SHA、指向被实际遍历到的单父链提交的严格祖先，并沿 wrapper 链最终绑定到 owner-authored、GitHub Verified 且带机器人 Signed-off-by 的历史提交；中间的 bot-authored recovery wrapper 可保留在单父链中，但不得被当作 legacy head。当前 head 到所选 legacy target 之间的多个 marker 必须收敛到同一 owner lineage；同一提交的多个 marker、该 active lineage 中彼此断开的 marker、缺失、非祖先、冲突或格式错误的 marker 必须 fail closed；legacy target 之后的历史 marker 仍须逐一验证，但不改变当前 recovery identity；bootstrap 祖先链之外的提交不属于 ledger marker 输入。
+- Bootstrap recovery workflow 在写入不可变 `Ledger-Recovery` marker 前 MUST 核验输入 target 等于读取器发现的当前 owner-authored legacy identity，且该 identity 存在于当前 `release-ledger` 的 root-bound 单父祖先链、为 `web-flow` 提交、GitHub Verified 且带机器人 Signed-off-by；target 不存在、未发现 legacy identity、越过 bootstrap root、链含 merge commit 或签名/作者不符合时 MUST 在写入前 fail closed。读取器 MUST 校验 bootstrap root 和当前 head 的 `ledger.json` schema/digest，并要求 traversed commit 各自只有一个严格格式的 `Ledger-Digest` 声明；历史 recovery wrapper 的既有状态保持向后可读。相同 recovery identity 只有在已有 marker lineage 时才可幂等退出；未带 marker 的 owner head 必须继续写入 bot wrapper。
+- Ledger CAS：登记写入使用 GitHub GraphQL `expectedHeadOid` 做原子比较交换；返回提交的单父、Verified 机器人签名和预期父 SHA 校验成功即证明该写入已持久化，随后其他 writer 推进 branch head 不得把已成功的写入误报为失败。
 - 构建身份：`productVersion`、`buildVersion`、`sourceSha`；静态 `/version.json` 和只读 `GET /api/version` 暴露相同产品版本及来源。
 - Product Release recovery：通过 `.github/workflows/retry-product-release.yml` 以 `release_id` 指向原 Product Release run，并在原 run 上执行 GitHub rerun；它不创建 successor release identity。
+- Preparation gate recovery：准备 PR 已合并但确切 main CI/E2E 门禁在 Product Release 绑定前失败时，通过专用 workflow 以 `release_id` 和 incident reason 废弃未绑定身份；它不重跑或接管 Product Release。
 - Failure phase：`resolve`、`restore`、`freeze_inputs`、`retain_inputs`、`record_inputs`、`preflight_media`、`build_products`、`verify_products`、`retain_products`、`record_products`、`publish_prerelease`、`publish_stable` 或 `unknown`；历史 ledger 的旧字符串 phase 必须继续可读。
 
 ## Requirements
@@ -97,7 +101,11 @@ Product Release 的 failure/cancelled recovery MUST 通过 `retry` workflow 只�
 
 ### REQ-MVR-019
 
-未完成 Product Release 只有两类 abandon：没有任何 frozen artifact 的 pre-artifact failure/cancelled，或原 frozen artifact 已由 GitHub 证明不可恢复且 emergency workflow 同时提供人工确认与 incident reason。只要 frozen inputs artifact 可用，input-only abandon MUST 拒绝；abandoned identity MUST NOT revive or reallocate。
+Product Release run 本身只有两类 abandon：没有任何 frozen artifact 的 pre-artifact failure/cancelled，或原 frozen artifact 已由 GitHub 证明不可恢复且 emergency workflow 同时提供人工确认与 incident reason。只要 frozen inputs artifact 可用，input-only abandon MUST 拒绝；abandoned identity MUST NOT revive or reallocate。
+
+### REQ-MVR-020
+
+准备 PR 已合并但 Product Release 尚未绑定、且确切 merge SHA 的 main CI/E2E 门禁失败时，系统 MUST 提供一个只接受 `release_id` 和 incident reason 的专用废弃 workflow。该 workflow MUST 重新核验登记 PR、准备来源、Verified 的 VERSION-only 合并、确切 main 评估的终态失败以及当前 main；MUST 拒绝 pending、success、来源不可信、已有 Product Release run、frozen artifact、GitHub Release 或 publication proof 的身份。成功废弃 MUST 通过 GitHub Actions 签名 ledger 提交烧毁版本；后续新发布 MUST 创建新的 release identity 并按已占用版本下界分配，MUST NOT 复用旧来源、版本、提交或产物。
 
 ### REQ-MVR-012
 
@@ -179,9 +187,9 @@ Product Release 的 failure/cancelled recovery MUST 通过 `retry` workflow 只�
 
 ### VER-MVR-013
 
-- Method: 运行 release ledger、原运行重试、失败分类、通知 metadata 与 abandon boundary 的 focused contract tests，并核对 retry workflow 只声明 `release_id`。
-- covers: `REQ-MVR-006`, `REQ-MVR-017`, `REQ-MVR-019`
-- Pass condition: frozen inputs 后的恢复保留原 release identity、版本、merge SHA、run ID 和已绑定摘要；成功推进清除旧 failure；可用 inputs artifact 拒绝 input-only abandon；只有无 artifact 或已证明 artifact 不可恢复且具备人工确认与 incident reason 时才允许 abandon。
+- Method: 运行 release ledger、原运行重试、失败分类、通知 metadata、准备门禁失败恢复与 abandon boundary 的 focused contract tests，并核对 recovery workflows 只声明各自允许的身份输入。
+- covers: `REQ-MVR-006`, `REQ-MVR-017`, `REQ-MVR-019`, `REQ-MVR-020`
+- Pass condition: frozen inputs 后的恢复保留原 release identity、版本、merge SHA、run ID 和已绑定摘要；成功推进清除旧 failure；可用 inputs artifact 拒绝 input-only abandon；没有 Product Release 绑定且 exact main gate 失败的准备身份只能在 PR、merge、终态失败和无产物证据全部通过后废弃；其他状态均拒绝。
 
 ### VER-MVR-014
 
@@ -204,6 +212,7 @@ Product Release 的 failure/cancelled recovery MUST 通过 `retry` workflow 只�
 - [ADR 0018](../../adr/0018-product-prerelease-version-allocation.md)
 - [ADR 0025](../../adr/0025-release-pr-check-attestation.md)
 - [ADR 0029](../../adr/0029-release-recovery-and-frozen-media-preflight.md)
+- [ADR 0033](../../adr/0033-release-preparation-gate-recovery.md)
 
 ## References
 

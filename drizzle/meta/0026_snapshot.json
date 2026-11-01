@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "b130b0bc-24a8-48d8-9b68-5bf80dfcb11d",
-  "prevId": "3bbc30f3-abca-4414-9283-ef95b1c2618a",
+  "id": "d4e58f6b-b651-4757-9b44-815d7a8a364c",
+  "prevId": "dab9986e-31b8-4b91-bf61-f2fe851098e9",
   "tables": {
     "admin_github_binding_events": {
       "name": "admin_github_binding_events",
@@ -278,30 +278,6 @@
         },
         "incomplete_call_count": {
           "name": "incomplete_call_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "success_call_count": {
-          "name": "success_call_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "failure_call_count": {
-          "name": "failure_call_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "cancelled_call_count": {
-          "name": "cancelled_call_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -772,11 +748,6 @@
           "name": "assistant_generation_jobs_status_lease_idx",
           "columns": ["status", "lease_until"],
           "isUnique": false
-        },
-        "assistant_generation_jobs_user_message_idx": {
-          "name": "assistant_generation_jobs_user_message_idx",
-          "columns": ["user_message_id"],
-          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -805,109 +776,6 @@
           "columnsFrom": ["assistant_message_id"],
           "columnsTo": ["id"],
           "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "assistant_message_citations": {
-      "name": "assistant_message_citations",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "message_id": {
-          "name": "message_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "source": {
-          "name": "source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "source_id": {
-          "name": "source_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "source_type": {
-          "name": "source_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "href": {
-          "name": "href",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "location": {
-          "name": "location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "snippet": {
-          "name": "snippet",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "assistant_message_citations_message_idx": {
-          "name": "assistant_message_citations_message_idx",
-          "columns": ["message_id", "created_at"],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "assistant_message_citations_message_id_assistant_messages_id_fk": {
-          "name": "assistant_message_citations_message_id_assistant_messages_id_fk",
-          "tableFrom": "assistant_message_citations",
-          "tableTo": "assistant_messages",
-          "columnsFrom": ["message_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -1004,11 +872,6 @@
         "assistant_messages_request_idx": {
           "name": "assistant_messages_request_idx",
           "columns": ["conversation_id", "client_request_id"],
-          "isUnique": false
-        },
-        "assistant_messages_client_request_idx": {
-          "name": "assistant_messages_client_request_idx",
-          "columns": ["client_request_id"],
           "isUnique": false
         }
       },
@@ -2081,14 +1944,6 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
-        },
-        "auth_source": {
-          "name": "auth_source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'admin'"
         },
         "token_hash": {
           "name": "token_hash",

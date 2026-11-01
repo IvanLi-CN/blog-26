@@ -511,7 +511,7 @@ body:has(.quick-memo-edit-modal) .nature-site-header {
   }
 }
 
-@media (max-width: 380px) {
+@media (max-width: 359px) {
   .system-share-memo-footer-row {
     flex-wrap: wrap;
   }

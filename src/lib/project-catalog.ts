@@ -16,6 +16,18 @@ export interface ProjectPublicEntry {
   href: string;
 }
 
+export interface ProjectPublicEntryKindDefinition {
+  id: ProjectPublicEntryKind;
+  label: string;
+}
+
+export interface ProjectStatusCatalogEntry extends ProjectPublicEntry {
+  entryKey: string;
+  projectSlug: string;
+  projectTitle: string;
+  domain: ProjectDomain;
+}
+
 export interface ProjectExternalLink {
   kind: ProjectExternalLinkKind;
   label: string;
@@ -79,6 +91,54 @@ export interface ResolvedProjectRelatedEntry extends ProjectRelatedEntry {
 }
 
 export type ProjectCatalog = readonly ProjectCatalogItem[];
+
+const publicEntryMeta: Record<ProjectPublicEntryKind, { label: string }> = {
+  site: { label: "项目站点" },
+  demo: { label: "Demo" },
+  officialDocs: { label: "官方文档" },
+  docs: { label: "文档" },
+  repository: { label: "开源仓库" },
+};
+
+/** Shared link-group projection used by status reports and other consumers. */
+export const projectPublicEntryKindDefinitions: readonly ProjectPublicEntryKindDefinition[] = [
+  { id: "site", label: publicEntryMeta.site.label },
+  { id: "demo", label: publicEntryMeta.demo.label },
+  { id: "officialDocs", label: publicEntryMeta.officialDocs.label },
+  { id: "docs", label: publicEntryMeta.docs.label },
+  { id: "repository", label: publicEntryMeta.repository.label },
+];
+
+/** Return the complete public destination projection used by every consumer. */
+export function getProjectPublicEntries(project: ProjectCatalogItem): ProjectPublicEntry[] {
+  const legacy = new Map(project.links.map((link) => [link.kind, link.href]));
+  const values: Array<[ProjectPublicEntryKind, string | undefined]> = [
+    ["site", project.site ?? legacy.get("site")],
+    ["demo", project.demo ?? legacy.get("demo")],
+    ["officialDocs", project.officialDocs ?? legacy.get("docs")],
+    ["docs", project.docs],
+    ["repository", project.repository ?? legacy.get("github")],
+  ];
+
+  return values
+    .filter((entry): entry is [ProjectPublicEntryKind, string] => Boolean(entry[1]))
+    .map(([kind, href]) => ({ kind, href, label: publicEntryMeta[kind].label }));
+}
+
+/** Return the normalized external-entry snapshot without internal project routes. */
+export function getProjectStatusCatalogEntries(
+  catalog: ProjectCatalog = projectCatalog
+): ProjectStatusCatalogEntry[] {
+  return catalog.flatMap((project) =>
+    getProjectPublicEntries(project).map((entry) => ({
+      ...entry,
+      entryKey: `${project.slug}:${entry.kind}:${entry.href}`,
+      projectSlug: project.slug,
+      projectTitle: project.title,
+      domain: project.domain,
+    }))
+  );
+}
 
 export const projectDomains: readonly ProjectDomainDefinition[] = [
   {

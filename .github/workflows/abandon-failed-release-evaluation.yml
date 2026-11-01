@@ -1,0 +1,44 @@
+name: Abandon Failed Release Evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Merged release preparation identity whose exact main gates failed before Product Release
+        required: true
+        type: string
+      incident_reason:
+        description: Why the failed preparation identity is being permanently abandoned
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+jobs:
+  abandon:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Abandon only after exact main gate failure is proven
+        run: bun scripts/product-release.ts abandon-failed-evaluation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          RELEASE_INCIDENT_REASON: ${{ inputs.incident_reason }}

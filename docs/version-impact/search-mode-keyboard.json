@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e894b395f7690a7c5166b053164f407c6cb60f90",
+  "covered_files": {
+    "tests/e2e/web-demo/search-modes.spec.ts": "4d8117debdfe5b00ad36ced149ec5c0efd020581"
+  },
+  "change": {
+    "description": "Make the mobile Web Demo search-mode keyboard assertion synchronize with the focused control and URL transition without changing product behavior.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change only makes an existing mobile keyboard regression test wait for the already-defined mode URL and aria-pressed state; no product implementation, API, persistence, or release input changes.",
+      "assessed_at": "2026-10-31T13:18:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/search-modes.spec.ts",
+          "blob": "4d8117debdfe5b00ad36ced149ec5c0efd020581",
+          "command": "Review the focused locator press and mode URL synchronization assertion"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate remains limited to Playwright synchronization for the existing mobile search-mode interaction; the search implementation and public route contract are unchanged.",
+      "assessed_at": "2026-10-31T13:18:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/search-modes.spec.ts",
+          "blob": "4d8117debdfe5b00ad36ced149ec5c0efd020581",
+          "command": "The target mobile keyboard test and the full search-modes file pass"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Only the existing Web Demo search-mode E2E synchronization test is changed; product code, API behavior, persistent state, and release inputs remain untouched."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The exact mobile keyboard test, the complete search-modes Web Demo file, repository checks, and the Web Demo build pass with the synchronization correction.",
+      "assessed_at": "2026-10-31T13:18:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/search-modes.spec.ts",
+          "blob": "4d8117debdfe5b00ad36ced149ec5c0efd020581",
+          "command": "Target mobile keyboard test and all 10 search-modes tests pass with retries disabled"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7",
+        "3.11.8"
+      ],
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/search-modes.spec.ts",
+          "blob": "4d8117debdfe5b00ad36ced149ec5c0efd020581",
+          "command": "The focused search-mode interaction exercises the unchanged public route contract"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No database schema, content format, browser persistence, or release-ledger state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/search-modes.spec.ts",
+          "blob": "4d8117debdfe5b00ad36ced149ec5c0efd020581",
+          "command": "The change is confined to browser test synchronization"
+        }
+      ]
+    }
+  }
+}

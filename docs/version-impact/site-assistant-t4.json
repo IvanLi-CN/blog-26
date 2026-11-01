@@ -3,9 +3,9 @@
   "kind": "version-impact-record",
   "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
-    "drizzle/0025_assistant_message_citations.sql": "1507cf1b94ed1c7a864d2033e4d259df905f6307",
+    "drizzle/0030_assistant_message_citations.sql": "1507cf1b94ed1c7a864d2033e4d259df905f6307",
     "drizzle/meta/0025_snapshot.json": "ba6c77a82ac2a462ac04f042c9bf3e8bc7252a7f",
-    "drizzle/0026_assistant_lookup_indexes.sql": "72981660a24e68ad7342865de4ec6a85b0c114aa",
+    "drizzle/0031_assistant_lookup_indexes.sql": "72981660a24e68ad7342865de4ec6a85b0c114aa",
     "drizzle/meta/0026_snapshot.json": "4751023ac4555d1167951358aef84d1b4df826ee",
     "drizzle/meta/_journal.json": "e04c27d13c458128218494a878957e224c1f839c",
     "scripts/start-gateway.ts": "9575b653d6bbf8f2f252ef01074cef5ece72b76e",
@@ -259,12 +259,12 @@
       ],
       "evidence": [
         {
-          "path": "drizzle/0025_assistant_message_citations.sql",
+          "path": "drizzle/0030_assistant_message_citations.sql",
           "blob": "1507cf1b94ed1c7a864d2033e4d259df905f6307",
           "command": "Adds only the citation table and message/time index"
         },
         {
-          "path": "drizzle/0026_assistant_lookup_indexes.sql",
+          "path": "drizzle/0031_assistant_lookup_indexes.sql",
           "blob": "72981660a24e68ad7342865de4ec6a85b0c114aa",
           "command": "Adds lookup indexes for global client request and user-message job queries"
         }

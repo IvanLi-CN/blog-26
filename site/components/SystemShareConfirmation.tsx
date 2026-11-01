@@ -1,6 +1,6 @@
 "use client";
 
-import { Paperclip, Trash2 } from "lucide-react";
+import { House, Paperclip, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { MilkdownEditor, type MilkdownEditorRef } from "@/components/memos/MilkdownEditor";
 import {
@@ -26,6 +26,7 @@ import {
   showSystemShareProgress,
   showSystemShareSuccess,
 } from "./SystemShareToast";
+import "./SystemShareConfirmation.css";
 
 type AuthUser = { isAdmin?: boolean } | null;
 
@@ -311,7 +312,7 @@ export default function SystemShareConfirmation() {
       currentPending = await readPendingSystemShare();
     } catch (nextError) {
       const message =
-        nextError instanceof Error ? nextError.message : "无法确认当前分享，请刷新后重试。";
+        nextError instanceof Error ? nextError.message : "无法读取当前分享，请刷新后重试。";
       showSystemShareError(message, () => window.location.reload(), "刷新");
       releaseSubmitLock();
       return;
@@ -424,7 +425,7 @@ export default function SystemShareConfirmation() {
       >
         <span className="nature-kicker">System Share</span>
         <h1 className="nature-title mt-3 text-3xl">登录后继续发布</h1>
-        <p className="nature-muted mt-3">分享内容已保存在当前浏览器，登录控制台后可以继续确认。</p>
+        <p className="nature-muted mt-3">分享内容已保存在当前浏览器，登录控制台后可以继续发布。</p>
         <div className="mt-6 flex flex-wrap gap-3">
           <a
             className="nature-button nature-button-primary inline-flex"
@@ -447,15 +448,20 @@ export default function SystemShareConfirmation() {
   const rawShare = originalPending ?? pending;
 
   return (
-    <main
-      className="nature-container system-share-page max-w-4xl px-4 py-6 sm:px-6 sm:py-10"
-      data-testid="system-share-page"
-    >
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5">
+    <main className="nature-container system-share-page max-w-4xl" data-testid="system-share-page">
+      <header className="system-share-page-header flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <span className="nature-kicker">System Share</span>
-          <h1 className="nature-title mt-2 text-3xl sm:text-4xl">确认发布 Memo</h1>
+          <h1 className="nature-title mt-2 text-3xl sm:text-4xl">发布 Memo</h1>
         </div>
+        <a
+          className="nature-icon-button inline-flex shrink-0"
+          href="/"
+          aria-label="返回首页"
+          title="返回首页"
+          data-testid="system-share-home"
+        >
+          <House className="size-5" aria-hidden="true" />
+        </a>
       </header>
 
       <details
@@ -543,7 +549,7 @@ export default function SystemShareConfirmation() {
       ) : null}
 
       <form
-        className="nature-panel overflow-hidden"
+        className="nature-panel system-share-memo-form"
         onSubmit={(event) => {
           event.preventDefault();
           void submitCurrent();
@@ -551,7 +557,7 @@ export default function SystemShareConfirmation() {
         data-testid="system-share-memo-editor"
         aria-labelledby="system-share-memo-editor-title"
       >
-        <div className="quick-memo-edit-header">
+        <div className="quick-memo-edit-header system-share-memo-editor-header">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 id="system-share-memo-editor-title" className="quick-memo-edit-title">
@@ -561,12 +567,12 @@ export default function SystemShareConfirmation() {
           </div>
         </div>
 
-        <div
-          className="quick-memo-edit-body grid gap-7 overflow-visible p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_18rem]"
-          data-testid="system-share-memo-editor-body"
-        >
-          <div className="min-w-0">
-            <section data-testid="system-share-memo-editor-content">
+        <div className="system-share-memo-editor-body" data-testid="system-share-memo-editor-body">
+          <div className="system-share-memo-editor-content-column min-w-0">
+            <section
+              className="system-share-memo-editor-content-section"
+              data-testid="system-share-memo-editor-content"
+            >
               <span className="block text-sm font-medium">Memo 内容</span>
               <div
                 className="quick-memo-edit-container mt-2"
@@ -585,21 +591,47 @@ export default function SystemShareConfirmation() {
                   readOnly={submitting || successLocked}
                 />
               </div>
-              <div className="mt-1 flex flex-wrap justify-between gap-2 px-1 text-xs text-[color:var(--nature-text-soft)]">
+              <div
+                className="mt-1 flex flex-wrap justify-between gap-2 px-1 text-xs text-[color:var(--nature-text-soft)]"
+                data-testid="system-share-memo-editor-meta"
+              >
                 <span>{text.length} 字符</span>
                 <span>支持 Markdown</span>
               </div>
             </section>
           </div>
 
-          <aside className="space-y-6 border-t border-[color:var(--nature-line)] pt-6 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+          <aside className="system-share-memo-attachments">
             <section>
-              <span className="block text-sm font-medium">附件</span>
-              <ul className="mt-2 space-y-2" data-testid="system-share-files">
+              <div className="system-share-attachments-header">
+                <span
+                  className="block text-sm font-medium"
+                  data-testid="system-share-attachments-title"
+                >
+                  附件
+                </span>
+                <label
+                  className="system-share-file-picker nature-button nature-button-outline inline-flex min-h-11 shrink-0 cursor-pointer items-center"
+                  title="添加附件"
+                >
+                  <Paperclip aria-hidden="true" />
+                  <span>添加附件</span>
+                  <input
+                    className="sr-only"
+                    type="file"
+                    multiple
+                    aria-label="添加附件"
+                    onChange={(event) => void addFiles(event)}
+                    disabled={submitting || successLocked}
+                  />
+                </label>
+              </div>
+              <ul className="system-share-files" data-testid="system-share-files">
                 {pending.files.length ? (
                   pending.files.map((file, index) => (
                     <li
                       className="flex items-start gap-2 text-sm"
+                      data-testid={`system-share-file-row-${index}`}
                       key={`${file.name}-${file.size}-${file.lastModified ?? 0}`}
                     >
                       <Paperclip className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -619,20 +651,11 @@ export default function SystemShareConfirmation() {
                     </li>
                   ))
                 ) : (
-                  <li className="nature-muted text-sm">无附件</li>
+                  <li className="nature-muted text-sm" data-testid="system-share-empty-attachments">
+                    无附件
+                  </li>
                 )}
               </ul>
-              <label className="system-share-file-picker nature-button nature-button-outline mt-3 inline-flex min-h-11 cursor-pointer items-center gap-2">
-                <Paperclip aria-hidden="true" />
-                添加附件
-                <input
-                  className="sr-only"
-                  type="file"
-                  multiple
-                  onChange={(event) => void addFiles(event)}
-                  disabled={submitting || successLocked}
-                />
-              </label>
             </section>
           </aside>
         </div>
@@ -678,7 +701,7 @@ export default function SystemShareConfirmation() {
                 disabled={submitting || successLocked}
                 data-testid="system-share-submit"
               >
-                {submitting ? "发布中…" : successLocked ? "已发布" : "确认发布"}
+                {submitting ? "发布中…" : successLocked ? "已发布" : "发布 Memo"}
               </button>
             </div>
           </div>
