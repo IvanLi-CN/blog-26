@@ -75,10 +75,12 @@ describe("public frontend auth routes", () => {
       "/frontend-auth/bootstrap"
     );
     expect(bootstrap.status).toBe(200);
-    expect(await bootstrap.json()).toMatchObject({
+    const bootstrapBody = (await bootstrap.json()) as Record<string, unknown>;
+    expect(bootstrapBody).toMatchObject({
       authenticated: true,
       principal: { kind: "admin", avatarUrl: "/site-assets/avatar.jpg" },
     });
+    expect(bootstrapBody).not.toHaveProperty("setCookies");
     const bootstrapCookies = bootstrap.headers.getSetCookie();
     expect(bootstrapCookies).toHaveLength(2);
     expect(cookieNames(bootstrapCookies)).toEqual(["frontend_session_id", "frontend_logout"]);
@@ -86,6 +88,25 @@ describe("public frontend auth routes", () => {
       .find((cookie) => cookie.startsWith("frontend_session_id="))
       ?.split(";", 1)[0];
     expect(sessionCookie).toBeTruthy();
+    expect(JSON.stringify(bootstrapBody)).not.toContain(sessionCookie?.split("=", 2)[1] ?? "");
+
+    const adminStart = await handlePublicApiRequest(
+      request("/frontend-auth/admin-start", {
+        method: "POST",
+        headers: { "Remote-Email": adminEmail },
+      }),
+      "/frontend-auth/admin-start"
+    );
+    expect(adminStart.status).toBe(200);
+    const adminStartBody = (await adminStart.json()) as Record<string, unknown>;
+    expect(adminStartBody).not.toHaveProperty("setCookies");
+    const adminStartCookie = adminStart.headers
+      .getSetCookie()
+      .find((cookie) => cookie.startsWith("frontend_session_id="));
+    expect(adminStartCookie).toBeTruthy();
+    expect(JSON.stringify(adminStartBody)).not.toContain(
+      adminStartCookie?.split("=", 2)[1]?.split(";", 1)[0] ?? ""
+    );
 
     const me = await handlePublicApiRequest(
       request("/frontend-auth/me", { headers: { cookie: sessionCookie as string } }),
@@ -102,6 +123,7 @@ describe("public frontend auth routes", () => {
       "/frontend-auth/logout"
     );
     expect(logout.status).toBe(200);
+    expect((await logout.json()) as Record<string, unknown>).not.toHaveProperty("setCookies");
     const logoutCookies = logout.headers.getSetCookie();
     expect(logoutCookies).toHaveLength(2);
     expect(cookieNames(logoutCookies)).toEqual(["frontend_session_id", "frontend_logout"]);

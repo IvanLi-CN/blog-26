@@ -710,6 +710,51 @@ describe("assistant discussion migration", () => {
     }
   });
 
+  it("quarantines malformed previous conversation references before completing", async () => {
+    const directory = withTempDirectory();
+    try {
+      const targetPath = createTarget(directory);
+      const piPath = createPi(directory);
+      const target = new Database(targetPath);
+      const row = target
+        .query<{ manifest: string }, []>("SELECT manifest FROM memo_clippings WHERE id = 'clip-1'")
+        .get();
+      const manifest = JSON.parse(row?.manifest ?? "{}") as Record<string, unknown>;
+      manifest.previousConversations = { conversationId: "7" };
+      target
+        .query("UPDATE memo_clippings SET manifest = ?, updated_at = ? WHERE id = ?")
+        .run(JSON.stringify(manifest), 3, "clip-1");
+      target.close();
+
+      const report = await migrateAssistantDiscussions({
+        targetDbPath: targetPath,
+        piDbPath: piPath,
+        mode: "apply",
+        now: () => 33_000,
+        resolveTrustedCreator: trustedReader,
+      });
+      expect(report.status).toBe("blocked");
+      expect(report.records).toContainEqual({
+        sourceKind: "manifest",
+        sourceId: "memo:memo.md:previous-conversations",
+        state: "quarantined",
+        targetId: null,
+        reason: "invalid-previous-conversations",
+      });
+      const migrated = new Database(targetPath);
+      expect(
+        migrated
+          .query<{ state: string; reason: string }, [string]>(
+            "SELECT state, reason FROM assistant_migration_items WHERE source_kind = 'manifest' AND source_id = ?"
+          )
+          .get("memo:memo.md:previous-conversations")
+      ).toEqual({ state: "quarantined", reason: "invalid-previous-conversations" });
+      migrated.close();
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("restores a migrated conversation after temporary attribution quarantine", async () => {
     const directory = withTempDirectory();
     try {

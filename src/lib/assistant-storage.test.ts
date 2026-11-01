@@ -704,4 +704,41 @@ describe("assistant SQLite storage", () => {
       })
     ).rejects.toMatchObject({ code: "conflict" });
   });
+
+  it("rejects a request id reused in a different explicit conversation", async () => {
+    const owner = "frontend-storage-request-conversation-scope";
+    await database.insert(frontendUsers).values({
+      id: owner,
+      adminUserId: null,
+      isAdmin: false,
+      displayName: "Conversation Scope Owner",
+      email: null,
+      avatarUrl: "/site-assets/default-avatar.svg",
+      profileUrl: null,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const storage = createAssistantStorage(database);
+    const first = await storage.submitTurn({
+      frontendUserId: owner,
+      requestId: "conversation-scoped-request-id",
+      content: "First question",
+      now: Date.now(),
+    });
+    const second = await storage.createConversation({
+      frontendUserId: owner,
+      kind: "general",
+      now: Date.now(),
+    });
+    expect(second.id).not.toBe(first.conversation.id);
+    await expect(
+      storage.submitTurn({
+        frontendUserId: owner,
+        conversationId: second.id,
+        requestId: "conversation-scoped-request-id",
+        content: "Second question",
+        now: Date.now(),
+      })
+    ).rejects.toMatchObject({ code: "conflict" });
+  });
 });

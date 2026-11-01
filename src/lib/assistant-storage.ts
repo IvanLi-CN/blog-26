@@ -341,8 +341,12 @@ function findIdempotentSubmission(
     )
     .where(eq(assistantGenerationJobs.requestId, requestId))
     .get();
-  if (existingRequest)
+  if (existingRequest) {
+    if (conversationId && existingRequest.conversation.id !== conversationId) {
+      return { kind: "conflict" };
+    }
     return findExistingSubmission(database, existingRequest, frontendUserId, now, scope);
+  }
 
   if (!clientRequestId) return { kind: "none" };
   const conditions = [

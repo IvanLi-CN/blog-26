@@ -39,6 +39,21 @@ type FrontendAuthMutation = FrontendAuthState & {
   bootstrapped?: boolean;
 };
 
+export type FrontendAuthPublicResult = FrontendAuthState & {
+  bootstrapped?: boolean;
+};
+
+export function frontendAuthPublicResult(result: FrontendAuthMutation): FrontendAuthPublicResult {
+  return {
+    authenticated: result.authenticated,
+    principal: result.principal,
+    expiresAt: result.expiresAt,
+    loggedOut: result.loggedOut,
+    ...(result.canStartAdmin === undefined ? {} : { canStartAdmin: result.canStartAdmin }),
+    ...(result.bootstrapped === undefined ? {} : { bootstrapped: result.bootstrapped }),
+  };
+}
+
 function requireDatabase(): FrontendDatabase {
   if (!db) throw new Error("Database has not been initialized");
   return db;

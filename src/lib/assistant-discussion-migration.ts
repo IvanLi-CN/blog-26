@@ -665,9 +665,38 @@ function readReferenceData(target: Database): ReferenceData {
         processing: manifestProcessing || currentVersion.processing,
       });
     }
-    const previousConversations = Array.isArray(manifest.previousConversations)
-      ? manifest.previousConversations.filter(isObject)
-      : [];
+    const previousValue = manifest.previousConversations;
+    const previousConversations: JsonObject[] = [];
+    if (previousValue !== undefined && previousValue !== null) {
+      if (!Array.isArray(previousValue)) {
+        invalidManifests.push({
+          sourceKind: "manifest",
+          sourceId: `memo:${memoId}:previous-conversations`,
+          sourceHash: sha256(rawManifest),
+          payload: { row: rowRawPayload(row), field: "previousConversations" },
+          reason: "invalid-previous-conversations",
+        });
+      } else {
+        previousValue.forEach((previous, index) => {
+          if (!isObject(previous) || numericConversationId(previous.conversationId) === null) {
+            invalidManifests.push({
+              sourceKind: "manifest",
+              sourceId: `memo:${memoId}:previous-conversations:${index}`,
+              sourceHash: sha256(rawManifest),
+              payload: {
+                row: rowRawPayload(row),
+                field: "previousConversations",
+                index,
+                value: previous,
+              },
+              reason: "invalid-previous-conversation-reference",
+            });
+            return;
+          }
+          previousConversations.push(previous);
+        });
+      }
+    }
     for (const previous of previousConversations) {
       const conversationId = numericConversationId(previous.conversationId);
       if (conversationId === null) continue;

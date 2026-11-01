@@ -418,6 +418,7 @@ function buildPublicComments(
       (frontendUserId && row.frontendUserId === frontendUserId) ||
         (readerId && row.readerId === readerId)
     );
+    const ownFrontend = Boolean(frontendUserId && row.frontendUserId === frontendUserId);
     const placeholder = !isAdmin && !own && !deleted && row.status !== "approved";
     const isAdminAuthor = row.authorRole === "admin";
     const authorName = isAdminAuthor
@@ -452,7 +453,7 @@ function buildPublicComments(
               : reader?.avatarUrl || "/site-assets/default-avatar.svg",
         profileUrl: deleted || placeholder ? null : reader?.profileUrl,
       },
-      canDelete: isAdmin || (own && row.authorRole !== "admin"),
+      canDelete: isAdmin || ownFrontend || (own && row.authorRole !== "admin"),
       canModerate: isAdmin,
       replies: [],
       repliesNextCursor: null,
@@ -889,10 +890,11 @@ export const commentsRouter = createTRPCRouter({
             const canDelete =
               ctx.isAdmin ||
               Boolean(
-                ((ctx.frontendPrincipal?.id &&
+                (ctx.frontendPrincipal?.id &&
                   existing.frontendUserId === ctx.frontendPrincipal.id) ||
-                  (ctx.reader?.id && existing.readerId === ctx.reader.id)) &&
-                  existing.authorRole !== "admin"
+                  (ctx.reader?.id &&
+                    existing.readerId === ctx.reader.id &&
+                    existing.authorRole !== "admin")
               );
             if (!canDelete)
               throw new TRPCError({ code: "FORBIDDEN", message: "没有权限删除此评论" });

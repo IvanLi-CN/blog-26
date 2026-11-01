@@ -25,6 +25,7 @@ import {
   bootstrapFrontendAuth,
   clearFrontendLogoutCookieHeader,
   frontendAuthMe,
+  frontendAuthPublicResult,
   logoutFrontendAuth,
   startAdminFrontendAuth,
 } from "@/lib/frontend-auth";
@@ -1586,7 +1587,7 @@ export async function handlePublicApiRequest(
       for (const cookie of result.setCookies) resHeaders.append("set-cookie", cookie);
       return json(
         request,
-        result,
+        frontendAuthPublicResult(result),
         { status: 200, headers: { "cache-control": "no-store" } },
         resHeaders
       );
@@ -1602,14 +1603,14 @@ export async function handlePublicApiRequest(
       if (!result.authenticated) {
         return json(
           request,
-          { error: "请先登录管理员账号", ...result },
+          { error: "请先登录管理员账号", ...frontendAuthPublicResult(result) },
           { status: 401, headers: { "cache-control": "no-store" } },
           resHeaders
         );
       }
       return json(
         request,
-        result,
+        frontendAuthPublicResult(result),
         { status: 200, headers: { "cache-control": "no-store" } },
         resHeaders
       );
@@ -1624,7 +1625,7 @@ export async function handlePublicApiRequest(
       for (const cookie of result.setCookies) resHeaders.append("set-cookie", cookie);
       return json(
         request,
-        result,
+        frontendAuthPublicResult(result),
         { status: 200, headers: { "cache-control": "no-store" } },
         resHeaders
       );

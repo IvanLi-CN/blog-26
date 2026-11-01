@@ -233,6 +233,15 @@ describe("comments reader lifecycle", () => {
       authorRole: "admin",
       author: { avatarUrl: "/site-assets/avatar.jpg" },
     });
+
+    const ownVisible = await createCaller({ frontendPrincipal: principal }).comments.getComments({
+      target: { type: "article", key: "frontend-admin-comments" },
+    });
+    expect(ownVisible.comments[0]).toMatchObject({ canDelete: true });
+    await createCaller({ frontendPrincipal: principal }).comments.deleteComment({
+      commentId: created.commentId,
+      expectedRevision: 1,
+    });
   });
 
   it("publishes bound admin comments, preserves their marker, and gates new comments after unbind", async () => {
