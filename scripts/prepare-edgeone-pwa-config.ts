@@ -53,7 +53,8 @@ const HTML_FILE_ROUTE_PATTERNS = [
 ] as const;
 
 const SKIPPED_PUBLIC_HTML_ROUTE_PATTERNS = ["/share/"] as const;
-const SKIPPED_PUBLIC_ASSET_PATHS = new Set(["share-target-sw.js"]);
+// RSS is a redirect alias for /feed.xml; it does not need a dedicated cache rule.
+const SKIPPED_PUBLIC_ASSET_PATHS = new Set(["share-target-sw.js", "rss.xml"]);
 
 const PLAYBOOK_POLICY_SOURCE = "/_content/playbook/:version/:digest/policies/*";
 

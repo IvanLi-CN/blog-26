@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "9bfb87799b1951ab415ca6a15e368b71c7eb2744",
+  "covered_files": {
+    "scripts/prepare-edgeone-pwa-config.ts": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38",
+    "tests/lib/public-pwa-edgeone-config.test.ts": "f9df3fe7a1964d5eaa2a3a1953138fdfad1b9a6f"
+  },
+  "change": {
+    "description": "Keep the public EdgeOne cache policy within its hard rule budget by excluding the RSS redirect alias while retaining the assistant shell route.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change only adjusts CDN cache-rule generation: /rss.xml is a redirect alias for /feed.xml and needs no dedicated rule. Public pages, assets, APIs, persisted state, and release identity remain unchanged.",
+      "assessed_at": "2026-11-01T14:50:22+08:00",
+      "evidence": [
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38",
+          "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts tests/lib/public-pwa-edgeone-config.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate is limited to the EdgeOne rule budget and its regression coverage. The original 4.0.1 release source SHA and frozen inputs remain immutable; the current compatibility overlay can consume this fix during same-identity retry.",
+      "assessed_at": "2026-11-01T14:50:22+08:00",
+      "evidence": [
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts"
+        },
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "f9df3fe7a1964d5eaa2a3a1953138fdfad1b9a6f",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "No API, persisted-state, frontend behavior, release identity, or frozen artifact contract changed."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused EdgeOne route tests pass, including the assistant shell in the combined 30-rule fixture; the fix preserves all public content and asset rules while omitting only the RSS redirect alias.",
+      "assessed_at": "2026-11-01T14:50:22+08:00",
+      "evidence": [
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38",
+          "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts tests/lib/public-pwa-edgeone-config.test.ts"
+        },
+        {
+          "path": "tests/lib/public-pwa-edgeone-config.test.ts",
+          "blob": "f9df3fe7a1964d5eaa2a3a1953138fdfad1b9a6f",
+          "command": "bun test tests/lib/public-pwa-edgeone-config.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7",
+        "3.11.8",
+        "3.12.0"
+      ],
+      "evidence": [
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38",
+          "command": "Cache policy generation is unchanged for API payloads and public route content."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change does not modify application schema, release ledger state, frozen inputs, browser persistence, or published content formats.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38",
+          "command": "Only generated EdgeOne cache metadata changes; application state remains unchanged."
+        }
+      ]
+    }
+  }
+}
