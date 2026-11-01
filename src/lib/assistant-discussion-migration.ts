@@ -625,9 +625,28 @@ function readReferenceData(target: Database): ReferenceData {
     }
     const creatorId = asString(manifest.creatorId) ?? asString(row.creator_id);
     const targetUrl = asString(manifest.targetUrl) ?? asString(row.target_url);
-    const currentConversationId = numericConversationId(
-      manifest.conversationId ?? row.conversation_id
-    );
+    const hasCurrentConversation = Object.hasOwn(manifest, "conversationId");
+    const currentConversationValue = manifest.conversationId;
+    const currentConversationId =
+      typeof currentConversationValue === "string"
+        ? numericConversationId(currentConversationValue)
+        : null;
+    if (
+      !hasCurrentConversation ||
+      (currentConversationValue !== null && currentConversationId === null)
+    ) {
+      invalidManifests.push({
+        sourceKind: "manifest",
+        sourceId: `memo:${memoId}:conversation`,
+        sourceHash: sha256(rawManifest),
+        payload: {
+          row: rowRawPayload(row),
+          field: "conversationId",
+          value: currentConversationValue,
+        },
+        reason: "invalid-current-conversation-reference",
+      });
+    }
     const currentVersion = versionForTarget(
       manifest,
       targetUrl,
@@ -665,37 +684,45 @@ function readReferenceData(target: Database): ReferenceData {
         processing: manifestProcessing || currentVersion.processing,
       });
     }
+    const hasPreviousConversations = Object.hasOwn(manifest, "previousConversations");
     const previousValue = manifest.previousConversations;
     const previousConversations: JsonObject[] = [];
-    if (previousValue !== undefined && previousValue !== null) {
-      if (!Array.isArray(previousValue)) {
-        invalidManifests.push({
-          sourceKind: "manifest",
-          sourceId: `memo:${memoId}:previous-conversations`,
-          sourceHash: sha256(rawManifest),
-          payload: { row: rowRawPayload(row), field: "previousConversations" },
-          reason: "invalid-previous-conversations",
-        });
-      } else {
-        previousValue.forEach((previous, index) => {
-          if (!isObject(previous) || numericConversationId(previous.conversationId) === null) {
-            invalidManifests.push({
-              sourceKind: "manifest",
-              sourceId: `memo:${memoId}:previous-conversations:${index}`,
-              sourceHash: sha256(rawManifest),
-              payload: {
-                row: rowRawPayload(row),
-                field: "previousConversations",
-                index,
-                value: previous,
-              },
-              reason: "invalid-previous-conversation-reference",
-            });
-            return;
-          }
-          previousConversations.push(previous);
-        });
-      }
+    if (!hasPreviousConversations || !Array.isArray(previousValue)) {
+      invalidManifests.push({
+        sourceKind: "manifest",
+        sourceId: `memo:${memoId}:previous-conversations`,
+        sourceHash: sha256(rawManifest),
+        payload: {
+          row: rowRawPayload(row),
+          field: "previousConversations",
+          value: previousValue,
+        },
+        reason: "invalid-previous-conversations",
+      });
+    } else {
+      previousValue.forEach((previous, index) => {
+        const previousConversationId = isObject(previous) ? previous.conversationId : undefined;
+        if (
+          !isObject(previous) ||
+          typeof previousConversationId !== "string" ||
+          numericConversationId(previousConversationId) === null
+        ) {
+          invalidManifests.push({
+            sourceKind: "manifest",
+            sourceId: `memo:${memoId}:previous-conversations:${index}`,
+            sourceHash: sha256(rawManifest),
+            payload: {
+              row: rowRawPayload(row),
+              field: "previousConversations",
+              index,
+              value: previous,
+            },
+            reason: "invalid-previous-conversation-reference",
+          });
+          return;
+        }
+        previousConversations.push(previous);
+      });
     }
     for (const previous of previousConversations) {
       const conversationId = numericConversationId(previous.conversationId);

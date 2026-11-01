@@ -755,6 +755,79 @@ describe("assistant discussion migration", () => {
     }
   });
 
+  it("quarantines malformed current and missing previous references before completing", async () => {
+    const cases = [
+      {
+        name: "malformed current conversation",
+        update(manifest: Record<string, unknown>) {
+          manifest.conversationId = { invalid: true };
+        },
+        expected: {
+          sourceId: "memo:memo.md:conversation",
+          reason: "invalid-current-conversation-reference",
+        },
+      },
+      {
+        name: "missing previous conversations",
+        update(manifest: Record<string, unknown>) {
+          delete manifest.previousConversations;
+        },
+        expected: {
+          sourceId: "memo:memo.md:previous-conversations",
+          reason: "invalid-previous-conversations",
+        },
+      },
+      {
+        name: "null previous conversations",
+        update(manifest: Record<string, unknown>) {
+          manifest.previousConversations = null;
+        },
+        expected: {
+          sourceId: "memo:memo.md:previous-conversations",
+          reason: "invalid-previous-conversations",
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const directory = withTempDirectory();
+      try {
+        const targetPath = createTarget(directory);
+        const piPath = createPi(directory);
+        const target = new Database(targetPath);
+        const row = target
+          .query<{ manifest: string }, []>(
+            "SELECT manifest FROM memo_clippings WHERE id = 'clip-1'"
+          )
+          .get();
+        const manifest = JSON.parse(row?.manifest ?? "{}") as Record<string, unknown>;
+        testCase.update(manifest);
+        target
+          .query("UPDATE memo_clippings SET manifest = ?, updated_at = ? WHERE id = ?")
+          .run(JSON.stringify(manifest), 3, "clip-1");
+        target.close();
+
+        const report = await migrateAssistantDiscussions({
+          targetDbPath: targetPath,
+          piDbPath: piPath,
+          mode: "apply",
+          now: () => 34_000,
+          resolveTrustedCreator: trustedReader,
+        });
+        expect(report.status, testCase.name).toBe("blocked");
+        expect(report.records, testCase.name).toContainEqual({
+          sourceKind: "manifest",
+          sourceId: testCase.expected.sourceId,
+          state: "quarantined",
+          targetId: null,
+          reason: testCase.expected.reason,
+        });
+      } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+      }
+    }
+  });
+
   it("restores a migrated conversation after temporary attribution quarantine", async () => {
     const directory = withTempDirectory();
     try {
