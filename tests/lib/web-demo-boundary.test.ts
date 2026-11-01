@@ -54,7 +54,7 @@ describe("Web Demo request boundary", () => {
     expect(memoPage).toContain('const isConsoleRuntime = process.env.CONSOLE_RUNTIME === "true";');
     expect(memoPage.match(/hideChat=\{!isConsoleRuntime\}/g)).toHaveLength(2);
     expect(layout).toContain(
-      "{!isAssistantPage && !isConsoleRuntime ? <KnowledgeAssistant client:load /> : null}"
+      '{!isAssistantPage && !isConsoleRuntime ? <KnowledgeAssistant client:only="react" /> : null}'
     );
   });
 });

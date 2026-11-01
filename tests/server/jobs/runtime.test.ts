@@ -1,7 +1,27 @@
-import { afterEach, expect, it } from "bun:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { Database } from "bun:sqlite";
+import { afterAll, afterEach, beforeAll, expect, it } from "bun:test";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import path, { resolve } from "node:path";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { initializeDB } from "@/lib/db";
 import { startJobsRuntime, stopJobsRuntime } from "@/server/jobs/runtime";
+
+const testDbPath = path.join(process.cwd(), "tmp/jobs-runtime-test.sqlite");
+
+beforeAll(async () => {
+  process.env.DB_PATH = testDbPath;
+  mkdirSync(path.dirname(testDbPath), { recursive: true });
+  rmSync(testDbPath, { force: true });
+  const sqlite = new Database(testDbPath);
+  migrate(drizzle(sqlite), { migrationsFolder: path.join(process.cwd(), "drizzle") });
+  sqlite.close();
+  await initializeDB(true);
+});
+
+afterAll(() => {
+  rmSync(testDbPath, { force: true });
+});
 
 const consoleRuntimeSource = readFileSync(resolve("scripts/start-console.ts"), "utf8");
 const gatewayRuntimeSource = readFileSync(resolve("scripts/start-gateway.ts"), "utf8");
