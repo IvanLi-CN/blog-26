@@ -5,7 +5,7 @@
   "covered_files": {
     ".github/workflows/product-release.yml": "279bc4835f68e92f2ac651c389b79867de6ad16f",
     "scripts/prepare-edgeone-pwa-config.test.ts": "e5f4a812074eb85906b328193b29f70052f91660",
-    "scripts/prepare-edgeone-pwa-config.ts": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9"
+    "scripts/prepare-edgeone-pwa-config.ts": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38"
   },
   "change": {
     "description": "Cover the public assistant shell in EdgeOne HTML cache policy generation and carry the verified cache-rule tooling into same-identity frozen-media preflight recovery.",
@@ -20,7 +20,7 @@
       "evidence": [
         {
           "path": "scripts/prepare-edgeone-pwa-config.ts",
-          "blob": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9",
+          "blob": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38",
           "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts"
         }
       ]
@@ -37,7 +37,7 @@
         },
         {
           "path": "scripts/prepare-edgeone-pwa-config.ts",
-          "blob": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9",
+          "blob": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38",
           "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts"
         }
       ],
@@ -53,7 +53,7 @@
       "evidence": [
         {
           "path": "scripts/prepare-edgeone-pwa-config.ts",
-          "blob": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9",
+          "blob": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38",
           "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -102,7 +102,7 @@
       "evidence": [
         {
           "path": "scripts/prepare-edgeone-pwa-config.ts",
-          "blob": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9",
+          "blob": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38",
           "command": "The added /chat/ rule uses the existing public short-cache policy and does not alter API responses."
         }
       ]

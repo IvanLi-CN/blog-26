@@ -211,6 +211,7 @@ describe("EdgeOne public PWA cache config", () => {
     ]) {
       expect(findEdgeoneCacheRule(config, path)).toBeUndefined();
     }
+    expect(findEdgeoneCacheRule(config, "/blog-26/rss.xml")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/blog-26/api")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/blog-26/api/health")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/blog-26/api/public/assets/post/a/cover.webp")).toBe(
@@ -502,6 +503,7 @@ describe("EdgeOne public PWA cache config", () => {
       "index.html",
       "about/index.html",
       "search/index.html",
+      "chat/index.html",
       "posts/index.html",
       "posts/example/index.html",
       "memos/index.html",
@@ -545,7 +547,7 @@ describe("EdgeOne public PWA cache config", () => {
     expect(config.headers.some(({ source }) => source === "/sitemap.xml")).toBe(true);
     expect(config.headers.some(({ source }) => source === "/a*")).toBe(false);
     for (const path of rootAssets) {
-      if (path === "mcp") {
+      if (path === "mcp" || path === "rss.xml") {
         expect(findEdgeoneCacheRule(config, `/${path}`)).toBeUndefined();
       } else {
         expect(findEdgeoneCacheRule(config, `/${path}`)?.headers[0]?.value).toBe(
@@ -555,6 +557,9 @@ describe("EdgeOne public PWA cache config", () => {
     }
     expect(findEdgeoneCacheRule(config, "/watermark-other.svg")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/posts/example/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/chat/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
     expect(findEdgeoneCacheRule(config, "/memos/memo-1/")?.headers[0]?.value).toBe(
