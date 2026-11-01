@@ -175,6 +175,7 @@ describe("prerelease workflow deployment boundary", () => {
     expect(steps[compatibility]?.run).toContain("release-inputs.ts");
     expect(steps[compatibility]?.run).toContain("site-lib-playbook.ts");
     expect(steps[compatibility]?.run).toContain("verify-playbook-artifact.ts");
+    expect(steps[compatibility]?.run).toContain("prepare-edgeone-pwa-config.ts");
     expect(preflight).toBeGreaterThan(inputRecord);
     expect(imageBuild).toBeGreaterThan(preflight);
     expect(steps[preflight]?.run).toContain("preflight-frozen-media");

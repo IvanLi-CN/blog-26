@@ -12,4 +12,12 @@ describe("prepare-edgeone-pwa-config", () => {
       { key: "Cache-Control", value: "public, max-age=60, must-revalidate" },
     ]);
   });
+
+  it("covers the public assistant shell route", () => {
+    const config = createEdgeoneCacheConfig("", ["chat/index.html"]);
+
+    expect(findEdgeoneCacheRule(config, "/chat/")?.headers).toEqual([
+      { key: "Cache-Control", value: "public, max-age=60, must-revalidate" },
+    ]);
+  });
 });

@@ -77,6 +77,8 @@ jobs:
           cp src/lib/playbook/cache.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/cache.ts"
           cp src/lib/playbook/release.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/release.ts"
           cp src/lib/playbook/schema.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/schema.ts"
+          # Keep deterministic release-only cache rules repairable without changing frozen inputs.
+          cp scripts/prepare-edgeone-pwa-config.ts "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-edgeone-pwa-config.ts"
       - name: Checkout the verified merged source
         id: checkout-source
         if: steps.identify.outputs.active == 'true'
@@ -156,7 +158,7 @@ jobs:
         run: bun scripts/product-release.ts record-inputs
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Apply current Playbook compatibility tooling for frozen preflight
+      - name: Apply current compatibility tooling for frozen preflight
         if: steps.restore.outputs.need_products == 'true'
         id: apply-preflight-playbook-tooling
         run: |
@@ -169,6 +171,7 @@ jobs:
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/artifacts.ts" src/lib/playbook/artifacts.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/cache.ts" src/lib/playbook/cache.ts
           cp "$RUNNER_TEMP/release-playbook-tooling/fixed/schema.ts" src/lib/playbook/schema.ts
+          cp "$RUNNER_TEMP/release-playbook-tooling/fixed/prepare-edgeone-pwa-config.ts" scripts/prepare-edgeone-pwa-config.ts
       - name: Install release Rust toolchain
         id: install-rust-toolchain
         if: steps.restore.outputs.need_products == 'true'
