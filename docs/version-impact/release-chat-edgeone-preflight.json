@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "e06c2b64bc50c65fb4afadde5f7c21eff32dba0e",
+  "covered_files": {
+    ".github/workflows/product-release.yml": "279bc4835f68e92f2ac651c389b79867de6ad16f",
+    "scripts/prepare-edgeone-pwa-config.test.ts": "e5f4a812074eb85906b328193b29f70052f91660",
+    "scripts/prepare-edgeone-pwa-config.ts": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9",
+    "tests/ci/product-prerelease-workflow.test.ts": "195ed50f99dbe4ec1ca96e82e24830349d9fe126"
+  },
+  "change": {
+    "description": "Cover the public assistant shell in EdgeOne HTML cache policy generation and carry the verified cache-rule tooling into same-identity frozen-media preflight recovery.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change adds a short public cache rule for the already-shipped assistant shell and repairs release-only preflight tooling. It does not change API payloads, persisted state, release identity, frozen inputs, or product version allocation.",
+      "assessed_at": "2026-11-01T13:20:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.test.ts",
+          "blob": "e5f4a812074eb85906b328193b29f70052f91660",
+          "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate remains limited to the EdgeOne route policy, its focused regression coverage, and the existing Product Release compatibility overlay. The original release source SHA and frozen input artifact remain immutable.",
+      "assessed_at": "2026-11-01T13:20:00+08:00",
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "279bc4835f68e92f2ac651c389b79867de6ad16f",
+          "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
+        },
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9",
+          "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate only repairs public cache-rule classification for /chat/ and the release-time tooling overlay needed to rerun the already-registered frozen-media preflight."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused route and workflow contract tests pass, the repository check passes, and the overlay preserves the original release identity, merge SHA, version, and frozen input bytes.",
+      "assessed_at": "2026-11-01T13:20:00+08:00",
+      "evidence": [
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.test.ts",
+          "blob": "e5f4a812074eb85906b328193b29f70052f91660",
+          "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts tests/ci/product-prerelease-workflow.test.ts"
+        },
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "279bc4835f68e92f2ac651c389b79867de6ad16f",
+          "command": "bun run check"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["3.12.0"],
+      "evidence": [
+        {
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9",
+          "command": "The added /chat/ rule uses the existing public short-cache policy and does not alter API responses."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change does not modify application schema, release ledger state, frozen inputs, browser persistence, or published content formats.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": ".github/workflows/product-release.yml",
+          "blob": "279bc4835f68e92f2ac651c389b79867de6ad16f",
+          "command": "The compatibility overlay only replaces a release-time cache-rule script after the verified source checkout."
+        }
+      ]
+    }
+  }
+}
