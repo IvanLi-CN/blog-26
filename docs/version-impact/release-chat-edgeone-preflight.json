@@ -5,8 +5,7 @@
   "covered_files": {
     ".github/workflows/product-release.yml": "279bc4835f68e92f2ac651c389b79867de6ad16f",
     "scripts/prepare-edgeone-pwa-config.test.ts": "e5f4a812074eb85906b328193b29f70052f91660",
-    "scripts/prepare-edgeone-pwa-config.ts": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9",
-    "tests/ci/product-prerelease-workflow.test.ts": "195ed50f99dbe4ec1ca96e82e24830349d9fe126"
+    "scripts/prepare-edgeone-pwa-config.ts": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9"
   },
   "change": {
     "description": "Cover the public assistant shell in EdgeOne HTML cache policy generation and carry the verified cache-rule tooling into same-identity frozen-media preflight recovery.",
@@ -20,8 +19,8 @@
       "assessed_at": "2026-11-01T13:20:00+08:00",
       "evidence": [
         {
-          "path": "scripts/prepare-edgeone-pwa-config.test.ts",
-          "blob": "e5f4a812074eb85906b328193b29f70052f91660",
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9",
           "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts"
         }
       ]
@@ -53,8 +52,8 @@
       "assessed_at": "2026-11-01T13:20:00+08:00",
       "evidence": [
         {
-          "path": "scripts/prepare-edgeone-pwa-config.test.ts",
-          "blob": "e5f4a812074eb85906b328193b29f70052f91660",
+          "path": "scripts/prepare-edgeone-pwa-config.ts",
+          "blob": "9095672a7bdfcbfa8b8efa421ce909ba5c338af9",
           "command": "bun test scripts/prepare-edgeone-pwa-config.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
