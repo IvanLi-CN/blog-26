@@ -206,6 +206,12 @@
 
 Web Demo 只使用隔离 fixture 和内存模拟回答；这些证据不代表真实模型、OAuth 提供方或生产迁移质量。当前可复现脚本见 [`tests/e2e/web-demo/assistant.spec.ts`](../../../tests/e2e/web-demo/assistant.spec.ts)，构建与验证记录见 [`docs/version-impact/site-assistant-t8.json`](../../version-impact/site-assistant-t8.json)。
 
+当前候选的内联错误 Alert 聚焦证据：
+
+- [393×852 移动端：操作按钮与内容同排并右端对齐](./assets/assistant-error-alert-mobile-393x852.png)
+- [320×800 窄屏：操作按钮换行后仍右端对齐](./assets/assistant-error-alert-narrow-320x800.png)
+- [1280×900 桌面：操作按钮自适应保持同排并右端对齐](./assets/assistant-error-alert-desktop-1280x900.png)
+
 ## Related ADRs
 
 - [ADR 0003: Public Mobile Content Stream](../../adr/0003-public-mobile-content-stream.md)
