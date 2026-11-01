@@ -88,6 +88,37 @@ afterEach(() => {
 });
 
 describe.serial("KnowledgeAssistant interaction boundaries", () => {
+  test("keeps guest auth failures inside the content column as a themed alert", async () => {
+    let authCalls = 0;
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") {
+        authCalls += 1;
+        return authCalls === 1
+          ? json({ error: "Not found" }, 404)
+          : json({ ...auth, authenticated: false, principal: null });
+      }
+      if (url.pathname === "/api/public/frontend-auth/bootstrap") {
+        return json({ ...auth, authenticated: false, principal: null });
+      }
+      throw new Error(`Unexpected request: ${url.pathname} ${init?.method ?? "GET"}`);
+    }) as typeof fetch;
+
+    const view = render(<KnowledgeAssistant fullPage />);
+    const alert = await waitFor(() => view.getByRole("alert"));
+
+    expect(alert.getAttribute("data-slot")).toBe("alert");
+    expect(alert.closest(".knowledge-assistant-content")).toBeTruthy();
+    expect(view.getByRole("heading", { name: "知识对话暂时不可用" })).toBeTruthy();
+    expect(view.getByText("Not found")).toBeTruthy();
+
+    fireEvent.click(view.getByRole("button", { name: "重试" }));
+    await waitFor(() => expect(authCalls).toBe(2));
+    await waitFor(() => expect(view.queryByTestId("assistant-request-error")).toBeNull());
+    expect(view.getByTestId("assistant-guest-preview")).toBeTruthy();
+  });
+
   test("does not let a delayed context refresh overwrite a newer conversation choice", async () => {
     let listCalls = 0;
     let releaseSecondList: (() => void) | undefined;

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/Icon";
 import type {
   AssistantCitation,
@@ -227,17 +229,55 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "助手暂时不可用，请重试。";
 }
 
+function AssistantErrorAlert({
+  message,
+  offline,
+  onRetry,
+}: {
+  message: string;
+  offline: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <Alert variant="destructive" className="mx-3 mt-3 w-auto" data-testid="assistant-request-error">
+      <span
+        aria-hidden="true"
+        className="row-span-2 row-start-1 mt-0.5 text-[color:var(--nature-danger)]"
+      >
+        <Icon name="tabler:alert-circle" className="h-5 w-5" />
+      </span>
+      <AlertTitle>知识对话暂时不可用</AlertTitle>
+      <AlertDescription>
+        {offline ? "网络连接中断：" : null}
+        {message}
+      </AlertDescription>
+      <AlertAction>
+        <Button type="button" variant="ghost" size="compact" onClick={onRetry}>
+          <Icon name="tabler:refresh" className="h-4 w-4" />
+          重试
+        </Button>
+      </AlertAction>
+    </Alert>
+  );
+}
+
 function GuestAssistantPreview({
   draft,
+  error,
+  offline,
   onDraftChange,
   onLogin,
   onAdminLogin,
+  onRetry,
   showAdminLogin,
 }: {
   draft: string;
+  error: string | null;
+  offline: boolean;
   onDraftChange: (value: string) => void;
   onLogin: () => void;
   onAdminLogin: () => void;
+  onRetry: () => void;
   showAdminLogin: boolean;
 }) {
   return (
@@ -268,6 +308,7 @@ function GuestAssistantPreview({
           </div>
           <span className="knowledge-assistant-guest-badge">登录后可用</span>
         </div>
+        {error ? <AssistantErrorAlert message={error} offline={offline} onRetry={onRetry} /> : null}
         <p className="knowledge-assistant-notice mx-3 mt-3">
           登录后可以询问本站公开文章、项目经验和工作方法。回答会优先检索站内内容，并尽量附上可定位的来源。
         </p>
@@ -1314,37 +1355,15 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         <div className="flex min-h-48 items-center justify-center text-sm text-[color:var(--nature-text-soft)]">
           正在检查登录状态……
         </div>
-      ) : requestError && !auth?.authenticated ? (
-        <>
-          <div className="knowledge-assistant-error mx-3 mt-3" role="alert">
-            <div className="flex items-start justify-between gap-3">
-              <span>
-                {offline ? "网络连接中断：" : ""}
-                {requestError}
-              </span>
-              <button
-                type="button"
-                className="min-h-11 px-2 underline"
-                onClick={() => void loadAuth()}
-              >
-                重试
-              </button>
-            </div>
-          </div>
-          <GuestAssistantPreview
-            draft={currentDraft}
-            onDraftChange={updateDraft}
-            onLogin={login}
-            onAdminLogin={() => void adminLogin()}
-            showAdminLogin={auth?.canStartAdmin === true}
-          />
-        </>
       ) : !auth?.authenticated ? (
         <GuestAssistantPreview
           draft={currentDraft}
+          error={requestError}
+          offline={offline}
           onDraftChange={updateDraft}
           onLogin={login}
           onAdminLogin={() => void adminLogin()}
+          onRetry={() => void loadAuth()}
           showAdminLogin={auth?.canStartAdmin === true}
         />
       ) : (
@@ -1413,25 +1432,15 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
               </p>
             ) : null}
             {requestError ? (
-              <div className="knowledge-assistant-error mx-3 mt-3" role="alert">
-                <div className="flex items-start justify-between gap-3">
-                  <span>
-                    {offline ? "网络连接中断：" : ""}
-                    {requestError}
-                  </span>
-                  <button
-                    type="button"
-                    className="min-h-11 px-2 underline"
-                    onClick={() =>
-                      selectedId && selectedId !== "new"
-                        ? void loadSnapshot(selectedId)
-                        : void loadList()
-                    }
-                  >
-                    重试
-                  </button>
-                </div>
-              </div>
+              <AssistantErrorAlert
+                message={requestError}
+                offline={offline}
+                onRetry={() =>
+                  selectedId && selectedId !== "new"
+                    ? void loadSnapshot(selectedId)
+                    : void loadList()
+                }
+              />
             ) : null}
             <MessageStream snapshot={snapshot} onRetry={(message) => void retry(message)} />
             <div className="knowledge-assistant-compose">
