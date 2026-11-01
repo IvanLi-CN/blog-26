@@ -19,7 +19,7 @@
 | REQ-SKA-010–014 | `src/lib/ai-usage.ts` 提供小时/七日 Token 与问答窗口、保守 reservation、实际 usage correction、估算标记、管理员不限额、单用户恢复和助手/非助手计量分离；前台 quota response 由 `src/server/assistant/api.ts` 暴露。 | `src/lib/ai-usage.test.ts`、`src/server/public-api/assistant-chat.test.ts`、`tests/e2e/web-demo/assistant.spec.ts`、`tests/e2e/web-demo/ai-usage.spec.ts`。 |
 | REQ-SKA-015–020 | provider attempt 统一写入 `ai_usage_records`，保留原始维度、状态、缺失/估算语义；`runAiUsageMaintenance` 负责九十日明细清理和按日汇总，`apps/admin/src/pages/ai-usage.tsx`、`dashboard.tsx`、`users.tsx` 提供仪表盘、筛选、用户维度和恢复操作。 | `src/lib/ai-usage.test.ts`、`src/server/services/admin-ai-usage.test.ts`、`tests/e2e/web-demo/ai-usage.spec.ts`、`bun run db:migrations:validate`。 |
 | REQ-SKA-021 | `src/lib/assistant-discussion-migration.ts` 从当前与旧 Pi durable sources 做确定性 hash、幂等、可恢复迁移；unknown attribution、缺失 source、冲突和不可信 manifest 原样 quarantine；`src/server/assistant/migration-gate.ts` 在公开 clipping chat 暴露前阻断未完成迁移。 | `tests/lib/assistant-discussion-migration.test.ts`、`tests/lib/site-assistant-migration.test.ts`、`src/server/assistant/migration-gate.test.ts`、`docs/runbooks/site-assistant-discussion-migration.md`。 |
-| REQ-SKA-022 | `site/components/KnowledgeAssistant.css` 遵循 Nature 响应式与 44px 控件约束；后台交互使用 `apps/admin/src/components/ui.tsx`；Web Demo 通过正式路由、隔离 fixture 和共享 Inspector 提供 guest/user/admin、quota、expiry、failure、reconnect 等场景，live build 与 Demo build 分离。 | `tests/e2e/web-demo/assistant.spec.ts`、`tests/lib/web-demo-boundary.test.ts`、`tests/lib/web-demo-fetch.test.ts`、`bun run web-demo:build`、受控桌面/移动 Web Demo evidence。 |
+| REQ-SKA-022 | `site/components/KnowledgeAssistant.css` 遵循 Nature 响应式与常规 44px 控件约束；内联错误 Alert 使用 shadcn/ui Alert 组合与紧凑操作按钮，按容器宽度决定同排或换行，操作始终右端对齐；后台交互使用 `apps/admin/src/components/ui.tsx`；Web Demo 通过正式路由、隔离 fixture 和共享 Inspector 提供 guest/user/admin、quota、expiry、failure、reconnect 等场景，live build 与 Demo build 分离。 | `tests/components/KnowledgeAssistant.test.tsx`、`tests/e2e/web-demo/assistant.spec.ts`、`tests/lib/web-demo-boundary.test.ts`、`tests/lib/web-demo-fetch.test.ts`、`bun run web-demo:build`、受控桌面/移动 Web Demo evidence。 |
 
 ## Contract and Privacy Checks
 
@@ -35,7 +35,7 @@ VER-SKA-001–008 均有对应确定性测试和正式路由 Web Demo 场景；�
 - Required checks: `bun run check`、`bun run test:admin-ui`、`bun run db:migrations:validate`、`bun run test`、`bun run build`、`bun run web-demo:build`。
 - Assistant/API: frontend-auth、assistant storage/runtime/API、clipping adapter、quota/usage、migration-gate 和 public privacy tests。
 - E2E: Web Demo assistant desktop/mobile scenarios, admin usage/quota controls, clipping entry compatibility, and the dual-origin frontend identity contract. All automated scenarios use deterministic fixtures and make no configured-model call.
-- Visual evidence: source is the official Web Demo route, not a page-level Storybook story; compare the current assistant full-page/dock at desktop and `393×852` mobile CSS viewports, including no horizontal overflow and 44px controls. The current-candidate evidence is reused only when the inner UI and render inputs are unchanged.
+- Visual evidence: source is the official Web Demo route, not a page-level Storybook story; compare the current assistant full-page/dock at desktop and `393×852` mobile CSS viewports, including no horizontal overflow, standard 44px controls, and compact inline Alert actions that remain right-aligned when they wrap. The current-candidate evidence is reused only when the inner UI and render inputs are unchanged.
 
 ### T8 Observed Gate Results
 

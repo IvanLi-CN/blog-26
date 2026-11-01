@@ -146,7 +146,7 @@
 
 ### REQ-SKA-022 — 响应式与可控验收
 
-- 公开界面 MUST 遵循 Nature 响应式、主题、对比度和控件尺寸契约；抽屉必须处理焦点进入与返回、背景滚动、安全区、软键盘、未提交草稿及阅读位置，减少动态设置下仍可操作。
+- 公开界面 MUST 遵循 Nature 响应式、主题、对比度和控件尺寸契约；常规交互控件使用 44px 触控尺寸。内联错误 Alert 的操作按钮 MAY 使用紧凑视觉尺寸以保持与 Alert 高度匹配，但必须保留清晰的键盘焦点与可访问名称；按钮有足够空间时与内容同排并右端对齐，空间不足换行时仍必须右端对齐。抽屉必须处理焦点进入与返回、背景滚动、安全区、软键盘、未提交草稿及阅读位置，减少动态设置下仍可操作。
 - 后台基础交互 MUST 使用本地 UI primitives。页面级证据必须来自正式路由的独立构建 Web Demo，共享 Inspector 覆盖访客、普通用户、管理员、配额耗尽、临时对话到期、缺失用量、生成中、失败和重连等场景。
 - Web Demo MUST 使用隔离 fixture 和模拟操作，live 产物不能通过浏览器开关变成 Demo；模拟验收不能向真实模型发出调用或访问真实私人数据。
 
@@ -205,6 +205,12 @@
 页面级验收 MUST 使用正式路由的独立 Web Demo 构建，不新增页面级 Storybook 副本。T8 的可复现证据入口为 `/chat`，通过共享 Inspector 选择 `user`、`guest`、`admin` 及助手生命周期场景；桌面视口覆盖 1440×1000，小屏视口覆盖 393×852。证据 MUST 检查助手面板/完整页面、发送后的引用、访客登录前草稿、配额状态、无横向溢出以及 live 构建不受 Demo 查询参数影响。
 
 Web Demo 只使用隔离 fixture 和内存模拟回答；这些证据不代表真实模型、OAuth 提供方或生产迁移质量。当前可复现脚本见 [`tests/e2e/web-demo/assistant.spec.ts`](../../../tests/e2e/web-demo/assistant.spec.ts)，构建与验证记录见 [`docs/version-impact/site-assistant-t8.json`](../../version-impact/site-assistant-t8.json)。
+
+当前候选的内联错误 Alert 聚焦证据：
+
+- [393×852 移动端：操作按钮与内容同排并右端对齐](./assets/assistant-error-alert-mobile-393x852.png)
+- [320×800 窄屏：操作按钮换行后仍右端对齐](./assets/assistant-error-alert-narrow-320x800.png)
+- [1280×900 桌面：操作按钮自适应保持同排并右端对齐](./assets/assistant-error-alert-desktop-1280x900.png)
 
 ## Related ADRs
 

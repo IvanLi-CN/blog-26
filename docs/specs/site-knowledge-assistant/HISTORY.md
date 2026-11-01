@@ -16,6 +16,7 @@
 ## T8 Acceptance Boundary
 
 - T8 只收敛当前候选的 checks、assistant/API/E2E、迁移/兼容/隐私证据、Web Demo 视觉证据和文档 hash；所有 evidence 绑定实际 head SHA。
+- 知识助手的内联请求失败提示采用 shadcn/ui Alert 组合；重试操作使用紧凑视觉尺寸，在同排时右端对齐，空间不足换行后仍保持右端对齐，不改变普通控件的 44px 触控约束。
 - 确定性测试与 Web Demo 不证明真实模型回答质量、GitHub OAuth 配置、双生产 origin cookie/cache 行为、生产 backfill 或部署结果。上述项目仍是发布门禁，不能以本地 green suite 代替。
 - `docs/runbooks/site-assistant-discussion-migration.md` 是迁移的操作入口：先 DDL，再 dry-run/apply/resume，最后按独立条件执行 cleanup；任何旧运行时回滚都不能被解释为自动 down-migration。
 
