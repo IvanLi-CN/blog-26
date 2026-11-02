@@ -42,7 +42,7 @@
     "src/lib/web-demo-fetch.ts": "d55b199298cc19975ac71acf033683b2d895a510",
     "src/server/admin-api/router.ts": "9a81fbca032666235310fdaa3a402dadf4b4f2c4",
     "src/server/assistant/api.ts": "c4effa351cc90218d6bb28918ae9f645032347ec",
-    "src/server/clipping/api.test.ts": "df96af73d15cf3278c557072d118860da36a95d5",
+    "src/server/clipping/api.test.ts": "0d10fdec7623fccde7d552597420c14dcd82c79d",
     "src/server/clipping/api.ts": "bd261f4d9ab1227d314736766ae0be0b3b1c0733",
     "src/server/public-api/router.ts": "729a545b8621ecda5a284338bd691e7cf5eabee6",
     "src/server/services/site-features.ts": "34468d145202d1ae5be78aba62207cd0713dd9d1",
