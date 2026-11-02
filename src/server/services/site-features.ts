@@ -41,6 +41,7 @@ type SiteFeatureSnapshot = {
   record: SiteFeatureRecord;
   revision: number;
   updatedAt: number | null;
+  exists: boolean;
 };
 
 function parseBooleanEnv(value: string | undefined, fallback: boolean) {
@@ -105,7 +106,7 @@ async function readSnapshot(): Promise<SiteFeatureSnapshot> {
     .where(eq(siteFeatureSettings.id, SITE_FEATURE_SETTINGS_ID))
     .get();
 
-  if (!row) return { record: defaultRecord(), revision: 0, updatedAt: null };
+  if (!row) return { record: defaultRecord(), revision: 0, updatedAt: null, exists: false };
   let record: SiteFeatureRecord;
   try {
     record = parseStoredRecord(row.config);
@@ -114,7 +115,7 @@ async function readSnapshot(): Promise<SiteFeatureSnapshot> {
     // through the authenticated admin endpoint using its persisted revision.
     record = disabledRecord();
   }
-  return { record, revision: row.revision, updatedAt: row.updatedAt };
+  return { record, revision: row.revision, updatedAt: row.updatedAt, exists: true };
 }
 
 export async function getSiteFeatureSettings() {
@@ -161,7 +162,7 @@ export async function updateSiteFeatureSettings(input: unknown) {
   const config = JSON.stringify(next);
   const nextRevision = current.revision + 1;
 
-  if (current.revision === 0) {
+  if (!current.exists) {
     const inserted = await db
       .insert(siteFeatureSettings)
       .values({

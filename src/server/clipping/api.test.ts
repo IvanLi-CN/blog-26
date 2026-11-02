@@ -1034,6 +1034,14 @@ test("disabled assistant service gates clipping chat before auth", async () => {
         code: "FEATURE_DISABLED",
         status: 404,
       });
+
+      const publicResponse = await handlePublicApiRequest(
+        new Request(`http://localhost/api/public/memos/clip/clipping/${operation}`),
+        `/memos/clip/clipping/${operation}`
+      );
+      expect(publicResponse.status).toBe(404);
+      expect(publicResponse.headers.get("cache-control")).toBe("no-store, private");
+      expect(await publicResponse.json()).toMatchObject({ code: "FEATURE_DISABLED" });
     }
   } finally {
     await db.delete(siteFeatureSettings);

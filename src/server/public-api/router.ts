@@ -78,6 +78,7 @@ import {
 } from "@/server/services/content-search";
 import { suggestPublicSearchTerms } from "@/server/services/search-suggestions";
 import {
+  assertAssistantServiceEnabled,
   getPublicSiteFeatureConfig,
   SiteFeatureDisabledError,
 } from "@/server/services/site-features";
@@ -1595,6 +1596,10 @@ export async function handlePublicApiRequest(
       return handleAssistantRequest(request, pathname, new Headers(), assistantService);
     }
 
+    if (/^\/memos\/[^/]+\/clipping\/chat(?:\/(?:events|stop))?$/u.test(pathname)) {
+      await assertAssistantServiceEnabled();
+    }
+
     const { caller, resHeaders, ctx } = await createCallerForRequest(request);
     if (pathname === "/frontend-auth/me") {
       if (request.method !== "GET") return methodNotAllowed(request, request.method);
@@ -2123,7 +2128,11 @@ export async function handlePublicApiRequest(
     return json(request, { error: "Not found" }, { status: 404 }, resHeaders);
   } catch (error) {
     if (error instanceof SiteFeatureDisabledError) {
-      return json(request, { error: error.message, code: error.code }, { status: error.status });
+      return json(
+        request,
+        { error: error.message, code: error.code },
+        { status: error.status, headers: { "cache-control": "no-store, private" } }
+      );
     }
     if (error instanceof TRPCError) {
       return json(

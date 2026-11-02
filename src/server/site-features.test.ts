@@ -139,7 +139,7 @@ describe("site feature runtime configuration", () => {
     await db.insert(siteFeatureSettings).values({
       id: "global",
       config: "not-json",
-      revision: 7,
+      revision: 0,
       updatedAt: Date.now(),
     });
 
@@ -157,7 +157,7 @@ describe("site feature runtime configuration", () => {
     );
     expect(adminResponse.status).toBe(200);
     expect(await adminResponse.json()).toMatchObject({
-      revision: 7,
+      revision: 0,
       settings: { assistant: { serviceEnabled: false, launcherEnabled: false } },
     });
 
@@ -178,11 +178,11 @@ describe("site feature runtime configuration", () => {
     expect(missingRevision.status).toBe(400);
 
     const repaired = await updateSiteFeatureSettings({
-      expectedRevision: 7,
+      expectedRevision: 0,
       assistant: { serviceEnabled: true, launcherEnabled: true },
     });
     expect(repaired).toMatchObject({
-      revision: 8,
+      revision: 1,
       resolved: { assistant: { serviceEnabled: true, publicLauncherEnabled: true } },
     });
   });

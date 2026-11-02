@@ -8,7 +8,7 @@
     "docs/specs/site-knowledge-assistant/assets/assistant-error-alert-desktop-1280x900.png": "b580f18c56965fd61a21ce10e0d13c9448fe163f",
     "docs/specs/site-knowledge-assistant/assets/assistant-error-alert-mobile-393x852.png": "35070839b09c8c3c06c80951b923daf31cffd1e8",
     "docs/specs/site-knowledge-assistant/assets/assistant-error-alert-narrow-320x800.png": "3549c32566f79bb2fe84611f5080955f2161bca5",
-    "site/components/KnowledgeAssistant.css": "45d2ded923fcdb2a2b4e97c4a85089f874c6719d",
+    "site/components/KnowledgeAssistant.css": "47671888d3a538f702fcc37920c890c66a041ab2",
     "src/components/ui/alert.tsx": "94c080dc7da7919d9fcd76b78e0d93cbfcf70020",
     "tests/components/KnowledgeAssistant.test.tsx": "cd323e138a29ae77a7f52c46a39aadb4011c7600"
   },
@@ -30,7 +30,7 @@
         },
         {
           "path": "site/components/KnowledgeAssistant.css",
-          "blob": "45d2ded923fcdb2a2b4e97c4a85089f874c6719d",
+          "blob": "47671888d3a538f702fcc37920c890c66a041ab2",
           "command": "Assistant error-state styling remains the presentation boundary for the alert repair"
         }
       ]
@@ -73,7 +73,7 @@
         },
         {
           "path": "site/components/KnowledgeAssistant.css",
-          "blob": "45d2ded923fcdb2a2b4e97c4a85089f874c6719d",
+          "blob": "47671888d3a538f702fcc37920c890c66a041ab2",
           "command": "bun run check and targeted Biome validation pass"
         },
         {
@@ -116,7 +116,7 @@
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.css",
-          "blob": "45d2ded923fcdb2a2b4e97c4a85089f874c6719d",
+          "blob": "47671888d3a538f702fcc37920c890c66a041ab2",
           "command": "The change only replaces error-state markup and retry presentation"
         }
       ]

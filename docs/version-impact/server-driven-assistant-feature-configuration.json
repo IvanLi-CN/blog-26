@@ -22,14 +22,17 @@
     "drizzle/0032_site_feature_settings.sql": "0c653a805094d8897e36dcf4cfbe570567657c91",
     "drizzle/meta/0032_snapshot.json": "8452a0bb08e865c2b8edae95cc1f54fcdeaa51d3",
     "drizzle/meta/_journal.json": "ac5c56d28a1ac9f0a2b4e4884d06224438ceac1e",
+    "package.json": "445344d614d9dae2fcb77c2fd0f872658974eec5",
     "scripts/build-project-tags-demo.ts": "0fc5cfec9b8725860022647edff8eebd13e8c7cf",
     "scripts/build-web-demo.ts": "b38291323e9a7d1d479dee12a7d33338967111e0",
     "scripts/docker-build.sh": "61a7118f1e21bac3fb328786b2c67f14344e7800",
     "scripts/run-test-suite.ts": "091647a8c63da7ce21254bd540774fbf5ac2c331",
     "scripts/worktree-bootstrap.sh": "97864c0ad3d03c5c7b1343b0fa0c9b6d4449ab8c",
+    "site/components/KnowledgeAssistant.css": "47671888d3a538f702fcc37920c890c66a041ab2",
     "site/components/KnowledgeAssistant.tsx": "b188392ee58db84aac66a13d4aa7bb84e8ffd269",
     "site/layouts/BaseLayout.astro": "9f8ce3980f6c8cfeff2a44ca3c41087aba0ae1cd",
     "site/lib/site-feature-config.ts": "f5aeb6856788b14c78c4a416a8823afbb0499ad3",
+    "src/components/memos/ClippingDetail.tsx": "fe5fb52ef7e4976b8a32a74a2e64e618d3ad36cf",
     "src/lib/admin-api-client.ts": "e648aac9470a1af91600a8dc62b68386bc3247d1",
     "src/lib/release/inputs.ts": "c50f1b2682e592bd3abbc5612feed302a70e9104",
     "src/lib/release/products.ts": "1a0de88acb1a520196778561f7c3d8575479b35f",
@@ -39,11 +42,11 @@
     "src/lib/web-demo-fetch.ts": "d55b199298cc19975ac71acf033683b2d895a510",
     "src/server/admin-api/router.ts": "9a81fbca032666235310fdaa3a402dadf4b4f2c4",
     "src/server/assistant/api.ts": "c4effa351cc90218d6bb28918ae9f645032347ec",
-    "src/server/clipping/api.test.ts": "24f0262fae62af4c83b9f2efc5efa5ef4e0dd471",
+    "src/server/clipping/api.test.ts": "df96af73d15cf3278c557072d118860da36a95d5",
     "src/server/clipping/api.ts": "bd261f4d9ab1227d314736766ae0be0b3b1c0733",
-    "src/server/public-api/router.ts": "5923795f343817cd21b6b21385e0332139e1a139",
-    "src/server/services/site-features.ts": "2f2e712f012da3e5ad52e4e220a2e58ce228d85b",
-    "src/server/site-features.test.ts": "f139d8c5703d2f3b09c8e195758383a54814382b",
+    "src/server/public-api/router.ts": "729a545b8621ecda5a284338bd691e7cf5eabee6",
+    "src/server/services/site-features.ts": "34468d145202d1ae5be78aba62207cd0713dd9d1",
+    "src/server/site-features.test.ts": "d30751c032ed157855a764e347d1b07ed3572637",
     "tests/ci/prepare-release-fixture.ts": "ae9d3218e245594cdb38f3ad65f04ebf3526f06c",
     "tests/lib/web-demo-boundary.test.ts": "caafb27ce0ade599520901f385df821f8b2ab438",
     "tests/server/system-share-api.test.ts": "cb4fa25e7812ded134f0326828371cb8899ca8ca"
@@ -82,7 +85,7 @@
       "evidence": [
         {
           "path": "src/server/site-features.test.ts",
-          "blob": "f139d8c5703d2f3b09c8e195758383a54814382b",
+          "blob": "d30751c032ed157855a764e347d1b07ed3572637",
           "command": "bun test src/server/site-features.test.ts: matching-version diff, mismatched-version full response, ETag, admin revision, and damaged-row repair coverage"
         },
         {
@@ -99,12 +102,12 @@
       "evidence": [
         {
           "path": "src/server/site-features.test.ts",
-          "blob": "f139d8c5703d2f3b09c8e195758383a54814382b",
+          "blob": "d30751c032ed157855a764e347d1b07ed3572637",
           "command": "bun test src/server/site-features.test.ts"
         },
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "24f0262fae62af4c83b9f2efc5efa5ef4e0dd471",
+          "blob": "df96af73d15cf3278c557072d118860da36a95d5",
           "command": "bun test src/server/clipping/api.test.ts: disabled service returns FEATURE_DISABLED before clipping auth for chat, events, and stop"
         },
         {
@@ -123,7 +126,7 @@
       "evidence": [
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "5923795f343817cd21b6b21385e0332139e1a139",
+          "blob": "729a545b8621ecda5a284338bd691e7cf5eabee6",
           "command": "The runtime-config endpoint adds a public, version-aware launcher response without exposing service settings"
         },
         {
@@ -147,7 +150,7 @@
         },
         {
           "path": "src/server/services/site-features.ts",
-          "blob": "2f2e712f012da3e5ad52e4e220a2e58ce228d85b",
+          "blob": "34468d145202d1ae5be78aba62207cd0713dd9d1",
           "command": "Review revisioned writes and fail-closed repair behavior"
         }
       ]
