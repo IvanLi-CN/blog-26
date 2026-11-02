@@ -51,6 +51,12 @@ const consoleWebDemoStore = createConsoleWebDemoStore();
 const demoRuntimeMotionReads = new Map<string, number>();
 let demoRuntimeMotionRefreshes = 0;
 let demoRuntimeMotionResetWindow: Window | null = null;
+const WEB_DEMO_BUILD_DEFAULT_ASSISTANT_LAUNCHER_ENABLED =
+  import.meta.env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT !== "false";
+
+function assistantLauncherDiff(enabled: boolean) {
+  return enabled === WEB_DEMO_BUILD_DEFAULT_ASSISTANT_LAUNCHER_ENABLED ? {} : { enabled };
+}
 
 function prepareDemoRuntimeMotion() {
   if (typeof window === "undefined" || demoRuntimeMotionResetWindow === window) return;
@@ -1513,7 +1519,7 @@ async function getDemoPublicResponse(
       schemaVersion: 1,
       mode: matchingVersion ? "diff" : "full",
       features: matchingVersion
-        ? { assistant: { launcher: launcherEnabled ? {} : { enabled: false } } }
+        ? { assistant: { launcher: assistantLauncherDiff(launcherEnabled) } }
         : { assistant: { launcher: { enabled: launcherEnabled } } },
     });
   }
@@ -1525,6 +1531,9 @@ async function getDemoPublicResponse(
     /^\/api\/public\/memos\/([^/]+)\/clipping\/chat(\/stop)?$/u
   );
   if (clippingChatMatch) {
+    if (!getWebDemoSiteFeatureState().serviceEnabled) {
+      return jsonResponse({ error: "站点助手功能未启用", code: "FEATURE_DISABLED" }, 404);
+    }
     const clippingSlug = decodeURIComponent(clippingChatMatch[1] ?? "");
     if (clippingSlug !== WEB_DEMO_CLIPPING_SLUG)
       return jsonResponse({ error: "剪藏不存在", code: "NOT_FOUND" }, 404);

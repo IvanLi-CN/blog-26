@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { setupAdminDemoApiMocks } from "../../apps/admin/src/demo/mock-admin-api";
+import { versionIdentity } from "../../src/lib/version-info";
 import { webDemoFetch } from "../../src/lib/web-demo-fetch";
-import { cancelWebDemoRequests } from "../../src/lib/web-demo-runtime";
+import { cancelWebDemoRequests, setWebDemoSiteFeatureState } from "../../src/lib/web-demo-runtime";
 
 const originalFetch = globalThis.fetch;
 function mockFetch(handler: () => Promise<Response>): typeof fetch {
@@ -223,6 +224,45 @@ describe("webDemoFetch", () => {
       `/api/public/chat?conversation=${encodeURIComponent(firstSubmission.conversationId)}`
     );
     expect((await snapshot.json()).messages).toHaveLength(4);
+  });
+
+  it("returns only the runtime launcher difference for matching site versions", async () => {
+    installBrowser("?d_persona=guest&d_connection=online");
+    setWebDemoSiteFeatureState({
+      revision: 1,
+      updatedAt: Date.now(),
+      serviceEnabled: false,
+      launcherEnabled: true,
+    });
+
+    const response = await webDemoFetch(
+      `/api/public/runtime-config?siteVersion=${encodeURIComponent(versionIdentity)}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      schemaVersion: 1,
+      mode: "diff",
+      features: { assistant: { launcher: { enabled: false } } },
+    });
+  });
+
+  it("gates Web Demo clipping snapshots when the assistant service is disabled", async () => {
+    installBrowser("?d_persona=user&d_scene=assistant-ready&d_connection=online");
+    setWebDemoSiteFeatureState({
+      revision: 1,
+      updatedAt: Date.now(),
+      serviceEnabled: false,
+      launcherEnabled: true,
+    });
+
+    const response = await webDemoFetch("/api/public/memos/memo-web-demo-1181/clipping/chat");
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: "站点助手功能未启用",
+      code: "FEATURE_DISABLED",
+    });
   });
 
   it("does not fall back to a real public API for unknown endpoints", async () => {
