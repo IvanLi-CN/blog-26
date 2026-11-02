@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "2ea0646cf2171bb66132105f22cb6bef00b62e3c",
+  "base_sha": "10eb06f50f674c34f2f263d97e78b17e65af0d7a",
   "covered_files": {
     "Dockerfile": "2197c239b682458126da1f9561b8f172f67b3bbd",
     "astro.config.mjs": "6d52292fccc84507399fa76aa95a04684b63c44b",
