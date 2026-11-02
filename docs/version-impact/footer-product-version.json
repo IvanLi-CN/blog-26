@@ -4,7 +4,7 @@
   "base_sha": "10eb06f50f674c34f2f263d97e78b17e65af0d7a",
   "covered_files": {
     "apps/admin/src/components/app-shell.tsx": "5dc924ce75de132e0bf6e04cbf77db12e3594faa",
-    "scripts/build-web-demo.ts": "e0f07d802e6ed43d1e9311bc27548591dddeca67",
+    "scripts/build-web-demo.ts": "1cdc7ae7aa639e96dba368513e78a8710892a2eb",
     "site/components/SiteFooter.tsx": "694029989cae23a105e39228141fcc7898926db0",
     "src/lib/version-info.ts": "3061ca3a981604a201448e935adea7ec3e8bbb21"
   },
@@ -47,7 +47,7 @@
         },
         {
           "path": "scripts/build-web-demo.ts",
-          "blob": "e0f07d802e6ed43d1e9311bc27548591dddeca67",
+          "blob": "1cdc7ae7aa639e96dba368513e78a8710892a2eb",
           "command": "Web Demo preparation now generates version metadata before clean builds"
         }
       ]
@@ -74,7 +74,7 @@
         },
         {
           "path": "scripts/build-web-demo.ts",
-          "blob": "e0f07d802e6ed43d1e9311bc27548591dddeca67",
+          "blob": "1cdc7ae7aa639e96dba368513e78a8710892a2eb",
           "command": "Clean Web Demo CI failure was reproduced at the missing generated/version.json boundary and fixed at the build entrypoint"
         }
       ]
