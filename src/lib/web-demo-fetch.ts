@@ -34,6 +34,7 @@ import {
   getWebDemoEnvironment,
   getWebDemoRequestSignal,
   getWebDemoSceneState,
+  getWebDemoSiteFeatureState,
   getWebDemoState,
   isWebDemoBuildEnabled,
   recordWebDemoMutation,
@@ -1106,6 +1107,9 @@ function getDemoAssistantResponse(
   init?: RequestInit
 ) {
   ensureDemoAssistantResetListener();
+  if (!getWebDemoSiteFeatureState().serviceEnabled) {
+    return jsonResponse({ error: "站点助手功能未启用", code: "FEATURE_DISABLED" }, 404);
+  }
   const principal = demoFrontendPrincipal(environment);
   if (!principal) return jsonResponse({ error: "需要登录", code: "UNAUTHORIZED" }, 401);
   const quota = demoAssistantQuota(environment, scene);
@@ -1503,7 +1507,8 @@ async function getDemoPublicResponse(
   if (url.pathname === "/api/public/page" && method === "GET") return null;
   if (url.pathname === "/api/public/runtime-config" && method === "GET") {
     const matchingVersion = url.searchParams.get("siteVersion") === versionIdentity;
-    const launcherEnabled = import.meta.env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT !== "false";
+    const siteFeatureState = getWebDemoSiteFeatureState();
+    const launcherEnabled = siteFeatureState.serviceEnabled && siteFeatureState.launcherEnabled;
     return jsonResponse({
       schemaVersion: 1,
       mode: matchingVersion ? "diff" : "full",

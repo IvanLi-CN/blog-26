@@ -7,6 +7,7 @@ export const WEB_DEMO_ROUTE_EVENT = "web-demo:route-change";
 export const WEB_DEMO_MUTATION_EVENT = "web-demo:mutation";
 export const WEB_DEMO_CLIPPING_SLUG = "memo-web-demo-1181";
 export const WEB_DEMO_QUICK_EDIT_SLUG = "memo-web-demo-1182";
+export const WEB_DEMO_SITE_FEATURE_STATE_KEY = "web-demo-site-feature-state-v1";
 
 const WEB_DEMO_SESSION_KEY = "web-demo-global-environment";
 
@@ -76,6 +77,20 @@ export type WebDemoEnvironment = {
   delayMs: number;
   theme: WebDemoThemeSelection;
   motion: WebDemoMotionPreference;
+};
+
+export type WebDemoSiteFeatureState = {
+  revision: number;
+  updatedAt: number | null;
+  serviceEnabled: boolean;
+  launcherEnabled: boolean;
+};
+
+const defaultWebDemoSiteFeatureState: WebDemoSiteFeatureState = {
+  revision: 0,
+  updatedAt: null,
+  serviceEnabled: true,
+  launcherEnabled: true,
 };
 
 /** Compatibility snapshot for existing scene consumers. New code should use WebDemoRuntimeState. */
@@ -255,6 +270,42 @@ function writeSessionEnvironment(environment: WebDemoEnvironment) {
     window.sessionStorage.setItem(WEB_DEMO_SESSION_KEY, JSON.stringify(environment));
   } catch {
     // Session storage is an optional reproduction aid; URL state remains authoritative.
+  }
+}
+
+export function getWebDemoSiteFeatureState(): WebDemoSiteFeatureState {
+  if (typeof window === "undefined") return { ...defaultWebDemoSiteFeatureState };
+  try {
+    const raw = JSON.parse(
+      window.sessionStorage.getItem(WEB_DEMO_SITE_FEATURE_STATE_KEY) || "null"
+    ) as Partial<WebDemoSiteFeatureState> | null;
+    if (!raw || typeof raw !== "object") return { ...defaultWebDemoSiteFeatureState };
+    return {
+      revision:
+        typeof raw.revision === "number" && Number.isSafeInteger(raw.revision) && raw.revision >= 0
+          ? raw.revision
+          : defaultWebDemoSiteFeatureState.revision,
+      updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : null,
+      serviceEnabled:
+        typeof raw.serviceEnabled === "boolean"
+          ? raw.serviceEnabled
+          : defaultWebDemoSiteFeatureState.serviceEnabled,
+      launcherEnabled:
+        typeof raw.launcherEnabled === "boolean"
+          ? raw.launcherEnabled
+          : defaultWebDemoSiteFeatureState.launcherEnabled,
+    };
+  } catch {
+    return { ...defaultWebDemoSiteFeatureState };
+  }
+}
+
+export function setWebDemoSiteFeatureState(state: WebDemoSiteFeatureState) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(WEB_DEMO_SITE_FEATURE_STATE_KEY, JSON.stringify(state));
+  } catch {
+    // Session storage is an optional bridge between the separate Demo builds.
   }
 }
 

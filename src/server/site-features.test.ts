@@ -88,10 +88,26 @@ describe("site feature runtime configuration", () => {
 
     const etag = response.headers.get("etag");
     expect(etag).toMatch(/^"[a-f0-9]{64}"$/u);
+    expect(response.headers.get("vary")).toContain("Origin");
     if (!etag) throw new Error("runtime config ETag is missing");
     const notModified = await publicConfig(versionIdentity, { headers: { "if-none-match": etag } });
     expect(notModified.status).toBe(304);
     expect(await notModified.text()).toBe("");
+
+    const weakMultiValue = await publicConfig(versionIdentity, {
+      headers: { "if-none-match": `W/${etag}, "other"` },
+    });
+    expect(weakMultiValue.status).toBe(304);
+
+    const wildcard = await publicConfig(versionIdentity, { headers: { "if-none-match": "*" } });
+    expect(wildcard.status).toBe(304);
+
+    const noOrigin = await handlePublicApiRequest(
+      new Request(`http://localhost/api/public/runtime-config?siteVersion=${versionIdentity}`),
+      "/runtime-config"
+    );
+    expect(noOrigin.headers.get("access-control-allow-origin")).toBeNull();
+    expect(noOrigin.headers.get("vary")).toContain("Origin");
   });
 
   it("returns full effective features for a different version and keeps service enforcement server-side", async () => {
@@ -139,7 +155,7 @@ describe("site feature runtime configuration", () => {
     await db.insert(siteFeatureSettings).values({
       id: "global",
       config: "not-json",
-      revision: 0,
+      revision: -1,
       updatedAt: Date.now(),
     });
 

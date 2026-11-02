@@ -40,9 +40,14 @@ export class SiteFeatureDisabledError extends Error {
 type SiteFeatureSnapshot = {
   record: SiteFeatureRecord;
   revision: number;
+  persistedRevision: number;
   updatedAt: number | null;
   exists: boolean;
 };
+
+function isValidRevision(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
 
 function parseBooleanEnv(value: string | undefined, fallback: boolean) {
   if (value === "true") return true;
@@ -106,7 +111,16 @@ async function readSnapshot(): Promise<SiteFeatureSnapshot> {
     .where(eq(siteFeatureSettings.id, SITE_FEATURE_SETTINGS_ID))
     .get();
 
-  if (!row) return { record: defaultRecord(), revision: 0, updatedAt: null, exists: false };
+  if (!row) {
+    return {
+      record: defaultRecord(),
+      revision: 0,
+      persistedRevision: 0,
+      updatedAt: null,
+      exists: false,
+    };
+  }
+  const persistedRevision = row.revision as number;
   let record: SiteFeatureRecord;
   try {
     record = parseStoredRecord(row.config);
@@ -115,7 +129,13 @@ async function readSnapshot(): Promise<SiteFeatureSnapshot> {
     // through the authenticated admin endpoint using its persisted revision.
     record = disabledRecord();
   }
-  return { record, revision: row.revision, updatedAt: row.updatedAt, exists: true };
+  return {
+    record,
+    revision: isValidRevision(persistedRevision) ? persistedRevision : 0,
+    persistedRevision,
+    updatedAt: row.updatedAt,
+    exists: true,
+  };
 }
 
 export async function getSiteFeatureSettings() {
@@ -181,7 +201,7 @@ export async function updateSiteFeatureSettings(input: unknown) {
       .where(
         and(
           eq(siteFeatureSettings.id, SITE_FEATURE_SETTINGS_ID),
-          eq(siteFeatureSettings.revision, current.revision)
+          eq(siteFeatureSettings.revision, current.persistedRevision)
         )
       )
       .run();

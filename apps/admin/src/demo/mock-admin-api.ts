@@ -50,8 +50,10 @@ import {
   assertWebDemoRequestAvailable,
   getWebDemoEnvironment,
   getWebDemoRequestSignal,
+  getWebDemoSiteFeatureState,
   getWebDemoState,
   recordWebDemoMutation,
+  setWebDemoSiteFeatureState,
   type WebDemoEnvironment,
   waitForWebDemoRequest,
 } from "@/lib/web-demo-runtime";
@@ -1231,6 +1233,7 @@ class DemoApiError extends Error {
 
 export function setupAdminDemoApiMocks() {
   ensureDemoCommentsResetListener();
+  syncDemoSiteFeatureSettings();
   if (window.__adminDemoApiMockInstalled) return;
   window.__adminDemoApiMockInstalled = true;
 
@@ -1339,6 +1342,17 @@ function refreshDemoSiteFeatureResolution() {
     launcherEnabled: assistant.launcherEnabled,
     publicLauncherEnabled: assistant.serviceEnabled && assistant.launcherEnabled,
   };
+}
+
+function syncDemoSiteFeatureSettings() {
+  const state = getWebDemoSiteFeatureState();
+  demoSiteFeatureSettings.revision = state.revision;
+  demoSiteFeatureSettings.updatedAt = state.updatedAt;
+  demoSiteFeatureSettings.settings.assistant = {
+    serviceEnabled: state.serviceEnabled,
+    launcherEnabled: state.launcherEnabled,
+  };
+  refreshDemoSiteFeatureResolution();
 }
 
 type DemoRagMetrics = {
@@ -2024,6 +2038,7 @@ async function handleAdminRequest(
     return json(demoSearchSettings);
   }
   if (path === "/api/admin/site-features") {
+    syncDemoSiteFeatureSettings();
     if (method === "PUT") {
       if (body?.expectedRevision !== demoSiteFeatureSettings.revision) {
         return json(
@@ -2042,6 +2057,12 @@ async function handleAdminRequest(
       demoSiteFeatureSettings.revision += 1;
       demoSiteFeatureSettings.updatedAt = Date.now();
       refreshDemoSiteFeatureResolution();
+      setWebDemoSiteFeatureState({
+        revision: demoSiteFeatureSettings.revision,
+        updatedAt: demoSiteFeatureSettings.updatedAt,
+        serviceEnabled: assistant.serviceEnabled,
+        launcherEnabled: assistant.launcherEnabled,
+      });
       recordWebDemoMutation("保存站点功能", "仅更新隔离 Web Demo 内存配置");
     }
     return json(demoSiteFeatureSettings);

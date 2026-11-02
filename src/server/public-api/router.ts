@@ -108,6 +108,16 @@ function isExistingPathError(error: unknown) {
   return error && typeof error === "object" && "code" in error && error.code === "EEXIST";
 }
 
+function matchesIfNoneMatch(request: Request, etag: string) {
+  const value = request.headers.get("if-none-match");
+  if (!value) return false;
+
+  return value.split(",").some((candidate) => {
+    const tag = candidate.trim();
+    return tag === "*" || tag.replace(/^W\//u, "") === etag;
+  });
+}
+
 async function ensureSafeSystemShareDirectory(basePath: string, directory: string) {
   const rootPath = resolve(basePath);
   const targetPath = resolve(directory);
@@ -1381,9 +1391,10 @@ export async function handlePublicApiRequest(
         "cache-control": "public, max-age=30, stale-while-revalidate=30",
         "content-type": "application/json; charset=utf-8",
         etag: config.etag,
+        vary: "Origin",
       });
       appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
-      if (request.headers.get("if-none-match") === config.etag) {
+      if (matchesIfNoneMatch(request, config.etag)) {
         return new Response(null, { status: 304, headers });
       }
       return new Response(request.method === "HEAD" ? null : config.body, {
