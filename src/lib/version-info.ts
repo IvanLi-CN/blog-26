@@ -30,13 +30,16 @@ type PartialVersionInfo = {
   [Key in keyof VersionInfo]?: VersionInfo[Key];
 };
 
-const generatedVersionModules =
-  typeof import.meta.glob === "function"
-    ? import.meta.glob<PartialVersionInfo>("../generated/version.json", {
-        eager: true,
-        import: "default",
-      })
-    : {};
+const generatedVersionModules: Record<string, PartialVersionInfo> = (() => {
+  try {
+    return import.meta.glob<PartialVersionInfo>("../generated/version.json", {
+      eager: true,
+      import: "default",
+    });
+  } catch {
+    return {};
+  }
+})();
 const parsedVersionInfo = Object.values(generatedVersionModules)[0] ?? {};
 
 export const versionInfo: VersionInfo = {

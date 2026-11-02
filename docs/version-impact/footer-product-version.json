@@ -6,7 +6,7 @@
     "apps/admin/src/components/app-shell.tsx": "5dc924ce75de132e0bf6e04cbf77db12e3594faa",
     "scripts/build-web-demo.ts": "e0f07d802e6ed43d1e9311bc27548591dddeca67",
     "site/components/SiteFooter.tsx": "694029989cae23a105e39228141fcc7898926db0",
-    "src/lib/version-info.ts": "89b1a083fa9231b30f8e14fc7fc0e029b89466ee"
+    "src/lib/version-info.ts": "3061ca3a981604a201448e935adea7ec3e8bbb21"
   },
   "change": {
     "description": "Expose the product version in the public footer and admin brand block, and make Web Demo builds generate the version metadata required by those surfaces.",
@@ -42,7 +42,7 @@
       "evidence": [
         {
           "path": "src/lib/version-info.ts",
-          "blob": "89b1a083fa9231b30f8e14fc7fc0e029b89466ee",
+          "blob": "3061ca3a981604a201448e935adea7ec3e8bbb21",
           "command": "The shared label derives from the existing generated productVersion field and falls back to the existing development label"
         },
         {
@@ -93,7 +93,7 @@
         },
         {
           "path": "src/lib/version-info.ts",
-          "blob": "89b1a083fa9231b30f8e14fc7fc0e029b89466ee",
+          "blob": "3061ca3a981604a201448e935adea7ec3e8bbb21",
           "command": "The UI reads the existing productVersion metadata without changing server payloads"
         }
       ]
