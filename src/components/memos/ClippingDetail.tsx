@@ -461,6 +461,7 @@ export function ClippingDetail({
       data-testid="clipping-detail"
       data-clipping-discussion={canDiscuss}
       data-clipping-surface={surface}
+      data-assistant-dedicated-chat={showChat ? "true" : undefined}
       data-assistant-clipping-slug={hideChat ? slug : undefined}
       data-assistant-clipping-memo-id={hideChat ? (memoId ?? undefined) : undefined}
     >

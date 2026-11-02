@@ -28,11 +28,13 @@ import {
   SEARCH_DEMO_DOCUMENTS,
 } from "./search/web-demo-fixtures";
 import { composeSystemShareMemoContent, normalizeSystemShareEditor } from "./system-share";
+import { versionIdentity } from "./version-info";
 import {
   assertWebDemoRequestAvailable,
   getWebDemoEnvironment,
   getWebDemoRequestSignal,
   getWebDemoSceneState,
+  getWebDemoSiteFeatureState,
   getWebDemoState,
   isWebDemoBuildEnabled,
   recordWebDemoMutation,
@@ -49,6 +51,14 @@ const consoleWebDemoStore = createConsoleWebDemoStore();
 const demoRuntimeMotionReads = new Map<string, number>();
 let demoRuntimeMotionRefreshes = 0;
 let demoRuntimeMotionResetWindow: Window | null = null;
+const WEB_DEMO_BUILD_DEFAULT_ASSISTANT_LAUNCHER_ENABLED =
+  import.meta.env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT !== "false";
+const DEMO_PUBLIC_API_ALLOWED_METHODS = "GET, HEAD, POST, PATCH, DELETE, OPTIONS";
+const DEMO_PUBLIC_API_DEFAULT_ALLOW_HEADERS = "content-type, authorization, x-requested-with";
+
+function assistantLauncherDiff(enabled: boolean) {
+  return enabled === WEB_DEMO_BUILD_DEFAULT_ASSISTANT_LAUNCHER_ENABLED ? {} : { enabled };
+}
 
 function prepareDemoRuntimeMotion() {
   if (typeof window === "undefined" || demoRuntimeMotionResetWindow === window) return;
@@ -449,11 +459,68 @@ function resolveRequestUrl(input: RequestInfo | URL) {
   }
 }
 
-function jsonResponse(data: unknown, status = 200) {
+function jsonResponse(data: unknown, status = 200, extraHeaders?: HeadersInit) {
+  const headers = new Headers(extraHeaders);
+  headers.set("content-type", "application/json; charset=utf-8");
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" },
+    headers,
   });
+}
+
+function appendDemoVary(headers: Headers, value: string) {
+  const current = headers.get("vary");
+  if (!current) {
+    headers.set("vary", value);
+    return;
+  }
+
+  const values = current
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!values.includes(value)) headers.set("vary", [...values, value].join(", "));
+}
+
+function normalizeDemoOrigin(raw: string | null) {
+  if (!raw) return null;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return null;
+  }
+}
+
+function appendDemoPublicCorsHeaders(headers: Headers, url: URL, requestHeaders: Headers) {
+  const origin = normalizeDemoOrigin(requestHeaders.get("origin"));
+  if (!origin || origin !== url.origin) return;
+
+  headers.set("access-control-allow-origin", origin);
+  headers.set("access-control-allow-credentials", "true");
+  headers.set("access-control-allow-methods", DEMO_PUBLIC_API_ALLOWED_METHODS);
+  headers.set(
+    "access-control-allow-headers",
+    requestHeaders.get("access-control-request-headers") || DEMO_PUBLIC_API_DEFAULT_ALLOW_HEADERS
+  );
+  appendDemoVary(headers, "Origin");
+  appendDemoVary(headers, "Access-Control-Request-Headers");
+}
+
+function matchesDemoIfNoneMatch(requestHeaders: Headers, etag: string) {
+  const value = requestHeaders.get("if-none-match");
+  if (!value) return false;
+  return value.split(",").some((candidate) => {
+    const tag = candidate.trim();
+    return tag === "*" || tag.replace(/^W\//u, "") === etag;
+  });
+}
+
+async function publicConfigEtag(body: string) {
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(body));
+  const hash = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+  return `"${hash}"`;
 }
 
 function demoPublicUser(environment: WebDemoEnvironment) {
@@ -1105,6 +1172,9 @@ function getDemoAssistantResponse(
   init?: RequestInit
 ) {
   ensureDemoAssistantResetListener();
+  if (!getWebDemoSiteFeatureState().serviceEnabled) {
+    return jsonResponse({ error: "站点助手功能未启用", code: "FEATURE_DISABLED" }, 404);
+  }
   const principal = demoFrontendPrincipal(environment);
   if (!principal) return jsonResponse({ error: "需要登录", code: "UNAUTHORIZED" }, 401);
   const quota = demoAssistantQuota(environment, scene);
@@ -1497,9 +1567,46 @@ async function getDemoPublicResponse(
 ) {
   ensureDemoCommentResetListener();
   const body = readDemoRequestBody(init);
+  const requestHeaders = new Headers(init?.headers);
   // The Demo build's server supplies route-scoped fixture data after the
   // common connection/delay/abort policy has admitted this actual read.
   if (url.pathname === "/api/public/page" && method === "GET") return null;
+  if (url.pathname === "/api/public/runtime-config") {
+    if (method === "OPTIONS") {
+      const headers = new Headers();
+      appendDemoPublicCorsHeaders(headers, url, requestHeaders);
+      if (!headers.has("access-control-allow-origin")) return new Response(null, { status: 403 });
+      headers.set("access-control-max-age", "86400");
+      return new Response(null, { status: 204, headers });
+    }
+    if (method !== "GET" && method !== "HEAD") {
+      const response = jsonResponse({ error: `Method ${method} not allowed` }, 405);
+      appendDemoPublicCorsHeaders(response.headers, url, requestHeaders);
+      return response;
+    }
+    const matchingVersion = url.searchParams.get("siteVersion") === versionIdentity;
+    const siteFeatureState = getWebDemoSiteFeatureState();
+    const launcherEnabled = siteFeatureState.serviceEnabled && siteFeatureState.launcherEnabled;
+    const payload = {
+      schemaVersion: 1,
+      mode: matchingVersion ? "diff" : "full",
+      features: matchingVersion
+        ? { assistant: { launcher: assistantLauncherDiff(launcherEnabled) } }
+        : { assistant: { launcher: { enabled: launcherEnabled } } },
+    };
+    const body = JSON.stringify(payload);
+    const headers = new Headers({
+      "cache-control": "public, max-age=30, stale-while-revalidate=30",
+      "content-type": "application/json; charset=utf-8",
+      etag: await publicConfigEtag(body),
+      vary: "Origin",
+    });
+    appendDemoPublicCorsHeaders(headers, url, requestHeaders);
+    if (matchesDemoIfNoneMatch(requestHeaders, headers.get("etag") ?? "")) {
+      return new Response(null, { status: 304, headers });
+    }
+    return new Response(method === "HEAD" ? null : body, { status: 200, headers });
+  }
   if (isConsoleWebDemoBuild()) {
     const consoleResponse = await getConsoleWebDemoResponse(url, method, body, init);
     if (consoleResponse) return consoleResponse;
@@ -1508,6 +1615,9 @@ async function getDemoPublicResponse(
     /^\/api\/public\/memos\/([^/]+)\/clipping\/chat(\/stop)?$/u
   );
   if (clippingChatMatch) {
+    if (!getWebDemoSiteFeatureState().serviceEnabled) {
+      return jsonResponse({ error: "站点助手功能未启用", code: "FEATURE_DISABLED" }, 404);
+    }
     const clippingSlug = decodeURIComponent(clippingChatMatch[1] ?? "");
     if (clippingSlug !== WEB_DEMO_CLIPPING_SLUG)
       return jsonResponse({ error: "剪藏不存在", code: "NOT_FOUND" }, 404);
@@ -2114,13 +2224,17 @@ export async function webDemoFetch(
     const method = (
       init?.method ?? (input instanceof Request ? input.method : "GET")
     ).toUpperCase();
+    const requestHeaders = new Headers(input instanceof Request ? input.headers : undefined);
+    new Headers(init?.headers).forEach((value, name) => {
+      requestHeaders.set(name, value);
+    });
     const mockResponse = await getDemoPublicResponse(
       url,
       method,
       environment,
       sceneState.data,
       sceneState.scene,
-      signal ? { ...init, signal } : init
+      signal ? { ...init, headers: requestHeaders, signal } : { ...init, headers: requestHeaders }
     );
     if (mockResponse) return mockResponse;
   }

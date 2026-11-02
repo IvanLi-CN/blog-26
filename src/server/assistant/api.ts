@@ -3,6 +3,10 @@ import type { AssistantGenerationJob, FrontendPrincipal } from "@/lib/assistant-
 import { initializeDB } from "@/lib/db";
 import { getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
 import { appendPublicCorsHeaders, hasTrustedPublicOrigin } from "@/lib/public-cors";
+import {
+  assertAssistantServiceEnabled,
+  SiteFeatureDisabledError,
+} from "@/server/services/site-features";
 import { AssistantRuntimeClosedError } from "./runtime";
 import { type AssistantService, AssistantServiceError, getAssistantService } from "./service";
 
@@ -63,6 +67,8 @@ function methodNotAllowed(request: Request) {
 
 function routeError(error: unknown): AssistantApiError {
   if (error instanceof AssistantApiError) return error;
+  if (error instanceof SiteFeatureDisabledError)
+    return new AssistantApiError(error.status, error.code, error.message);
   if (error instanceof AssistantRuntimeClosedError)
     return new AssistantApiError(409, "CONFLICT", "Assistant runtime is stopping");
   if (error instanceof AssistantServiceError) {
@@ -305,6 +311,7 @@ export async function handleAssistantRequest(
 ) {
   try {
     await initializeDB();
+    await assertAssistantServiceEnabled();
     const principal = await getFrontendPrincipalFromRequest(request);
     if (!principal) throw new AssistantApiError(401, "UNAUTHORIZED", "Authentication is required");
     if (request.method !== "GET" && request.method !== "HEAD" && !hasTrustedPublicOrigin(request))

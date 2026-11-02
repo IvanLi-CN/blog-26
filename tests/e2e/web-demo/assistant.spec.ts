@@ -13,6 +13,24 @@ async function hideInspector(page: import("@playwright/test").Page) {
 }
 
 test.describe("Knowledge Assistant Web Demo", () => {
+  test("applies the admin launcher setting to the public runtime config", async ({ page }) => {
+    await page.goto("/admin/site-features?d_persona=admin&d_delay=normal");
+    await page.getByLabel("显示助手入口").click();
+    await page.getByRole("button", { name: "保存设置" }).click();
+    await expect(page.getByText("站点功能配置已保存。")).toBeVisible();
+
+    await page.goto("/?d_persona=guest&d_delay=normal");
+    await expect(page.getByTestId("assistant-fab")).toHaveCount(0);
+
+    await page.goto("/admin/site-features?d_persona=admin&d_delay=normal");
+    await page.getByLabel("启用助手服务").click();
+    await page.getByRole("button", { name: "保存设置" }).click();
+    await expect(page.getByText("站点功能配置已保存。")).toBeVisible();
+
+    await page.goto("/chat?d_persona=user&d_delay=normal");
+    await expect(page.getByTestId("assistant-request-error")).toContainText("站点助手功能未启用");
+  });
+
   test("creates a distinct conversation after the first message", async ({ page }) => {
     await page.goto("/?d_persona=user&d_scene=assistant-ready");
     await page.getByTestId("assistant-fab").click();

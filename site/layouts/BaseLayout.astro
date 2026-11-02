@@ -250,7 +250,7 @@ const resolvedImage =
       </div>
     </div>
     {isConsoleBuild ? <SystemShareToastViewport client:load /> : null}
-    {!isAssistantPage && !isConsoleBuild ? <KnowledgeAssistant client:only="react" /> : null}
+    {!isAssistantPage ? <KnowledgeAssistant client:only="react" /> : null}
     {isWebDemoBuild ? (
       <WebDemoInspector
         client:load

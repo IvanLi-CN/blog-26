@@ -38,6 +38,11 @@ import {
 } from "@/server/services/llm-settings";
 import { getAdminSearchSettings, saveSearchPolicy } from "@/server/services/search-policy";
 import { getSearchValidationRun, startSearchValidation } from "@/server/services/search-validation";
+import {
+  getSiteFeatureSettings,
+  SiteFeatureSettingsConflictError,
+  updateSiteFeatureSettings,
+} from "@/server/services/site-features";
 import { organizeTagsWithAI } from "@/server/services/tag-ai";
 import {
   readTagGroupsFromDB,
@@ -349,6 +354,43 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         return json(await saveSearchPolicy(await request.json()), { status: 200 }, resHeaders);
       return methodNotAllowed(request.method, resHeaders);
     }
+
+    if (pathname === "/site-features") {
+      if (request.method === "GET") {
+        return json(
+          await getSiteFeatureSettings(),
+          { status: 200, headers: { "cache-control": "no-store" } },
+          resHeaders
+        );
+      }
+      if (request.method === "PUT") {
+        try {
+          return json(
+            await updateSiteFeatureSettings(await request.json()),
+            { status: 200 },
+            resHeaders
+          );
+        } catch (error) {
+          if (error instanceof ZodError) {
+            return json(
+              { error: { code: "BAD_REQUEST", message: "站点功能配置格式不正确" } },
+              { status: 400 },
+              resHeaders
+            );
+          }
+          if (error instanceof SiteFeatureSettingsConflictError) {
+            return json(
+              { error: { code: error.code, message: error.message } },
+              { status: error.status },
+              resHeaders
+            );
+          }
+          throw error;
+        }
+      }
+      return methodNotAllowed(request.method, resHeaders);
+    }
+
     if (pathname === "/search-settings/validate") {
       if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
       const body = z

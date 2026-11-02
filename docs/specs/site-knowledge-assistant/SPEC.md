@@ -150,6 +150,14 @@
 - 后台基础交互 MUST 使用本地 UI primitives。页面级证据必须来自正式路由的独立构建 Web Demo，共享 Inspector 覆盖访客、普通用户、管理员、配额耗尽、临时对话到期、缺失用量、生成中、失败和重连等场景。
 - Web Demo MUST 使用隔离 fixture 和模拟操作，live 产物不能通过浏览器开关变成 Demo；模拟验收不能向真实模型发出调用或访问真实私人数据。
 
+### REQ-SKA-023 — 助手功能动态配置
+
+- 静态公开站与 Console 的助手入口 MUST 由服务端下发的公开站点功能配置决定；`CONSOLE_RUNTIME` 只表示运行形态，MUST NOT 决定入口是否显示。
+- 助手服务开关与助手入口开关 MUST 保持独立。服务关闭时，公开入口必须隐藏，助手 API 必须由服务端拒绝并返回稳定的 `404 FEATURE_DISABLED`；仅入口关闭时，完整 `/chat` 页面与直接 API 能力不因入口开关被服务端拒绝。
+- 构建时的 `PUBLIC_ASSISTANT_LAUNCHER_DEFAULT` 只能作为静态客户端在配置请求失败时的乐观默认值，并必须同时进入公开站、Console 和服务端运行时的同一发布输入；它不能替代服务端动态配置或 API 强制检查。
+- 客户端 MUST 以不透明的站点版本标识请求 `/api/public/runtime-config?siteVersion=...`。版本匹配时服务端只返回相对构建默认值的嵌套差异；版本不匹配时返回当前公开功能字段的完整嵌套结构。响应不得下发服务端版本、默认值摘要、服务开关或其他未用于客户端决策的内部字段。
+- 公开配置响应 MUST 可通过响应头 `ETag` 缓存验证；客户端只在初始化时读取，不轮询，不执行第二次客户端/服务端对账。构建默认值与服务端响应的合并只允许发生一次，并保留响应字段的嵌套结构。
+
 ## Verification
 
 ### VER-SKA-001 — 身份与权限
@@ -200,6 +208,12 @@
 - covers: `REQ-SKA-021`
 - Pass condition: 可归属记录完整且幂等地进入创建者列表，无归属记录原样隔离，没有作者猜测、丢失消息或对其他用户开放的旁路。
 
+### VER-SKA-009 — 助手功能配置与发布一致性
+
+- Method: 使用匹配与不匹配的站点版本、构建默认值开启与关闭、服务开关和入口开关组合，验证公开站与 Console 的初始化请求、嵌套 `diff/full` 响应、ETag、服务端 API 拒绝和直接 `/chat` 访问。
+- covers: `REQ-SKA-004`, `REQ-SKA-023`
+- Pass condition: 两个前台产物只依据同一公开配置显示入口；匹配版本只收到必要差异，不匹配版本收到完整公开字段；服务关闭不可由前端绕过，入口关闭不误伤完整页面；`CONSOLE_RUNTIME` 改变运行形态但不改变助手功能决策。
+
 ## Visual Evidence
 
 页面级验收 MUST 使用正式路由的独立 Web Demo 构建，不新增页面级 Storybook 副本。T8 的可复现证据入口为 `/chat`，通过共享 Inspector 选择 `user`、`guest`、`admin` 及助手生命周期场景；桌面视口覆盖 1440×1000，小屏视口覆盖 393×852。证据 MUST 检查助手面板/完整页面、发送后的引用、访客登录前草稿、配额状态、无横向溢出以及 live 构建不受 Demo 查询参数影响。
@@ -211,6 +225,15 @@ Web Demo 只使用隔离 fixture 和内存模拟回答；这些证据不代表�
 - [393×852 移动端：操作按钮与内容同排并右端对齐](./assets/assistant-error-alert-mobile-393x852.png)
 - [320×800 窄屏：操作按钮换行后仍右端对齐](./assets/assistant-error-alert-narrow-320x800.png)
 - [1280×900 桌面：操作按钮自适应保持同排并右端对齐](./assets/assistant-error-alert-desktop-1280x900.png)
+
+当前助手功能配置与入口证据：
+
+- [后台站点功能配置：2320×1335 桌面](./assets/assistant-site-features-desktop-2320x1335.png)
+- [后台站点功能配置：393×852 移动端](./assets/assistant-site-features-mobile-393x852.png)
+- [Console 助手入口：2320×1335 桌面](./assets/assistant-console-launcher-desktop-2320x1335.png)
+- [Console 助手入口：393×852 移动端](./assets/assistant-console-launcher-mobile-393x852.png)
+
+以上截图来自当前候选提交的独立 Web Demo/后台正式路由，覆盖后台配置页面和 Console 入口的桌面、小屏状态；截图已由负责人确认。截图保留原始页面范围，空白裁剪未检查。
 
 ## Related ADRs
 
@@ -224,6 +247,7 @@ Web Demo 只使用隔离 fixture 和内存模拟回答；这些证据不代表�
 - [ADR 0035: Personal Assistant Quota and Sitewide AI Metering](../../adr/0035-personal-assistant-quota-and-sitewide-ai-metering.md)
 - [ADR 0036: Assistant Generation Independent of UI Lifecycle](../../adr/0036-assistant-generation-independent-of-ui-lifecycle.md)
 - [ADR 0037: Unified Assistant and Clipping Conversations](../../adr/0037-unified-assistant-and-clipping-conversations.md)
+- [ADR 0039: Server-Driven Assistant Feature Configuration](../../adr/0039-server-driven-assistant-feature-configuration.md)
 
 ## References
 

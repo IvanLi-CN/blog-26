@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { setupAdminDemoApiMocks } from "../../apps/admin/src/demo/mock-admin-api";
+import { versionIdentity } from "../../src/lib/version-info";
 import { webDemoFetch } from "../../src/lib/web-demo-fetch";
-import { cancelWebDemoRequests } from "../../src/lib/web-demo-runtime";
+import { cancelWebDemoRequests, setWebDemoSiteFeatureState } from "../../src/lib/web-demo-runtime";
 
 const originalFetch = globalThis.fetch;
 function mockFetch(handler: () => Promise<Response>): typeof fetch {
@@ -223,6 +224,97 @@ describe("webDemoFetch", () => {
       `/api/public/chat?conversation=${encodeURIComponent(firstSubmission.conversationId)}`
     );
     expect((await snapshot.json()).messages).toHaveLength(4);
+  });
+
+  it("returns only the runtime launcher difference for matching site versions", async () => {
+    installBrowser("?d_persona=guest&d_connection=online");
+    setWebDemoSiteFeatureState({
+      revision: 1,
+      updatedAt: Date.now(),
+      serviceEnabled: false,
+      launcherEnabled: true,
+    });
+
+    const response = await webDemoFetch(
+      `/api/public/runtime-config?siteVersion=${encodeURIComponent(versionIdentity)}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      schemaVersion: 1,
+      mode: "diff",
+      features: { assistant: { launcher: { enabled: false } } },
+    });
+  });
+
+  it("matches runtime-config cache, HEAD, and CORS semantics", async () => {
+    installBrowser("?d_persona=guest&d_connection=online");
+    setWebDemoSiteFeatureState({
+      revision: 1,
+      updatedAt: Date.now(),
+      serviceEnabled: true,
+      launcherEnabled: true,
+    });
+    const endpoint = `/api/public/runtime-config?siteVersion=${encodeURIComponent(versionIdentity)}`;
+    const headers = {
+      Origin: "http://127.0.0.1:38110",
+      "Access-Control-Request-Headers": "x-demo-header",
+    };
+
+    const response = await webDemoFetch(endpoint, { headers });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe(
+      "public, max-age=30, stale-while-revalidate=30"
+    );
+    expect(response.headers.get("etag")).toMatch(/^"[a-f0-9]{64}"$/u);
+    expect(response.headers.get("access-control-allow-origin")).toBe("http://127.0.0.1:38110");
+    expect(response.headers.get("access-control-allow-credentials")).toBe("true");
+    expect(response.headers.get("access-control-allow-methods")).toBe(
+      "GET, HEAD, POST, PATCH, DELETE, OPTIONS"
+    );
+    expect(response.headers.get("access-control-allow-headers")).toBe("x-demo-header");
+    expect(response.headers.get("vary")).toContain("Origin");
+    expect(response.headers.get("vary")).toContain("Access-Control-Request-Headers");
+    const etag = response.headers.get("etag");
+    if (!etag) throw new Error("Web Demo runtime config ETag is missing");
+
+    const head = await webDemoFetch(endpoint, { method: "HEAD", headers });
+    expect(head.status).toBe(200);
+    expect(await head.text()).toBe("");
+    expect(head.headers.get("etag")).toBe(etag);
+
+    const notModified = await webDemoFetch(endpoint, {
+      headers: { ...headers, "If-None-Match": `W/${etag}, "other"` },
+    });
+    expect(notModified.status).toBe(304);
+    expect(await notModified.text()).toBe("");
+    expect(notModified.headers.get("etag")).toBe(etag);
+
+    const preflight = await webDemoFetch(endpoint, {
+      method: "OPTIONS",
+      headers,
+    });
+    expect(preflight.status).toBe(204);
+    expect(await preflight.text()).toBe("");
+    expect(preflight.headers.get("access-control-max-age")).toBe("86400");
+  });
+
+  it("gates Web Demo clipping snapshots when the assistant service is disabled", async () => {
+    installBrowser("?d_persona=user&d_scene=assistant-ready&d_connection=online");
+    setWebDemoSiteFeatureState({
+      revision: 1,
+      updatedAt: Date.now(),
+      serviceEnabled: false,
+      launcherEnabled: true,
+    });
+
+    const response = await webDemoFetch("/api/public/memos/memo-web-demo-1181/clipping/chat");
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: "站点助手功能未启用",
+      code: "FEATURE_DISABLED",
+    });
   });
 
   it("does not fall back to a real public API for unknown endpoints", async () => {

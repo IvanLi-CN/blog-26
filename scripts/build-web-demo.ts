@@ -80,6 +80,7 @@ export async function prepareWebDemoInputs() {
     BLOG_BUILD_TARGET: "public",
     CONSOLE_WEB_DEMO_BUILD: "false",
     PUBLIC_API_BASE_URL: "",
+    PUBLIC_ASSISTANT_LAUNCHER_DEFAULT: "true",
     PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: "https://metrics.example.test",
     PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: "https://metrics.example.test",
     PUBLIC_OCTO_RILL_METRICS_BASE_URL: "https://metrics.example.test",
@@ -121,6 +122,7 @@ async function main() {
   await rm(siteDist, { recursive: true, force: true });
   await rm(consoleSiteDist, { recursive: true, force: true });
   await rm(adminDist, { recursive: true, force: true });
+  await run("generate build version", ["scripts/generate-version.ts"], process.env);
   const env = await prepareWebDemoInputs();
   await run("build public Web Demo", ["x", "astro", "build"], env);
   await run("build Console Web Demo", ["x", "astro", "build"], {

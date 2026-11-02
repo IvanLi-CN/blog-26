@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "10eb06f50f674c34f2f263d97e78b17e65af0d7a",
+  "covered_files": {
+    ".github/workflows/ci.yml": "680d70ddc4a06c987d36206fc5e4d4a62b912926",
+    ".github/workflows/playbook-content-rollback.yml": "34f672e7df238b1afb5c3547ac48c4f89e64fa18",
+    ".github/workflows/playbook-content-update.yml": "1881a9cf171984494fbb9386d4abbb91a3000cd7",
+    ".github/workflows/product-release.yml": "88022638e2f2ce830fbbf62dd5c0685d9e21e7aa",
+    "Dockerfile": "602888c3e8fe9cb60267e593ea9b76e6ad636214",
+    "GLOSSARY.md": "7b9bad850e7f8cfcb5d49ea0f6dadaaf44377197",
+    "apps/admin/src/components/app-shell.tsx": "8c8d9332dcccd3db3a94abdbe49800040acb1e73",
+    "apps/admin/src/demo/mock-admin-api.ts": "2cd976ab937dce5d02a4a814f7a46380a5a2d0aa",
+    "apps/admin/src/pages/site-features.tsx": "b694b129c0cfbb8022278a9b5ca396ac5c62bf19",
+    "apps/admin/src/router.tsx": "d1692ffc6b239778564f04d79624f99bf242b4ce",
+    "docs/adr/0039-server-driven-assistant-feature-configuration.md": "5f829847e33e802efbcfbdd2cf082adad933a105",
+    "docs/specs/site-knowledge-assistant/SPEC.md": "e0c73904bd28c1539a85725ac23356ee25724646",
+    "docs/specs/site-knowledge-assistant/assets/assistant-console-launcher-desktop-2320x1335.png": "356704a39c76fefa8c2ea7e2611096e584370130",
+    "docs/specs/site-knowledge-assistant/assets/assistant-console-launcher-mobile-393x852.png": "33b1e1ca895693aeaba3635edfdaf5f665026de3",
+    "docs/specs/site-knowledge-assistant/assets/assistant-site-features-desktop-2320x1335.png": "7a01cf562f828e6f5f334e9be11f3d3cc28c37d4",
+    "docs/specs/site-knowledge-assistant/assets/assistant-site-features-mobile-393x852.png": "cefad2e59bbaa191126894a6865858ff29301776",
+    "drizzle/0032_site_feature_settings.sql": "0c653a805094d8897e36dcf4cfbe570567657c91",
+    "drizzle/meta/0032_snapshot.json": "8452a0bb08e865c2b8edae95cc1f54fcdeaa51d3",
+    "drizzle/meta/_journal.json": "ac5c56d28a1ac9f0a2b4e4884d06224438ceac1e",
+    "package.json": "445344d614d9dae2fcb77c2fd0f872658974eec5",
+    "scripts/build-project-tags-demo.ts": "0fc5cfec9b8725860022647edff8eebd13e8c7cf",
+    "scripts/build-web-demo.ts": "b38291323e9a7d1d479dee12a7d33338967111e0",
+    "scripts/docker-build.sh": "61a7118f1e21bac3fb328786b2c67f14344e7800",
+    "scripts/run-test-suite.ts": "091647a8c63da7ce21254bd540774fbf5ac2c331",
+    "scripts/worktree-bootstrap.sh": "97864c0ad3d03c5c7b1343b0fa0c9b6d4449ab8c",
+    "site/components/KnowledgeAssistant.css": "47671888d3a538f702fcc37920c890c66a041ab2",
+    "site/components/KnowledgeAssistant.tsx": "b188392ee58db84aac66a13d4aa7bb84e8ffd269",
+    "site/layouts/BaseLayout.astro": "9f8ce3980f6c8cfeff2a44ca3c41087aba0ae1cd",
+    "site/lib/site-feature-config.ts": "f5aeb6856788b14c78c4a416a8823afbb0499ad3",
+    "src/components/memos/ClippingDetail.tsx": "fe5fb52ef7e4976b8a32a74a2e64e618d3ad36cf",
+    "src/lib/admin-api-client.ts": "e648aac9470a1af91600a8dc62b68386bc3247d1",
+    "src/lib/release/inputs.ts": "c50f1b2682e592bd3abbc5612feed302a70e9104",
+    "src/lib/release/products.ts": "1a0de88acb1a520196778561f7c3d8575479b35f",
+    "src/lib/schema.ts": "3c5a41a1cb45e35ba7ed8beb5bf858e8fbae97b7",
+    "src/lib/site-feature-settings.ts": "e4caa447c8aba40cec6ae23e8e6290ca3e7f2eb6",
+    "src/lib/version-info.ts": "09e34e0878516a3542f0a0d84406a944f1389fba",
+    "src/lib/web-demo-fetch.ts": "d80fa302c9f994edb930bf8a32459108a0284746",
+    "src/lib/web-demo-runtime.ts": "11405a478819677e01edb22dbc1f81dcba712d18",
+    "src/server/admin-api/router.ts": "9a81fbca032666235310fdaa3a402dadf4b4f2c4",
+    "src/server/assistant/api.ts": "c4effa351cc90218d6bb28918ae9f645032347ec",
+    "src/server/clipping/api.test.ts": "0d10fdec7623fccde7d552597420c14dcd82c79d",
+    "src/server/clipping/api.ts": "bd261f4d9ab1227d314736766ae0be0b3b1c0733",
+    "src/server/public-api/router.ts": "6f7fdd3fbf311fd9db9e241290991e0ab9088ab5",
+    "src/server/services/site-features.ts": "79dd67410f6565c64451d3ba9ced54d2c3e46a3d",
+    "src/server/site-features.test.ts": "a7e40728d382a284ccda748d6dc082c20ecd5205",
+    "tests/ci/prepare-release-fixture.ts": "ae9d3218e245594cdb38f3ad65f04ebf3526f06c",
+    "tests/e2e/web-demo/assistant.spec.ts": "b1478f4d016727f578a3192378a896c74e9c43fd",
+    "tests/lib/web-demo-fetch.test.ts": "de9e46ad0c31bea0331ade07d6db11cbc10583a2",
+    "tests/lib/web-demo-boundary.test.ts": "caafb27ce0ade599520901f385df821f8b2ab438",
+    "tests/server/system-share-api.test.ts": "cb4fa25e7812ded134f0326828371cb8899ca8ca"
+  },
+  "change": {
+    "description": "Add server-driven assistant feature configuration with admin controls, a version-aware public runtime override, server-side service enforcement, and deterministic build, test, and Web Demo behavior.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "minor",
+      "reasoning": "The candidate adds an additive administrator control surface, a public runtime configuration response, and one SQLite settings table. Existing assistant routes and consumers remain compatible, while the public response exposes only launcher settings.",
+      "assessed_at": "2026-11-03T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/adr/0039-server-driven-assistant-feature-configuration.md",
+          "blob": "5f829847e33e802efbcfbdd2cf082adad933a105",
+          "command": "Review the version-aware public override, server-only service control, and optimistic admin revision contract"
+        },
+        {
+          "path": "src/lib/site-feature-settings.ts",
+          "blob": "e4caa447c8aba40cec6ae23e8e6290ca3e7f2eb6",
+          "command": "Review the public schema boundary and additive persisted settings model"
+        }
+      ]
+    },
+    "current": {
+      "impact": "minor",
+      "reasoning": "The implementation adds the admin settings page and API, a public diff/full runtime-config contract keyed by site version, a persisted revisioned settings row, service gating before clipping authorization, and build/test/demo version metadata generation. Existing assistant request payloads and public consumer behavior remain compatible.",
+      "assessed_at": "2026-11-03T00:00:00+08:00",
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within server-driven assistant configuration, its public response boundary, persistence migration, server enforcement, admin surface, and the required build, test, and Web Demo integration. No unrelated API or state scope was introduced."
+      },
+      "evidence": [
+        {
+          "path": "src/server/site-features.test.ts",
+          "blob": "a7e40728d382a284ccda748d6dc082c20ecd5205",
+          "command": "bun test src/server/site-features.test.ts: matching-version diff, mismatched-version full response, ETag, admin revision, and damaged-row repair coverage"
+        },
+        {
+          "path": "apps/admin/src/pages/site-features.tsx",
+          "blob": "b694b129c0cfbb8022278a9b5ca396ac5c62bf19",
+          "command": "Inspect the authenticated Admin controls for service and launcher configuration"
+        }
+      ]
+    },
+    "verified": {
+      "impact": "minor",
+      "reasoning": "Focused site-feature, clipping-boundary, and Web Demo boundary tests pass. The migration and service implementation add a repairable revisioned settings row, the public endpoint keeps service state private, and the build/test/demo paths generate version metadata before importing it.",
+      "assessed_at": "2026-11-03T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/site-features.test.ts",
+          "blob": "a7e40728d382a284ccda748d6dc082c20ecd5205",
+          "command": "bun test src/server/site-features.test.ts: runtime-config cache validators, CORS variance, admin revision repair, and malformed-row handling"
+        },
+        {
+          "path": "src/server/clipping/api.test.ts",
+          "blob": "0d10fdec7623fccde7d552597420c14dcd82c79d",
+          "command": "bun test src/server/clipping/api.test.ts: disabled service returns FEATURE_DISABLED before clipping auth for chat, events, and stop"
+        },
+        {
+          "path": "tests/lib/web-demo-boundary.test.ts",
+          "blob": "caafb27ce0ade599520901f385df821f8b2ab438",
+          "command": "bun test tests/lib/web-demo-boundary.test.ts"
+        },
+        {
+          "path": "tests/e2e/web-demo/assistant.spec.ts",
+          "blob": "b1478f4d016727f578a3192378a896c74e9c43fd",
+          "command": "Web Demo browser flow: Admin feature settings propagate to public launcher visibility and disabled assistant API behavior"
+        },
+        {
+          "path": "src/lib/web-demo-runtime.ts",
+          "blob": "11405a478819677e01edb22dbc1f81dcba712d18",
+          "command": "Shared session state bridge keeps Admin, public, and Console Web Demo builds on one feature snapshot"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "de9e46ad0c31bea0331ade07d6db11cbc10583a2",
+          "command": "bun test tests/lib/web-demo-fetch.test.ts: matching-version launcher diffs, disabled clipping snapshot gates, and runtime-config HEAD/ETag/CORS parity"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "minor",
+      "change": "compatible",
+      "supported_consumer_versions": ["4.0.2"],
+      "evidence": [
+        {
+          "path": "src/server/public-api/router.ts",
+          "blob": "6f7fdd3fbf311fd9db9e241290991e0ab9088ab5",
+          "command": "The runtime-config endpoint adds a public, version-aware launcher response without exposing service settings"
+        },
+        {
+          "path": "site/lib/site-feature-config.ts",
+          "blob": "f5aeb6856788b14c78c4a416a8823afbb0499ad3",
+          "command": "The static client consumes matching-version diffs, full fallback responses, and bounded failures"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "minor",
+      "applicable": true,
+      "state_description": "Adds the site_feature_settings table and a revisioned JSON settings row. The row is additive, invalid or future-format data fails closed, and authenticated administrators can replace it using the persisted revision.",
+      "readable_by_prior_versions": ["4.0.2"],
+      "upgrade_from_versions": ["4.0.2"],
+      "evidence": [
+        {
+          "path": "drizzle/0032_site_feature_settings.sql",
+          "blob": "0c653a805094d8897e36dcf4cfbe570567657c91",
+          "command": "Review the additive site_feature_settings migration"
+        },
+        {
+          "path": "src/server/services/site-features.ts",
+          "blob": "79dd67410f6565c64451d3ba9ced54d2c3e46a3d",
+          "command": "Review revisioned writes and fail-closed repair behavior"
+        }
+      ]
+    }
+  }
+}

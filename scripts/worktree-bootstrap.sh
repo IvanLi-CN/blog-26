@@ -205,6 +205,7 @@ prepare_env() {
 install_dependencies_and_hooks() {
   maybe_fail install || return 1
   run bun install || return 1
+  run bun scripts/generate-version.ts || return 1
   install_lefthook || return 1
 }
 
