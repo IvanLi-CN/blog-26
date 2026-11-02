@@ -101,7 +101,6 @@ ENV NODE_ENV=production
 ENV BIND_HOST=0.0.0.0
 ENV PORT=25090
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
-ENV CONSOLE_RUNTIME=true
 ENV SERVE_PUBLIC_SITE=false
 ENV PUBLIC_CORS_ALLOWED_ORIGINS=https://ivanli.cc
 COPY --from=deps /app/node_modules ./node_modules
@@ -137,7 +136,6 @@ ENV NODE_ENV=production
 ENV BIND_HOST=0.0.0.0
 ENV PORT=25090
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
-ENV CONSOLE_RUNTIME=true
 ENV SERVE_PUBLIC_SITE=false
 ENV PUBLIC_CORS_ALLOWED_ORIGINS=https://ivanli.cc
 COPY --from=deps /app/node_modules ./node_modules

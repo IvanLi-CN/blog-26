@@ -63,7 +63,7 @@ export function selectClippingArticleForRender(input: {
 
 function isConsoleRuntimeRequest(Astro: PageContext) {
   return (
-    process.env.CONSOLE_RUNTIME === "true" &&
+    process.env.BLOG_BUILD_TARGET === "console" &&
     resolveRuntimeContext(Astro.request).mode === "console"
   );
 }
@@ -83,7 +83,7 @@ export function selectMemoForRender(input: {
 }
 
 async function loadConsoleMemo(Astro: PageContext, slug: string) {
-  if (process.env.CONSOLE_RUNTIME !== "true") return null;
+  if (process.env.BLOG_BUILD_TARGET !== "console") return null;
   if (resolveRuntimeContext(Astro.request).mode !== "console") return null;
 
   if (process.env.CONSOLE_WEB_DEMO_BUILD === "true") {

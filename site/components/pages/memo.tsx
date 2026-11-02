@@ -20,7 +20,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
     structuredData,
     assetVersion,
   } = data;
-  const isConsoleRuntime = process.env.CONSOLE_RUNTIME === "true";
+  const isConsoleBuild = process.env.BLOG_BUILD_TARGET === "console";
   const heading = (
     <MemoDetailHeading
       memo={memo}
@@ -40,7 +40,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
       />
       <section
         className={`nature-detail-container memo-detail-layout ${
-          isConsoleRuntime ? "memo-detail-layout--console" : ""
+          isConsoleBuild ? "memo-detail-layout--console" : ""
         } ${
           clippingArticle ? "memo-detail-layout--clipping" : "memo-detail-layout--comments"
         } px-2 py-8 sm:px-6 sm:py-10`}
@@ -50,14 +50,14 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
             clippingArticle ? "" : " memo-detail-main"
           }`}
         >
-          {process.env.CONSOLE_RUNTIME === "true" || process.env.WEB_DEMO_BUILD === "true" ? (
+          {process.env.BLOG_BUILD_TARGET === "console" || process.env.WEB_DEMO_BUILD === "true" ? (
             <PublicMemoDetailControlsIsland
               slug={memo.slug}
               initialMemo={initialMemo}
               initialIsAdmin={initialIsAdmin}
               initialClippingArticle={clippingArticle}
               publicMediaContext={publicMediaContext}
-              hideChat={!isConsoleRuntime}
+              hideChat={!isConsoleBuild}
             />
           ) : null}
           <div data-public-memo-static-shell="">
@@ -70,8 +70,8 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
                 header={heading}
                 publicMediaContext={publicMediaContext}
                 publicAssetVersion={assetVersion}
-                commentsTarget={isConsoleRuntime ? undefined : { type: "memo", key: memo.slug }}
-                hideChat={!isConsoleRuntime}
+                commentsTarget={isConsoleBuild ? undefined : { type: "memo", key: memo.slug }}
+                hideChat={!isConsoleBuild}
               />
             ) : (
               <div
@@ -98,7 +98,7 @@ export default function MemoPage(data: Awaited<ReturnType<typeof loadmemo>>) {
             )}
           </div>
         </article>
-        {!clippingArticle && (!isConsoleRuntime || !initialIsAdmin) ? (
+        {!clippingArticle && (!isConsoleBuild || !initialIsAdmin) ? (
           <aside className="memo-detail-comments" data-public-memo-static-shell="">
             <CommentSectionWithProvider
               postSlug={memo.slug}

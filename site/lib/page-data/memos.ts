@@ -27,7 +27,7 @@ export async function loadmemos(Astro: PageContext) {
     ? getWebDemoSceneState(Astro.url, "public")
     : undefined;
   const snapshot = isMemoListWebDemo ? null : await getSnapshot();
-  const isConsoleBuild = !isMemoListWebDemo && process.env.CONSOLE_RUNTIME === "true";
+  const isConsoleBuild = !isMemoListWebDemo && process.env.BLOG_BUILD_TARGET === "console";
   const isWebDemoAdmin =
     isMemoListWebDemo && getWebDemoEnvironment(Astro.url, "public").persona === "admin";
   const requestedEditSlug = isMemoListWebDemo ? getWebDemoEditSlug(Astro.url) : null;

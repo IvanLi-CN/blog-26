@@ -28,7 +28,7 @@ const {
   resizeForKeyboard = false,
 } = Astro.props;
 const canonical = getCanonicalUrl(pathname);
-const isConsoleRuntime = process.env.CONSOLE_RUNTIME === "true";
+const isConsoleBuild = process.env.BLOG_BUILD_TARGET === "console";
 const isWebDemoBuild = process.env.WEB_DEMO_BUILD === "true";
 const assistantPath = toPublicSitePath("/chat") ?? "/chat";
 const isAssistantPage =
@@ -58,7 +58,7 @@ const resolvedImage =
     />
     <title>{title}</title>
     <meta name="description" content={description} />
-    {isConsoleRuntime && <meta name="robots" content="noindex, nofollow" />}
+    {isConsoleBuild && <meta name="robots" content="noindex, nofollow" />}
     <meta name="keywords" content={SITE.keywords.join(",")} />
     <meta name="generator" content="Astro" />
     <link rel="canonical" href={canonical} />
@@ -231,7 +231,7 @@ const resolvedImage =
     <script>
       import "@/lib/public-reading-viewport";
     </script>
-    {isConsoleRuntime && shareTargetServiceWorker ? (
+    {isConsoleBuild && shareTargetServiceWorker ? (
       <script define:vars={{ shareTargetServiceWorker }}>
         if ("serviceWorker" in navigator) {
           navigator.serviceWorker.register(shareTargetServiceWorker, { scope: "/" }).catch(() => {
@@ -249,12 +249,12 @@ const resolvedImage =
         <slot />
       </div>
     </div>
-    {isConsoleRuntime ? <SystemShareToastViewport client:load /> : null}
-    {!isAssistantPage && !isConsoleRuntime ? <KnowledgeAssistant client:only="react" /> : null}
+    {isConsoleBuild ? <SystemShareToastViewport client:load /> : null}
+    {!isAssistantPage && !isConsoleBuild ? <KnowledgeAssistant client:only="react" /> : null}
     {isWebDemoBuild ? (
       <WebDemoInspector
         client:load
-        app={isConsoleRuntime ? "admin" : "public"}
+        app={isConsoleBuild ? "admin" : "public"}
         initialPathname={Astro.url.pathname}
       />
     ) : null}

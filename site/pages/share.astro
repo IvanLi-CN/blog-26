@@ -2,15 +2,15 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import SystemShareConfirmation from "../components/SystemShareConfirmation";
 
-const isConsoleRuntime = process.env.CONSOLE_RUNTIME === "true";
-if (!isConsoleRuntime) Astro.response.status = 404;
+const isConsoleBuild = process.env.BLOG_BUILD_TARGET === "console";
+if (!isConsoleBuild) Astro.response.status = 404;
 ---
 
 <BaseLayout
   title="发布 Memo"
   description="发布系统分享内容"
   pathname={Astro.url.pathname}
-  resizeForKeyboard={isConsoleRuntime}
+  resizeForKeyboard={isConsoleBuild}
 >
-  {isConsoleRuntime ? <SystemShareConfirmation client:load /> : <main class="nature-container px-4 py-12">Not Found</main>}
+  {isConsoleBuild ? <SystemShareConfirmation client:load /> : <main class="nature-container px-4 py-12">Not Found</main>}
 </BaseLayout>

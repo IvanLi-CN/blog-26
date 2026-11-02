@@ -44,7 +44,6 @@ const child = Bun.spawn(["bun", "scripts/start-console.ts"], {
   env: {
     ...process.env,
     NODE_ENV: "test",
-    CONSOLE_RUNTIME: "true",
     PORT: "0",
     BIND_HOST: "127.0.0.1",
     PLAYBOOK_SYNC_ENABLED: "false",

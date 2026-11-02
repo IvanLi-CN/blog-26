@@ -139,9 +139,10 @@ function versionedContentUrl(edition: PlaybookEdition, url: string) {
 
 function policyResourceLinks(policy: PlaybookPolicySkillDetail, edition: PlaybookEdition) {
   const base = `/_content/playbook/${encodeURIComponent(edition.edition.source.tag)}/${edition.edition.editionDigest}/policies/${policy.summary.slug}/`;
-  const consoleRuntime = typeof process !== "undefined" && process.env?.CONSOLE_RUNTIME === "true";
+  const consoleBuild =
+    typeof process !== "undefined" && process.env?.BLOG_BUILD_TARGET === "console";
   const resourceHref = (path: string) =>
-    consoleRuntime
+    consoleBuild
       ? `/api/public/playbook/resource?edition=${edition.edition.editionDigest}&sourceReleaseId=${encodeURIComponent(edition.edition.source.releaseId)}&sourceTag=${encodeURIComponent(edition.edition.source.tag)}&policy=${policy.summary.slug}&path=${encodeURIComponent(path)}`
       : href(`${base}${path.split("/").map(encodeURIComponent).join("/")}`);
   return { base, resourceHref };

@@ -42,7 +42,7 @@ export function parseStaticPlaybookEdition(raw: string): PlaybookEdition {
 
 let staticEdition: Promise<PlaybookEdition | undefined> | undefined;
 export async function getPlaybookEdition() {
-  if (process.env.CONSOLE_RUNTIME === "true") {
+  if (process.env.BLOG_BUILD_TARGET === "console") {
     const [{ initializeDB }, { getPlaybookSnapshotStore }] = await Promise.all([
       import("@/lib/db"),
       import("@/server/services/playbook-snapshot-store"),
@@ -68,7 +68,7 @@ export async function getPlaybookEditionForIdentity(
   sourceReleaseId: string | undefined,
   sourceTag: string | undefined
 ) {
-  if (process.env.CONSOLE_RUNTIME === "true") return getPlaybookEdition();
+  if (process.env.BLOG_BUILD_TARGET === "console") return getPlaybookEdition();
   if (!editionDigest || !sourceReleaseId || !sourceTag) return getPlaybookEdition();
   if (!/^[a-f0-9]{64}$/u.test(editionDigest) || !/^[1-9]\d*$/u.test(sourceReleaseId))
     return undefined;
