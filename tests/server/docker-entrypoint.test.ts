@@ -1,8 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
 
-function runEntrypoint(env: Record<string, string | undefined>) {
-  return spawnSync("bash", ["./docker-entrypoint.sh", "bun", "run", "gateway:start"], {
+function runEntrypoint(
+  env: Record<string, string | undefined>,
+  command = ["bun", "run", "gateway:start"]
+) {
+  return spawnSync("bash", ["./docker-entrypoint.sh", ...command], {
     cwd: process.cwd(),
     env: {
       PATH: process.env.PATH,
@@ -61,5 +64,21 @@ describe("docker-entrypoint runtime config validation", () => {
     expect(result.stdout).toContain("Public media runtime configuration validated");
     expect(result.stdout).toContain("Runtime configuration validated");
     expect(result.stdout).not.toContain("same-origin public media facade requires");
+  });
+
+  it("rejects production console startup through the start alias without public media facade runtime config", () => {
+    const result = runEntrypoint(
+      {
+        NODE_ENV: "production",
+        LLM_SETTINGS_MASTER_KEY: "test-master-key",
+        PUBLIC_API_BASE_URL: "https://ivanli.cc",
+      },
+      ["bun", "run", "start"]
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("public media facade requires");
+    expect(result.stdout).toContain("PUBLIC_MEDIA_IMAGOR_BASE_URL");
+    expect(result.stdout).toContain("PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL");
   });
 });

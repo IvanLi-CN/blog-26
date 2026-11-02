@@ -71,7 +71,7 @@ Blog 数据合同现在区分项目的 `catalog_visibility` 与 `source_visibili
 
 ## 博客已有的发布与运行边界
 
-[astro.config.mjs](../../../astro.config.mjs) 在 `CONSOLE_RUNTIME=true` 时输出 Astro server 到 `console-dist`，否则输出 static 到 `site-dist`。[site/lib/public-site.ts](../../../site/lib/public-site.ts) 的 `getSnapshot` 在 console 中执行 `buildPublicSnapshot`，静态构建则读快照文件。[export-public-site-data.ts](../../../scripts/export-public-site-data.ts) 创建或复用该文件。
+[astro.config.mjs](../../../astro.config.mjs) 读取构建期 `BLOG_BUILD_TARGET=console|public`，分别输出 Astro server 到 `console-dist` 或 static 到 `site-dist`。[site/lib/public-site.ts](../../../site/lib/public-site.ts) 的 `getSnapshot` 在 console 中执行 `buildPublicSnapshot`，静态构建则读快照文件。[export-public-site-data.ts](../../../scripts/export-public-site-data.ts) 创建或复用该文件。Console 启动时不再重新注入构建目标；模式已固化在对应产物中。
 
 [ADR 0010](../../adr/0010-self-contained-console-runtime.md) 明确 console 是自包含 SSR 应用；公开静态站与 console 的实时 Memo 可以有不同新鲜度。该实时边界不自动适用于尚未接入的Playbook。
 

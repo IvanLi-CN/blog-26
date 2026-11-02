@@ -53,15 +53,23 @@ is_truthy() {
 }
 
 requires_public_media_runtime() {
-  if ! is_truthy "${SERVE_PUBLIC_SITE:-false}" && [ "${CONSOLE_RUNTIME:-false}" != "true" ]; then
-    return 1
-  fi
-
   if [ "${NODE_ENV:-}" != "production" ]; then
     return 1
   fi
 
-  return 0
+  if is_truthy "${SERVE_PUBLIC_SITE:-false}"; then
+    return 0
+  fi
+
+  local command_text="${APP_CMD[*]}"
+  case "$command_text" in
+    *console:start*|*start-console.ts*|*"bun run start"*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 validate_public_media_runtime() {
@@ -228,7 +236,6 @@ if [ "$(id -u)" = "0" ] && { [ "$RUN_UID" != "$(id -u)" ] || [ "$RUN_GID" != "$(
     SITE_DIST_DIR="$SITE_DIST_DIR" \
     ADMIN_DIST_DIR="$ADMIN_DIST_DIR" \
     CONSOLE_DIST_DIR="$CONSOLE_DIST_DIR" \
-    CONSOLE_RUNTIME="${CONSOLE_RUNTIME:-true}" \
     SERVE_PUBLIC_SITE="$SERVE_PUBLIC_SITE" \
     PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
     ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
@@ -243,7 +250,6 @@ else
     SITE_DIST_DIR="$SITE_DIST_DIR" \
     ADMIN_DIST_DIR="$ADMIN_DIST_DIR" \
     CONSOLE_DIST_DIR="$CONSOLE_DIST_DIR" \
-    CONSOLE_RUNTIME="${CONSOLE_RUNTIME:-true}" \
     SERVE_PUBLIC_SITE="$SERVE_PUBLIC_SITE" \
     PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
     ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \

@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { getStaticRouteDataEntries, readStaticRouteData } from "../lib/static-route-data";
 
 export const prerender =
-  process.env.CONSOLE_RUNTIME !== "true" && process.env.WEB_DEMO_BUILD !== "true";
+  process.env.BLOG_BUILD_TARGET !== "console" && process.env.WEB_DEMO_BUILD !== "true";
 export const getStaticPaths = getStaticRouteDataEntries;
 
 export const GET: APIRoute = ({ request, params, props }) => {

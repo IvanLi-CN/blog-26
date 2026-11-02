@@ -142,7 +142,7 @@ export async function ALL({ request, params }: { request: Request; params: { pat
 }
 
 export const prerender =
-  process.env.CONSOLE_RUNTIME !== "true" && process.env.WEB_DEMO_BUILD !== "true";
+  process.env.BLOG_BUILD_TARGET !== "console" && process.env.WEB_DEMO_BUILD !== "true";
 
 export function getStaticPaths() {
   return [];

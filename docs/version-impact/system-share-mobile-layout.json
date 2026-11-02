@@ -88,7 +88,7 @@
         {
           "path": "site/components/SystemShareConfirmation.css",
           "blob": "05ac3522878c401167c637dd388940291b45bff3",
-          "command": "bun run check and CONSOLE_RUNTIME=true bun run console:build"
+          "command": "bun run check and bun run console:build"
         },
         {
           "path": "src/styles/milkdown-nature.css",

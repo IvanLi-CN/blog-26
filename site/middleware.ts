@@ -4,7 +4,7 @@ const IMMUTABLE_ASSET_PATH = /\.(?:avif|css|gif|ico|jpeg|jpg|js|map|png|svg|webp
 
 export const onRequest: MiddlewareHandler = async ({ url }, next) => {
   const response = await next();
-  if (process.env.CONSOLE_RUNTIME !== "true") return response;
+  if (process.env.BLOG_BUILD_TARGET !== "console") return response;
 
   const headers = new Headers(response.headers);
   const pathname = url.pathname;

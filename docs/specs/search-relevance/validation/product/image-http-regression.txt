@@ -1,4 +1,4 @@
-$ NODE_ENV=production CONSOLE_RUNTIME=true bun scripts/start-console.ts
+$ NODE_ENV=production bun scripts/start-console.ts
 [clipping] Content directory is not ready; processor startup skipped.
 HTTP failure body: 503 {"error":"search-engine-unavailable","code":"SERVICE_UNAVAILABLE"}
 Traceback (most recent call last):

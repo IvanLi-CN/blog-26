@@ -48,6 +48,7 @@ test("page evidence mode is selected at build time", async () => {
     "utf8"
   );
   const webDemoSiteScript = packageJson.scripts?.["web-demo:site"] ?? "";
+  const siteDevScript = packageJson.scripts?.["site:dev"] ?? "";
 
   expect(adminMain).toContain("VITE_WEB_DEMO_BUILD");
   expect(adminMain).not.toContain("localStorage");
@@ -56,7 +57,8 @@ test("page evidence mode is selected at build time", async () => {
   expect(memoPage).not.toContain("Astro.url.searchParams");
   expect(memoTimeline).toContain("PUBLIC_WEB_DEMO_BUILD");
   expect(memoTimeline).not.toContain("import.meta.env.DEV");
-  expect(webDemoSiteScript).toContain("CONSOLE_RUNTIME=false");
+  expect(webDemoSiteScript).toContain("BLOG_BUILD_TARGET=public");
+  expect(siteDevScript).toContain("BLOG_BUILD_TARGET=public");
   expect(webDemoSiteScript).toContain("WEB_DEMO_BUILD=true");
   expect(webDemoSiteScript).toContain("CONTENT_SOURCES=local");
   expect(webDemoSiteScript).toContain("DB_PATH=./dev-data/web-demo/sqlite.db");
@@ -75,7 +77,7 @@ test("page evidence mode is selected at build time", async () => {
   expect(webDemoSiteScript).toContain("VITE_CACHE_DIR=node_modules/.vite-web-demo-dev");
   expect(webDemoSiteScript).toContain("ASTRO_OUT_DIR=web-demo-site-dev-dist");
   expect(packageJson.scripts?.["web-demo:start"] ?? "").toContain("server/entry.mjs");
-  expect(astroConfig).toContain("const serverRuntime = consoleRuntime || webDemoRuntime;");
+  expect(astroConfig).toContain("const serverRuntime = consoleBuild || webDemoRuntime;");
   expect(astroConfig).toContain('output: serverRuntime ? "server" : "static"');
   expect(astroConfig).toContain('mode: webDemoRuntime ? "standalone" : "middleware"');
   expect(astroConfig).toContain('"**/web-demo-site-dist/**"');
