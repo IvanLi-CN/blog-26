@@ -1,5 +1,3 @@
-import versionJson from "@/generated/version.json";
-
 export interface VersionInfo {
   version: string;
   productVersion: string | null;
@@ -32,7 +30,14 @@ type PartialVersionInfo = {
   [Key in keyof VersionInfo]?: VersionInfo[Key];
 };
 
-const parsedVersionInfo = versionJson as PartialVersionInfo;
+const generatedVersionModules =
+  typeof import.meta.glob === "function"
+    ? import.meta.glob<PartialVersionInfo>("../generated/version.json", {
+        eager: true,
+        import: "default",
+      })
+    : {};
+const parsedVersionInfo = Object.values(generatedVersionModules)[0] ?? {};
 
 export const versionInfo: VersionInfo = {
   version: parsedVersionInfo.version ?? FALLBACK_VERSION_INFO.version,
