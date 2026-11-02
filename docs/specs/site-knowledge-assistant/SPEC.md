@@ -226,6 +226,15 @@ Web Demo 只使用隔离 fixture 和内存模拟回答；这些证据不代表�
 - [320×800 窄屏：操作按钮换行后仍右端对齐](./assets/assistant-error-alert-narrow-320x800.png)
 - [1280×900 桌面：操作按钮自适应保持同排并右端对齐](./assets/assistant-error-alert-desktop-1280x900.png)
 
+当前助手功能配置与入口证据：
+
+- [后台站点功能配置：2320×1335 桌面](./assets/assistant-site-features-desktop-2320x1335.png)
+- [后台站点功能配置：393×852 移动端](./assets/assistant-site-features-mobile-393x852.png)
+- [Console 助手入口：2320×1335 桌面](./assets/assistant-console-launcher-desktop-2320x1335.png)
+- [Console 助手入口：393×852 移动端](./assets/assistant-console-launcher-mobile-393x852.png)
+
+以上截图来自当前候选提交的独立 Web Demo/后台正式路由，覆盖后台配置页面和 Console 入口的桌面、小屏状态；截图已由负责人确认。截图保留原始页面范围，空白裁剪未检查。
+
 ## Related ADRs
 
 - [ADR 0003: Public Mobile Content Stream](../../adr/0003-public-mobile-content-stream.md)
