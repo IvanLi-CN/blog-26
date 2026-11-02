@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "10eb06f50f674c34f2f263d97e78b17e65af0d7a",
+  "covered_files": {
+    "Dockerfile": "2197c239b682458126da1f9561b8f172f67b3bbd",
+    "astro.config.mjs": "6d52292fccc84507399fa76aa95a04684b63c44b",
+    "docker-entrypoint.sh": "17d4fc5d8227e196079f1704011aa26947761811",
+    "docs/specs/search-relevance/validation/product/image-http-regression.txt": "3559d36c31c6d0bb0faaad326b48a4775d8a4e89",
+    "docs/specs/site-knowledge-assistant/HISTORY.md": "316fe53d169b2b65ca0db38fd61382e5faa9d22c",
+    "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "08628ce7389e28f3d49a88f84af80487a8235bec",
+    "docs/specs/site-knowledge-assistant/SPEC.md": "c5922cb9a7f96ea7cb7f21d5327476e97675a776",
+    "docs/specs/site-knowledge-assistant/assets/assistant-error-alert-desktop-1280x900.png": "b580f18c56965fd61a21ce10e0d13c9448fe163f",
+    "docs/specs/site-knowledge-assistant/assets/assistant-error-alert-mobile-393x852.png": "35070839b09c8c3c06c80951b923daf31cffd1e8",
+    "docs/specs/site-knowledge-assistant/assets/assistant-error-alert-narrow-320x800.png": "3549c32566f79bb2fe84611f5080955f2161bca5",
+    "docs/specs/style-playbook-integration/HISTORY.md": "bc8cb4002a104f3a2a51936db642879db5e493a7",
+    "docs/specs/system-share-memos/IMPLEMENTATION.md": "b5579736f7d1fa61b63391f0f7fd760c1c21e8b1",
+    "package.json": "9499b46fdf0944f5fb6c3c9c48d1d4be98e793ab",
+    "playwright.config.ts": "07b92d97932bd812ac9e12ca8ac8f166748cd026",
+    "scripts/build-project-tags-demo.ts": "5bb003441f7c91c9b7289c15efabff3a9c8eba6c",
+    "scripts/build-web-demo.ts": "ee542b135bb1af851c4db094faf31f8a8db98185",
+    "scripts/preview-web-demo.ts": "66535077f6762dbf9e2056b09858143a8d453076",
+    "scripts/verify-console-build.ts": "b4262c82958ef24fe2682d2f3f47e84ff43926ea",
+    "site/components/KnowledgeAssistant.css": "45d2ded923fcdb2a2b4e97c4a85089f874c6719d",
+    "site/components/KnowledgeAssistant.tsx": "5be26e9ca6dd59c007c89e4b7a845db8047ecfde",
+    "site/components/PublicRouter.tsx": "ce0b139b2fca8b8a00999997a69ac4c4a270ad86",
+    "site/components/pages/memo.tsx": "32768b6562c304e9dadbeb0acd5c70e77abf7206",
+    "site/layouts/BaseLayout.astro": "844705d54f6c275f9b778d5f9399a4ccbc4662f2",
+    "site/lib/page-data/memo.ts": "ce6954897d91d69c6790e1ba9c8d0097f646db41",
+    "site/lib/page-data/memos.ts": "68d755c49d007c9d85e79f0c2fc3a37facf729ad",
+    "site/lib/page-data/playbookDetail.ts": "e63746e4dcb70afd07ab24965f7e738a31c1abef",
+    "site/lib/playbook.ts": "c54659ca6c8108c8a4e52d83afb56c8ff30c99cb",
+    "site/lib/public-pwa.ts": "861115df0bf1551bd9460c6474e17f87f7150681",
+    "site/lib/public-site.ts": "6b4a1c692be658a1769209055c3787e7990b6de1",
+    "site/middleware.ts": "b48b150a3360ffed5c71b0c031ea8e41bd56a2ae",
+    "site/pages/[...path].ts": "62b62d4e19e5d634ad5f05c6e9228cf47a21ee82",
+    "site/pages/[...route].json.ts": "5faa6e7eb6d2a31595a74ffd008a7cf0e2b3533f",
+    "site/pages/api/[...path].ts": "c1971ab21f50049a3d0d804be51bb9861d9e8624",
+    "site/pages/mcp.ts": "df0a725914dd142886dd3699556a7f358de96c06",
+    "site/pages/playbook/[...path].astro": "5d3cee5d145e3369c921c93d174c74f86dfd20f4",
+    "site/pages/rss.xml.ts": "9833181220cdbc8d42c1dc79aa607889ec5a4565",
+    "site/pages/share.astro": "f370a2d1665f8732fc347ccd98e9afb7bec9e06c",
+    "site/pages/site.webmanifest.ts": "ce1159cd2d5c8f1b1bba781ea808df59fdb28eec",
+    "src/components/playbook/PlaybookPage.tsx": "d44edef91d42dac3792bfa15c500e24a979c029d",
+    "src/components/ui/alert.tsx": "94c080dc7da7919d9fcd76b78e0d93cbfcf70020",
+    "tests/components/KnowledgeAssistant.test.tsx": "cd323e138a29ae77a7f52c46a39aadb4011c7600",
+    "tests/e2e/clipping-detail.ts": "85b5a64b831e5f7d6ad8fa0dc69dae24b7b2139f",
+    "tests/lib/console-build-boundary.test.ts": "68deb15163ccad74d08f6ce7f5aa570314efad6a",
+    "tests/lib/playbook-build-smoke.ts": "8e345da555959e2b507ed86c78df5c4af8054b33",
+    "tests/lib/public-pwa-assets.test.ts": "4f03e3b854dee62791b6360bca50c992fcf1789e",
+    "tests/lib/public-site-static-media.test.ts": "1ffd9adef51b13fa0b6b6e1304e87cb0bbc2017f",
+    "tests/lib/web-demo-boundary.test.ts": "30bcdcf97ef4fcb811162da6d1cdcfeae19d3f5f",
+    "tests/server/console-api-route.test.ts": "4a17d58a7cd6eba1d435686dca9a48e4a126b075",
+    "tests/server/docker-entrypoint.test.ts": "c3aa59bee882f9a3508a3f9ccaeb56a583aee38e",
+    "tests/server/jobs/runtime.test.ts": "4fe7d37dde0c8846f79d9a75316989919d532c12",
+    "tests/server/site-middleware.test.ts": "447347b98af5951fbee4ff113b13471ec47880e2",
+    "tests/storybook/story-boundary.test.ts": "c4aad98af3ce1093ebad3e99b4dd39c4c42d51e2"
+  },
+  "change": {
+    "description": "Embed the public and Console build target into their Astro artifacts, remove runtime mode injection from production and Web Demo startup, and preserve public static, Console SSR, request-scoped runtime, and public media validation contracts.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The candidate changes build and startup boundaries plus focused regression coverage. Public routes, Console APIs, authentication, publishing, persistence, and consumer-facing response contracts remain compatible.",
+      "assessed_at": "2026-11-02T20:00:00+08:00",
+      "evidence": [
+        {
+          "path": "astro.config.mjs",
+          "blob": "6d52292fccc84507399fa76aa95a04684b63c44b",
+          "command": "Review the build-target selection and static-versus-SSR output contract"
+        },
+        {
+          "path": "scripts/verify-console-build.ts",
+          "blob": "b4262c82958ef24fe2682d2f3f47e84ff43926ea",
+          "command": "Review generated Console artifact validation for startup-time target reads"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The implementation embeds BLOG_BUILD_TARGET during public and Console builds, removes it from production and preview startup, validates the supported bun run start Console alias, and updates boundary tests. No public API or durable-state format changes.",
+      "assessed_at": "2026-11-02T20:00:00+08:00",
+      "evidence": [
+        {
+          "path": "Dockerfile",
+          "blob": "2197c239b682458126da1f9561b8f172f67b3bbd",
+          "command": "Inspect production image commands and absence of runtime mode injection"
+        },
+        {
+          "path": "docker-entrypoint.sh",
+          "blob": "17d4fc5d8227e196079f1704011aa26947761811",
+          "command": "Inspect Console/public-media validation for console:start, start-console.ts, and bun run start"
+        },
+        {
+          "path": "scripts/preview-web-demo.ts",
+          "blob": "66535077f6762dbf9e2056b09858143a8d453076",
+          "command": "Inspect prebuilt Web Demo preview startup without BLOG_BUILD_TARGET"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the Astro build-target boundary, production startup validation, Web Demo preview startup, and their tests and evidence. No API, persistence, or release-ledger behavior drifted."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The repository check, focused boundary and Docker-entrypoint tests, Console build verification, and static public build verify compatible build and startup behavior. The generated Console artifact contains no startup BLOG_BUILD_TARGET reads.",
+      "assessed_at": "2026-11-02T20:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/lib/console-build-boundary.test.ts",
+          "blob": "68deb15163ccad74d08f6ce7f5aa570314efad6a",
+          "command": "bun test tests/lib/console-build-boundary.test.ts tests/server/docker-entrypoint.test.ts"
+        },
+        {
+          "path": "scripts/verify-console-build.ts",
+          "blob": "b4262c82958ef24fe2682d2f3f47e84ff43926ea",
+          "command": "bun run console:build"
+        },
+        {
+          "path": "astro.config.mjs",
+          "blob": "6d52292fccc84507399fa76aa95a04684b63c44b",
+          "command": "bun run site:build with a temporary migrated local database and content root"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["4.0.2"],
+      "evidence": [
+        {
+          "path": "site/pages/api/[...path].ts",
+          "blob": "c1971ab21f50049a3d0d804be51bb9861d9e8624",
+          "command": "Public API route handlers remain compatible while build target selection moves to artifact creation"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local-content format, browser persistence schema, release-ledger state, attachment format, or published content format changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "scripts/verify-console-build.ts",
+          "blob": "b4262c82958ef24fe2682d2f3f47e84ff43926ea",
+          "command": "Console artifact validation and build target changes do not alter persisted state"
+        }
+      ]
+    }
+  }
+}

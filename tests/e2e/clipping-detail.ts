@@ -114,7 +114,6 @@ async function runSmoke() {
       ADMIN_EMAIL: email,
       ENABLE_DEV_ENDPOINTS: "true",
       ALLOW_ADMIN_SESSION_IN_PRODUCTION: "true",
-      CONSOLE_RUNTIME: "true",
       PLAYBOOK_SYNC_ENABLED: "false",
       PI_DURABLE_DB_PATH: join(dirname(databasePath), `smoke-${slug}.sqlite`),
     },

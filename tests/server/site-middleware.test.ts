@@ -6,12 +6,12 @@ function applyMiddleware(url: string, next: () => Promise<Response>) {
 }
 
 afterEach(() => {
-  delete process.env.CONSOLE_RUNTIME;
+  delete process.env.BLOG_BUILD_TARGET;
 });
 
 describe("console response cache policy", () => {
   test("keeps admin preview assets private", async () => {
-    process.env.CONSOLE_RUNTIME = "true";
+    process.env.BLOG_BUILD_TARGET = "console";
     const response = await applyMiddleware(
       "https://console.ivanli.cc/api/admin/preview/assets/post/draft/abc123/cover.webp",
       async () => new Response("private asset")
@@ -22,7 +22,7 @@ describe("console response cache policy", () => {
   });
 
   test("keeps public media assets cacheable", async () => {
-    process.env.CONSOLE_RUNTIME = "true";
+    process.env.BLOG_BUILD_TARGET = "console";
     const response = await applyMiddleware(
       "https://console.ivanli.cc/api/public/assets/post/public/abc123/cover.webp",
       async () => new Response("public asset")
@@ -32,7 +32,7 @@ describe("console response cache policy", () => {
   });
 
   test("keeps file API assets private", async () => {
-    process.env.CONSOLE_RUNTIME = "true";
+    process.env.BLOG_BUILD_TARGET = "console";
     const response = await applyMiddleware(
       "https://console.ivanli.cc/api/files/local/drafts/private.webp",
       async () => new Response("private file")
@@ -42,7 +42,7 @@ describe("console response cache policy", () => {
   });
 
   test("does not make dynamic feeds immutable", async () => {
-    process.env.CONSOLE_RUNTIME = "true";
+    process.env.BLOG_BUILD_TARGET = "console";
     const response = await applyMiddleware(
       "https://console.ivanli.cc/feed.xml",
       async () => new Response("<rss />", { headers: { "cache-control": "public, max-age=3600" } })

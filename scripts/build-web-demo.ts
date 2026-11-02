@@ -77,7 +77,7 @@ export async function prepareWebDemoInputs() {
     ADMIN_OUT_DIR: relative(repoRoot, adminDist),
     ASTRO_CACHE_DIR: ".astro-web-demo",
     VITE_CACHE_DIR: "node_modules/.vite-web-demo",
-    CONSOLE_RUNTIME: "false",
+    BLOG_BUILD_TARGET: "public",
     CONSOLE_WEB_DEMO_BUILD: "false",
     PUBLIC_API_BASE_URL: "",
     PUBLIC_ASSISTANT_LAUNCHER_DEFAULT: "true",
@@ -128,7 +128,7 @@ async function main() {
     ...env,
     ASTRO_OUT_DIR: relative(repoRoot, consoleSiteDist),
     ASTRO_CACHE_DIR: ".astro-web-demo-console",
-    CONSOLE_RUNTIME: "true",
+    BLOG_BUILD_TARGET: "console",
     CONSOLE_WEB_DEMO_BUILD: "true",
     PUBLIC_WEB_DEMO_BUILD: "false",
   });

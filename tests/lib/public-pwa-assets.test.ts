@@ -95,7 +95,7 @@ describe("public PWA assets", () => {
     const assets = await getPublicPwaAssetPaths(repoRoot);
     const publicManifest = createPublicWebManifest(assets, (path) => scopePath("", path));
     const consoleManifest = createPublicWebManifest(assets, (path) => scopePath("", path), {
-      consoleRuntime: true,
+      consoleBuild: true,
     });
 
     expect("share_target" in publicManifest).toBe(false);
