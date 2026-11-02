@@ -107,7 +107,7 @@
         },
         {
           "path": "src/server/clipping/api.test.ts",
-          "blob": "df96af73d15cf3278c557072d118860da36a95d5",
+          "blob": "0d10fdec7623fccde7d552597420c14dcd82c79d",
           "command": "bun test src/server/clipping/api.test.ts: disabled service returns FEATURE_DISABLED before clipping auth for chat, events, and stop"
         },
         {
