@@ -10,7 +10,7 @@
     "Dockerfile": "602888c3e8fe9cb60267e593ea9b76e6ad636214",
     "GLOSSARY.md": "7b9bad850e7f8cfcb5d49ea0f6dadaaf44377197",
     "apps/admin/src/components/app-shell.tsx": "8c8d9332dcccd3db3a94abdbe49800040acb1e73",
-    "apps/admin/src/demo/mock-admin-api.ts": "97bed00c61abd7c1784ad4e94a0ccd3826c96a40",
+    "apps/admin/src/demo/mock-admin-api.ts": "2cd976ab937dce5d02a4a814f7a46380a5a2d0aa",
     "apps/admin/src/pages/site-features.tsx": "b694b129c0cfbb8022278a9b5ca396ac5c62bf19",
     "apps/admin/src/router.tsx": "d1692ffc6b239778564f04d79624f99bf242b4ce",
     "docs/adr/0039-server-driven-assistant-feature-configuration.md": "5f829847e33e802efbcfbdd2cf082adad933a105",
@@ -39,15 +39,17 @@
     "src/lib/schema.ts": "3c5a41a1cb45e35ba7ed8beb5bf858e8fbae97b7",
     "src/lib/site-feature-settings.ts": "e4caa447c8aba40cec6ae23e8e6290ca3e7f2eb6",
     "src/lib/version-info.ts": "09e34e0878516a3542f0a0d84406a944f1389fba",
-    "src/lib/web-demo-fetch.ts": "d55b199298cc19975ac71acf033683b2d895a510",
+    "src/lib/web-demo-fetch.ts": "60cc819485c022d832ba88e937ed25498ff3bba2",
+    "src/lib/web-demo-runtime.ts": "11405a478819677e01edb22dbc1f81dcba712d18",
     "src/server/admin-api/router.ts": "9a81fbca032666235310fdaa3a402dadf4b4f2c4",
     "src/server/assistant/api.ts": "c4effa351cc90218d6bb28918ae9f645032347ec",
     "src/server/clipping/api.test.ts": "0d10fdec7623fccde7d552597420c14dcd82c79d",
     "src/server/clipping/api.ts": "bd261f4d9ab1227d314736766ae0be0b3b1c0733",
-    "src/server/public-api/router.ts": "729a545b8621ecda5a284338bd691e7cf5eabee6",
-    "src/server/services/site-features.ts": "34468d145202d1ae5be78aba62207cd0713dd9d1",
-    "src/server/site-features.test.ts": "d30751c032ed157855a764e347d1b07ed3572637",
+    "src/server/public-api/router.ts": "6f7fdd3fbf311fd9db9e241290991e0ab9088ab5",
+    "src/server/services/site-features.ts": "79dd67410f6565c64451d3ba9ced54d2c3e46a3d",
+    "src/server/site-features.test.ts": "a7e40728d382a284ccda748d6dc082c20ecd5205",
     "tests/ci/prepare-release-fixture.ts": "ae9d3218e245594cdb38f3ad65f04ebf3526f06c",
+    "tests/e2e/web-demo/assistant.spec.ts": "b1478f4d016727f578a3192378a896c74e9c43fd",
     "tests/lib/web-demo-boundary.test.ts": "caafb27ce0ade599520901f385df821f8b2ab438",
     "tests/server/system-share-api.test.ts": "cb4fa25e7812ded134f0326828371cb8899ca8ca"
   },
@@ -85,7 +87,7 @@
       "evidence": [
         {
           "path": "src/server/site-features.test.ts",
-          "blob": "d30751c032ed157855a764e347d1b07ed3572637",
+          "blob": "a7e40728d382a284ccda748d6dc082c20ecd5205",
           "command": "bun test src/server/site-features.test.ts: matching-version diff, mismatched-version full response, ETag, admin revision, and damaged-row repair coverage"
         },
         {
@@ -102,8 +104,8 @@
       "evidence": [
         {
           "path": "src/server/site-features.test.ts",
-          "blob": "d30751c032ed157855a764e347d1b07ed3572637",
-          "command": "bun test src/server/site-features.test.ts"
+          "blob": "a7e40728d382a284ccda748d6dc082c20ecd5205",
+          "command": "bun test src/server/site-features.test.ts: runtime-config cache validators, CORS variance, admin revision repair, and malformed-row handling"
         },
         {
           "path": "src/server/clipping/api.test.ts",
@@ -114,6 +116,16 @@
           "path": "tests/lib/web-demo-boundary.test.ts",
           "blob": "caafb27ce0ade599520901f385df821f8b2ab438",
           "command": "bun test tests/lib/web-demo-boundary.test.ts"
+        },
+        {
+          "path": "tests/e2e/web-demo/assistant.spec.ts",
+          "blob": "b1478f4d016727f578a3192378a896c74e9c43fd",
+          "command": "Web Demo browser flow: Admin feature settings propagate to public launcher visibility and disabled assistant API behavior"
+        },
+        {
+          "path": "src/lib/web-demo-runtime.ts",
+          "blob": "11405a478819677e01edb22dbc1f81dcba712d18",
+          "command": "Shared session state bridge keeps Admin, public, and Console Web Demo builds on one feature snapshot"
         }
       ]
     }
@@ -126,7 +138,7 @@
       "evidence": [
         {
           "path": "src/server/public-api/router.ts",
-          "blob": "729a545b8621ecda5a284338bd691e7cf5eabee6",
+          "blob": "6f7fdd3fbf311fd9db9e241290991e0ab9088ab5",
           "command": "The runtime-config endpoint adds a public, version-aware launcher response without exposing service settings"
         },
         {
@@ -150,7 +162,7 @@
         },
         {
           "path": "src/server/services/site-features.ts",
-          "blob": "34468d145202d1ae5be78aba62207cd0713dd9d1",
+          "blob": "79dd67410f6565c64451d3ba9ced54d2c3e46a3d",
           "command": "Review revisioned writes and fail-closed repair behavior"
         }
       ]
