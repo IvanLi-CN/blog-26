@@ -1036,11 +1036,15 @@ test("disabled assistant service gates clipping chat before auth", async () => {
       });
 
       const publicResponse = await handlePublicApiRequest(
-        new Request(`http://localhost/api/public/memos/clip/clipping/${operation}`),
+        new Request(`http://localhost/api/public/memos/clip/clipping/${operation}`, {
+          headers: { origin: "http://localhost" },
+        }),
         `/memos/clip/clipping/${operation}`
       );
       expect(publicResponse.status).toBe(404);
       expect(publicResponse.headers.get("cache-control")).toBe("no-store, private");
+      expect(publicResponse.headers.get("access-control-allow-origin")).toBe("http://localhost");
+      expect(publicResponse.headers.get("access-control-allow-credentials")).toBe("true");
       expect(await publicResponse.json()).toMatchObject({ code: "FEATURE_DISABLED" });
     }
   } finally {
