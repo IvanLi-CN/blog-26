@@ -1597,6 +1597,7 @@ export async function handlePublicApiRequest(
     }
 
     if (/^\/memos\/[^/]+\/clipping\/chat(?:\/(?:events|stop))?$/u.test(pathname)) {
+      await initializeDB();
       await assertAssistantServiceEnabled();
     }
 
