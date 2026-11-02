@@ -28,7 +28,6 @@ export async function createWebDemoPreviewServer({
         PORT: String(upstreamPort),
         WEB_DEMO_BUILD: "true",
         PUBLIC_WEB_DEMO_BUILD: mode === "public" ? "true" : "false",
-        BLOG_BUILD_TARGET: mode === "console" ? "console" : "public",
         CONSOLE_WEB_DEMO_BUILD: mode === "console" ? "true" : "false",
         CONTENT_SOURCES: "local",
         PUBLIC_SNAPSHOT_PATH:

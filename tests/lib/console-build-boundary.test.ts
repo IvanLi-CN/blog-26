@@ -8,11 +8,12 @@ test("Console mode is selected at build time and never injected at startup", asy
   const packageJson = JSON.parse(await readFile(resolve(repoRoot, "package.json"), "utf8")) as {
     scripts?: Record<string, string>;
   };
-  const [astroConfig, consoleStart, dockerfile, entrypoint] = await Promise.all([
+  const [astroConfig, consoleStart, dockerfile, entrypoint, preview] = await Promise.all([
     readFile(resolve(repoRoot, "astro.config.mjs"), "utf8"),
     readFile(resolve(repoRoot, "scripts/start-console.ts"), "utf8"),
     readFile(resolve(repoRoot, "Dockerfile"), "utf8"),
     readFile(resolve(repoRoot, "docker-entrypoint.sh"), "utf8"),
+    readFile(resolve(repoRoot, "scripts/preview-web-demo.ts"), "utf8"),
   ]);
   const legacyRuntimeVariable = ["CONSOLE", "RUNTIME"].join("_");
 
@@ -28,4 +29,5 @@ test("Console mode is selected at build time and never injected at startup", asy
   expect(dockerfile).not.toContain(legacyRuntimeVariable);
   expect(entrypoint).not.toContain(legacyRuntimeVariable);
   expect(entrypoint).not.toContain("BLOG_BUILD_TARGET");
+  expect(preview).not.toContain("BLOG_BUILD_TARGET");
 });

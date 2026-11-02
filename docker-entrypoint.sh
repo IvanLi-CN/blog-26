@@ -63,7 +63,7 @@ requires_public_media_runtime() {
 
   local command_text="${APP_CMD[*]}"
   case "$command_text" in
-    *console:start*|*start-console.ts*)
+    *console:start*|*start-console.ts*|*"bun run start"*)
       return 0
       ;;
     *)
