@@ -28,6 +28,7 @@ import {
   SEARCH_DEMO_DOCUMENTS,
 } from "./search/web-demo-fixtures";
 import { composeSystemShareMemoContent, normalizeSystemShareEditor } from "./system-share";
+import { versionIdentity } from "./version-info";
 import {
   assertWebDemoRequestAvailable,
   getWebDemoEnvironment,
@@ -1501,10 +1502,14 @@ async function getDemoPublicResponse(
   // common connection/delay/abort policy has admitted this actual read.
   if (url.pathname === "/api/public/page" && method === "GET") return null;
   if (url.pathname === "/api/public/runtime-config" && method === "GET") {
+    const matchingVersion = url.searchParams.get("siteVersion") === versionIdentity;
+    const launcherEnabled = import.meta.env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT !== "false";
     return jsonResponse({
       schemaVersion: 1,
-      mode: "full",
-      features: { assistant: { launcher: { enabled: true } } },
+      mode: matchingVersion ? "diff" : "full",
+      features: matchingVersion
+        ? { assistant: { launcher: launcherEnabled ? {} : { enabled: false } } }
+        : { assistant: { launcher: { enabled: launcherEnabled } } },
     });
   }
   if (isConsoleWebDemoBuild()) {

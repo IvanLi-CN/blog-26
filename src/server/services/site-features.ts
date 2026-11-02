@@ -78,6 +78,18 @@ function defaultRecord(): SiteFeatureRecord {
   };
 }
 
+function disabledRecord(): SiteFeatureRecord {
+  return {
+    ...DEFAULT_SITE_FEATURE_RECORD,
+    features: {
+      assistant: {
+        service: { enabled: false },
+        launcher: { enabled: false },
+      },
+    },
+  };
+}
+
 function parseStoredRecord(config: string): SiteFeatureRecord {
   return siteFeatureRecordSchema.parse(JSON.parse(config));
 }
@@ -94,11 +106,15 @@ async function readSnapshot(): Promise<SiteFeatureSnapshot> {
     .get();
 
   if (!row) return { record: defaultRecord(), revision: 0, updatedAt: null };
-  return {
-    record: parseStoredRecord(row.config),
-    revision: row.revision,
-    updatedAt: row.updatedAt,
-  };
+  let record: SiteFeatureRecord;
+  try {
+    record = parseStoredRecord(row.config);
+  } catch {
+    // A damaged or future-format row must fail closed while remaining replaceable
+    // through the authenticated admin endpoint using its persisted revision.
+    record = disabledRecord();
+  }
+  return { record, revision: row.revision, updatedAt: row.updatedAt };
 }
 
 export async function getSiteFeatureSettings() {
@@ -128,7 +144,7 @@ export async function getSiteFeatureSettings() {
 export async function updateSiteFeatureSettings(input: unknown) {
   const update: SiteFeatureUpdate = siteFeatureUpdateSchema.parse(input);
   const current = await readSnapshot();
-  if (update.expectedRevision !== undefined && update.expectedRevision !== current.revision) {
+  if (update.expectedRevision !== current.revision) {
     throw new SiteFeatureSettingsConflictError();
   }
 

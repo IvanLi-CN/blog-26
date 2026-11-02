@@ -20,6 +20,7 @@ import {
   memoClippings,
   posts,
   sessions,
+  siteFeatureSettings,
   users,
 } from "@/lib/schema";
 import { buildPublicSnapshot, writePublicSnapshot } from "@/public-site/snapshot";
@@ -1006,5 +1007,36 @@ test("migration gate blocks clipping chat while reprocess remains available", as
     globals[key].service = previous;
     await store.save(originalManifest);
     await service.close();
+  }
+});
+
+test("disabled assistant service gates clipping chat before auth", async () => {
+  const previous = await db.select().from(siteFeatureSettings);
+  await db.delete(siteFeatureSettings);
+  await db.insert(siteFeatureSettings).values({
+    id: "global",
+    config: JSON.stringify({
+      schemaVersion: 1,
+      features: {
+        assistant: {
+          service: { enabled: false },
+          launcher: { enabled: true },
+        },
+      },
+    }),
+    revision: 3,
+    updatedAt: Date.now(),
+  });
+
+  try {
+    for (const operation of ["chat", "chat/events", "chat/stop"]) {
+      await expect(frontendRequest(operation)).rejects.toMatchObject({
+        code: "FEATURE_DISABLED",
+        status: 404,
+      });
+    }
+  } finally {
+    await db.delete(siteFeatureSettings);
+    if (previous.length > 0) await db.insert(siteFeatureSettings).values(previous);
   }
 });

@@ -3,14 +3,12 @@
   "kind": "version-impact-record",
   "base_sha": "10eb06f50f674c34f2f263d97e78b17e65af0d7a",
   "covered_files": {
-    "docs/specs/site-knowledge-assistant/HISTORY.md": "316fe53d169b2b65ca0db38fd61382e5faa9d22c",
     "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "08628ce7389e28f3d49a88f84af80487a8235bec",
-    "docs/specs/site-knowledge-assistant/SPEC.md": "c5922cb9a7f96ea7cb7f21d5327476e97675a776",
+    "docs/specs/site-knowledge-assistant/HISTORY.md": "316fe53d169b2b65ca0db38fd61382e5faa9d22c",
     "docs/specs/site-knowledge-assistant/assets/assistant-error-alert-desktop-1280x900.png": "b580f18c56965fd61a21ce10e0d13c9448fe163f",
     "docs/specs/site-knowledge-assistant/assets/assistant-error-alert-mobile-393x852.png": "35070839b09c8c3c06c80951b923daf31cffd1e8",
     "docs/specs/site-knowledge-assistant/assets/assistant-error-alert-narrow-320x800.png": "3549c32566f79bb2fe84611f5080955f2161bca5",
     "site/components/KnowledgeAssistant.css": "45d2ded923fcdb2a2b4e97c4a85089f874c6719d",
-    "site/components/KnowledgeAssistant.tsx": "5be26e9ca6dd59c007c89e4b7a845db8047ecfde",
     "src/components/ui/alert.tsx": "94c080dc7da7919d9fcd76b78e0d93cbfcf70020",
     "tests/components/KnowledgeAssistant.test.tsx": "cd323e138a29ae77a7f52c46a39aadb4011c7600"
   },
@@ -26,14 +24,14 @@
       "assessed_at": "2026-11-01T19:25:00+08:00",
       "evidence": [
         {
-          "path": "docs/specs/site-knowledge-assistant/SPEC.md",
-          "blob": "c5922cb9a7f96ea7cb7f21d5327476e97675a776",
-          "command": "REQ-SKA-022 records the responsive Alert action and 44px control boundary"
+          "path": "docs/specs/site-knowledge-assistant/HISTORY.md",
+          "blob": "316fe53d169b2b65ca0db38fd61382e5faa9d22c",
+          "command": "The assistant history records the existing error-state presentation contract"
         },
         {
-          "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "5be26e9ca6dd59c007c89e4b7a845db8047ecfde",
-          "command": "Assistant request failure state uses the local Alert and compact retry action"
+          "path": "site/components/KnowledgeAssistant.css",
+          "blob": "45d2ded923fcdb2a2b4e97c4a85089f874c6719d",
+          "command": "Assistant error-state styling remains the presentation boundary for the alert repair"
         }
       ]
     },
@@ -74,8 +72,8 @@
           "command": "bun test tests/components/KnowledgeAssistant.test.tsx (11 passed, 75 expectations)"
         },
         {
-          "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "5be26e9ca6dd59c007c89e4b7a845db8047ecfde",
+          "path": "site/components/KnowledgeAssistant.css",
+          "blob": "45d2ded923fcdb2a2b4e97c4a85089f874c6719d",
           "command": "bun run check and targeted Biome validation pass"
         },
         {
@@ -103,8 +101,8 @@
           "command": "The focused UI regression preserves the existing request failure and retry contract"
         },
         {
-          "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "5be26e9ca6dd59c007c89e4b7a845db8047ecfde",
+          "path": "src/components/ui/alert.tsx",
+          "blob": "94c080dc7da7911d9fcd76b78e0d93cbfcf70020",
           "command": "Presentation-only Alert composition does not change public API payloads"
         }
       ]
@@ -117,8 +115,8 @@
       "upgrade_from_versions": [],
       "evidence": [
         {
-          "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "5be26e9ca6dd59c007c89e4b7a845db8047ecfde",
+          "path": "site/components/KnowledgeAssistant.css",
+          "blob": "45d2ded923fcdb2a2b4e97c4a85089f874c6719d",
           "command": "The change only replaces error-state markup and retry presentation"
         }
       ]

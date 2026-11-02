@@ -56,7 +56,7 @@ describe("Web Demo request boundary", () => {
     );
     expect(memoPage.match(/hideChat=\{!isConsoleBuild\}/g)).toHaveLength(2);
     expect(layout).toContain(
-      '{!isAssistantPage && !isConsoleBuild ? <KnowledgeAssistant client:only="react" /> : null}'
+      '{!isAssistantPage ? <KnowledgeAssistant client:only="react" /> : null}'
     );
   });
 });

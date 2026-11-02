@@ -286,6 +286,7 @@ async function routeClippingRequest(
 ) {
   if (!["", "status", "reprocess", "chat", "chat/events", "chat/stop"].includes(operation))
     return response({ error: "Not found" }, 404);
+  if (operation.startsWith("chat")) await assertAssistantServiceEnabled();
   const store = new ClippingStore();
   const privateOperation = operation === "reprocess";
   const discussionPrincipal =
@@ -326,7 +327,6 @@ async function routeClippingRequest(
     });
   }
   if (!manifest) throw new TRPCError({ code: "NOT_FOUND", message: "剪藏尚未建立，请稍后重试" });
-  if (operation.startsWith("chat")) await assertAssistantServiceEnabled();
   if (operation === "reprocess") {
     if (request.method !== "POST") return response({ error: "Method not allowed" }, 405);
     requireSameOriginMutation(request);

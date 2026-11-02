@@ -122,6 +122,7 @@ async function main() {
   await rm(siteDist, { recursive: true, force: true });
   await rm(consoleSiteDist, { recursive: true, force: true });
   await rm(adminDist, { recursive: true, force: true });
+  await run("generate build version", ["scripts/generate-version.ts"], process.env);
   const env = await prepareWebDemoInputs();
   await run("build public Web Demo", ["x", "astro", "build"], env);
   await run("build Console Web Demo", ["x", "astro", "build"], {

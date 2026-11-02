@@ -22,7 +22,7 @@ export type SiteFeatureRecord = z.infer<typeof siteFeatureRecordSchema>;
 
 export const siteFeatureUpdateSchema = z
   .object({
-    expectedRevision: z.number().int().nonnegative().optional(),
+    expectedRevision: z.number().int().nonnegative(),
     assistant: z
       .object({
         serviceEnabled: z.boolean(),

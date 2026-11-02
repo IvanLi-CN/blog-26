@@ -135,6 +135,58 @@ describe("site feature runtime configuration", () => {
     });
   });
 
+  it("fails closed for damaged settings while preserving admin repair", async () => {
+    await db.insert(siteFeatureSettings).values({
+      id: "global",
+      config: "not-json",
+      revision: 7,
+      updatedAt: Date.now(),
+    });
+
+    const publicResponse = await publicConfig(versionIdentity);
+    expect(publicResponse.status).toBe(200);
+    expect(await publicResponse.json()).toEqual({
+      schemaVersion: 1,
+      mode: "diff",
+      features: { assistant: { launcher: { enabled: false } } },
+    });
+
+    const adminResponse = await handleAdminApiRequest(
+      adminRequest("/api/admin/site-features", {}, "site-features-admin@test.local"),
+      "/site-features"
+    );
+    expect(adminResponse.status).toBe(200);
+    expect(await adminResponse.json()).toMatchObject({
+      revision: 7,
+      settings: { assistant: { serviceEnabled: false, launcherEnabled: false } },
+    });
+
+    const missingRevision = await handleAdminApiRequest(
+      adminRequest(
+        "/api/admin/site-features",
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            assistant: { serviceEnabled: true, launcherEnabled: true },
+          }),
+        },
+        "site-features-admin@test.local"
+      ),
+      "/site-features"
+    );
+    expect(missingRevision.status).toBe(400);
+
+    const repaired = await updateSiteFeatureSettings({
+      expectedRevision: 7,
+      assistant: { serviceEnabled: true, launcherEnabled: true },
+    });
+    expect(repaired).toMatchObject({
+      revision: 8,
+      resolved: { assistant: { serviceEnabled: true, publicLauncherEnabled: true } },
+    });
+  });
+
   it("protects the admin control surface and uses optimistic revisions", async () => {
     const anonymous = await handleAdminApiRequest(
       adminRequest("/api/admin/site-features"),
