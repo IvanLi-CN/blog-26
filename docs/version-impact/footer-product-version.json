@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "10eb06f50f674c34f2f263d97e78b17e65af0d7a",
+  "covered_files": {
+    "apps/admin/src/components/app-shell.tsx": "5dc924ce75de132e0bf6e04cbf77db12e3594faa",
+    "scripts/build-web-demo.ts": "e0f07d802e6ed43d1e9311bc27548591dddeca67",
+    "site/components/SiteFooter.tsx": "694029989cae23a105e39228141fcc7898926db0",
+    "src/lib/version-info.ts": "a4b2253352529f87b490482de51f24158d62dc0d"
+  },
+  "change": {
+    "description": "Expose the product version in the public footer and admin brand block, and make Web Demo builds generate the version metadata required by those surfaces.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change adds a presentation-only product version label to existing public and admin chrome. It does not change API payloads, navigation contracts, authentication, or persistent state.",
+      "assessed_at": "2026-11-02T22:03:13+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SiteFooter.tsx",
+          "blob": "694029989cae23a105e39228141fcc7898926db0",
+          "command": "The footer adds one v-prefixed product version label beside the existing site name"
+        },
+        {
+          "path": "apps/admin/src/components/app-shell.tsx",
+          "blob": "5dc924ce75de132e0bf6e04cbf77db12e3594faa",
+          "command": "The admin brand block adds the same shared product version label"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate remains limited to shared version-label formatting, two existing brand surfaces, and the Web Demo build prerequisite. The public and admin runtime contracts and durable state remain unchanged.",
+      "assessed_at": "2026-11-02T22:03:13+08:00",
+      "scope_drift": {
+        "detected": false,
+        "description": "No route, API, authentication, database, content, or release-version input was added; the build-script change only restores an existing generated metadata prerequisite in clean Web Demo builds."
+      },
+      "evidence": [
+        {
+          "path": "src/lib/version-info.ts",
+          "blob": "a4b2253352529f87b490482de51f24158d62dc0d",
+          "command": "The shared label derives from the existing generated productVersion field and falls back to the existing development label"
+        },
+        {
+          "path": "scripts/build-web-demo.ts",
+          "blob": "e0f07d802e6ed43d1e9311bc27548591dddeca67",
+          "command": "Web Demo preparation now generates version metadata before clean builds"
+        }
+      ]
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The public and admin builds consume one shared v-prefixed product version label, the approved desktop and mobile candidate uses one visible footer label, and the Web Demo builder now creates its ignored generated input before bundling. No public response or durable state contract changes are introduced.",
+      "assessed_at": "2026-11-02T22:03:13+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SiteFooter.tsx",
+          "blob": "694029989cae23a105e39228141fcc7898926db0",
+          "command": "Owner-confirmed footer version candidate C at desktop and mobile layouts"
+        },
+        {
+          "path": "apps/admin/src/components/app-shell.tsx",
+          "blob": "5dc924ce75de132e0bf6e04cbf77db12e3594faa",
+          "command": "Admin build passes with the shared product version label"
+        },
+        {
+          "path": "tests/server/version-api.test.ts",
+          "blob": "c86011cb95db3b9f8358570c62e22630af004ac0",
+          "command": "bun test tests/server/version-api.test.ts (4 passed)"
+        },
+        {
+          "path": "scripts/build-web-demo.ts",
+          "blob": "e0f07d802e6ed43d1e9311bc27548591dddeca67",
+          "command": "Clean Web Demo CI failure was reproduced at the missing generated/version.json boundary and fixed at the build entrypoint"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["4.0.2"],
+      "evidence": [
+        {
+          "path": "tests/server/version-api.test.ts",
+          "blob": "c86011cb95db3b9f8358570c62e22630af004ac0",
+          "command": "The existing version metadata API tests preserve the version response contract"
+        },
+        {
+          "path": "src/lib/version-info.ts",
+          "blob": "a4b2253352529f87b490482de51f24158d62dc0d",
+          "command": "The UI reads the existing productVersion metadata without changing server payloads"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content format, browser storage, cache identity, or durable release state changes are introduced.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/components/SiteFooter.tsx",
+          "blob": "694029989cae23a105e39228141fcc7898926db0",
+          "command": "The change only adds existing metadata to footer presentation"
+        }
+      ]
+    }
+  }
+}
