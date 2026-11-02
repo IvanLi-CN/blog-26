@@ -1,6 +1,7 @@
 import Icon from "@/components/ui/Icon";
 import { footerData } from "@/config/navigation";
 import { SITE } from "@/config/site";
+import { productVersionLabel } from "@/lib/version-info";
 import { toPublicSitePath } from "../lib/runtime-urls";
 
 export default function SiteFooter(_props: Record<string, unknown>) {
@@ -22,8 +23,13 @@ export default function SiteFooter(_props: Record<string, unknown>) {
                   />
                 </div>
                 <div>
-                  <div className="font-heading text-xl font-semibold tracking-[-0.04em]">
-                    {SITE.name}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="font-heading text-xl font-semibold tracking-[-0.04em]">
+                      {SITE.name}
+                    </div>
+                    <span className="nature-chip nature-chip-accent px-2 py-1 font-mono text-xs tracking-normal">
+                      {productVersionLabel}
+                    </span>
                   </div>
                   <div className="text-sm text-[color:var(--nature-text-soft)]">
                     Digital greenhouse for notes, memos, and making.

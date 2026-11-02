@@ -33,6 +33,7 @@ import {
 } from "react";
 import WebDemoInspector from "@/components/WebDemoInspector";
 import { adminApi } from "@/lib/admin-api-client";
+import { productVersionLabel } from "@/lib/version-info";
 import { WEB_DEMO_ROUTE_EVENT } from "@/lib/web-demo-runtime";
 import { ThemeToggle } from "~/components/theme-toggle";
 import {
@@ -171,6 +172,12 @@ function BrandBlock({ children }: { children?: ReactNode }) {
             管理后台
           </span>
           <span className="block truncate text-xs text-muted-foreground">内容工作台</span>
+          <span
+            className="mt-1 inline-flex rounded-full bg-primary/12 px-2 py-0.5 font-mono text-[0.65rem] font-semibold tracking-[0.08em] text-primary"
+            data-testid="admin-product-version"
+          >
+            {productVersionLabel}
+          </span>
         </span>
       </Link>
       {children}

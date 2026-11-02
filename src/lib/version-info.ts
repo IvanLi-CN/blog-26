@@ -61,3 +61,7 @@ export const versionIdentity =
   versionInfo.productVersion && versionInfo.sourceSha !== "unknown"
     ? `${versionInfo.productVersion}:${versionInfo.sourceSha}`
     : `${versionInfo.buildVersion}:${versionInfo.sourceSha}`;
+
+export const productVersionLabel = versionInfo.productVersion
+  ? `v${versionInfo.productVersion}`
+  : versionInfo.version;
