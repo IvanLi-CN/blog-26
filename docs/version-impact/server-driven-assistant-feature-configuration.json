@@ -39,7 +39,7 @@
     "src/lib/schema.ts": "3c5a41a1cb45e35ba7ed8beb5bf858e8fbae97b7",
     "src/lib/site-feature-settings.ts": "e4caa447c8aba40cec6ae23e8e6290ca3e7f2eb6",
     "src/lib/version-info.ts": "09e34e0878516a3542f0a0d84406a944f1389fba",
-    "src/lib/web-demo-fetch.ts": "878450220d92711957ff5a0329f045b2a772803c",
+    "src/lib/web-demo-fetch.ts": "d80fa302c9f994edb930bf8a32459108a0284746",
     "src/lib/web-demo-runtime.ts": "11405a478819677e01edb22dbc1f81dcba712d18",
     "src/server/admin-api/router.ts": "9a81fbca032666235310fdaa3a402dadf4b4f2c4",
     "src/server/assistant/api.ts": "c4effa351cc90218d6bb28918ae9f645032347ec",
@@ -50,7 +50,7 @@
     "src/server/site-features.test.ts": "a7e40728d382a284ccda748d6dc082c20ecd5205",
     "tests/ci/prepare-release-fixture.ts": "ae9d3218e245594cdb38f3ad65f04ebf3526f06c",
     "tests/e2e/web-demo/assistant.spec.ts": "b1478f4d016727f578a3192378a896c74e9c43fd",
-    "tests/lib/web-demo-fetch.test.ts": "34d2cd83c70bf03caf7da627d98d025fba76e22c",
+    "tests/lib/web-demo-fetch.test.ts": "de9e46ad0c31bea0331ade07d6db11cbc10583a2",
     "tests/lib/web-demo-boundary.test.ts": "caafb27ce0ade599520901f385df821f8b2ab438",
     "tests/server/system-share-api.test.ts": "cb4fa25e7812ded134f0326828371cb8899ca8ca"
   },
@@ -130,8 +130,8 @@
         },
         {
           "path": "tests/lib/web-demo-fetch.test.ts",
-          "blob": "34d2cd83c70bf03caf7da627d98d025fba76e22c",
-          "command": "bun test tests/lib/web-demo-fetch.test.ts: matching-version launcher diffs and disabled clipping snapshot gates"
+          "blob": "de9e46ad0c31bea0331ade07d6db11cbc10583a2",
+          "command": "bun test tests/lib/web-demo-fetch.test.ts: matching-version launcher diffs, disabled clipping snapshot gates, and runtime-config HEAD/ETag/CORS parity"
         }
       ]
     }
