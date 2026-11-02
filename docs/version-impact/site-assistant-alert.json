@@ -102,7 +102,7 @@
         },
         {
           "path": "src/components/ui/alert.tsx",
-          "blob": "94c080dc7da7911d9fcd76b78e0d93cbfcf70020",
+          "blob": "94c080dc7da7919d9fcd76b78e0d93cbfcf70020",
           "command": "Presentation-only Alert composition does not change public API payloads"
         }
       ]
