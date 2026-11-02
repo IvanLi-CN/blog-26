@@ -100,6 +100,7 @@ const config = frozenConfigSchema.parse({
     PUBLIC_API_BASE_URL: "https://console.ivanli.cc",
     PUBLIC_SITE_URL: "https://ivanli.cc",
     PUBLIC_SITE_BASE_PATH: "/",
+    PUBLIC_ASSISTANT_LAUNCHER_DEFAULT: "true",
   },
 });
 await writeFile(resolve(inputs, "config.json"), canonicalJson(config));

@@ -14,6 +14,7 @@ import {
   RefreshCcw,
   ScanSearch,
   Shield,
+  SlidersHorizontal,
   Tags,
   Users,
   Waypoints,
@@ -110,6 +111,7 @@ const navSections = [
       { to: "/pats", label: "访问令牌", icon: KeyRound },
       { to: "/github-binding", label: "GitHub 身份", icon: Link2 },
       { to: "/llm-settings", label: "LLM 设置", icon: BrainCircuit },
+      { to: "/site-features", label: "站点功能", icon: SlidersHorizontal },
     ],
   },
 ] as const;

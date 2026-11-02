@@ -124,6 +124,7 @@ jobs:
           PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL || 'https://console.ivanli.cc' }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://ivanli.cc' }}
           PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH || '/' }}
+          PUBLIC_ASSISTANT_LAUNCHER_DEFAULT: ${{ vars.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT || 'true' }}
           # Keep release fetch concurrency aligned with the production watermark
           # analysis workers so queued variants do not expire before processing.
           PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY: "2"

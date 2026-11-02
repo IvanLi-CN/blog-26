@@ -16,6 +16,7 @@ await run(["bun", "run", "site:build"], {
   CONSOLE_RUNTIME: "false",
   PUBLIC_SNAPSHOT_PATH: `${fixtureRoot}/public-snapshot.json`,
   PUBLIC_CONTENT_BUNDLE_URL: "preloaded",
+  PUBLIC_ASSISTANT_LAUNCHER_DEFAULT: "true",
   PUBLIC_SITE_URL: "https://example.test",
   PUBLIC_SITE_BASE_PATH: Bun.env.PUBLIC_SITE_BASE_PATH ?? "",
   PLAYBOOK_BUNDLE_DIR: `${fixtureRoot}/playbook`,

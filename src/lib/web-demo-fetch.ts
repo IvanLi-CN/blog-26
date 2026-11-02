@@ -1500,6 +1500,13 @@ async function getDemoPublicResponse(
   // The Demo build's server supplies route-scoped fixture data after the
   // common connection/delay/abort policy has admitted this actual read.
   if (url.pathname === "/api/public/page" && method === "GET") return null;
+  if (url.pathname === "/api/public/runtime-config" && method === "GET") {
+    return jsonResponse({
+      schemaVersion: 1,
+      mode: "full",
+      features: { assistant: { launcher: { enabled: true } } },
+    });
+  }
   if (isConsoleWebDemoBuild()) {
     const consoleResponse = await getConsoleWebDemoResponse(url, method, body, init);
     if (consoleResponse) return consoleResponse;

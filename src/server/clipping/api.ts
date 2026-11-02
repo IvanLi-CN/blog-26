@@ -15,6 +15,11 @@ import { resolveRequestOrigin } from "@/lib/public-cors";
 import { posts } from "@/lib/schema";
 import { AssistantServiceError, type AssistantSnapshot } from "@/server/assistant/service";
 import type { TRPCContext } from "@/server/context";
+import {
+  assertAssistantServiceEnabled,
+  isAssistantServiceEnabled,
+  SiteFeatureDisabledError,
+} from "@/server/services/site-features";
 import { getClippingRuntime } from "./runtime";
 import { ClippingAssistantUnavailableError, ClippingTargetChangedError } from "./service";
 import { ClippingStore, clippingIdForMemo, projectClippingMemo, readAuthoredMemo } from "./store";
@@ -308,7 +313,8 @@ async function routeClippingRequest(
           }
         : {}),
       canDiscuss: await (async () => {
-        if (!getClippingRuntime()?.assistantChatEnabled()) return false;
+        if (!(await isAssistantServiceEnabled()) || !getClippingRuntime()?.assistantChatEnabled())
+          return false;
         try {
           await frontendPrincipal(request);
           return true;
@@ -320,6 +326,7 @@ async function routeClippingRequest(
     });
   }
   if (!manifest) throw new TRPCError({ code: "NOT_FOUND", message: "剪藏尚未建立，请稍后重试" });
+  if (operation.startsWith("chat")) await assertAssistantServiceEnabled();
   if (operation === "reprocess") {
     if (request.method !== "POST") return response({ error: "Method not allowed" }, 405);
     requireSameOriginMutation(request);
@@ -492,6 +499,7 @@ export async function handleClippingRequest(
     return await routeClippingRequest(request, slug, operation, ctx);
   } catch (error) {
     if (error instanceof TRPCError) throw error;
+    if (error instanceof SiteFeatureDisabledError) throw error;
     if (
       error instanceof ClippingAssistantUnavailableError ||
       (error instanceof Error && error.name === "ClippingAssistantUnavailableError")

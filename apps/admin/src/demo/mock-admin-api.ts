@@ -2,6 +2,7 @@ import type {
   AdminAiUsageOverview,
   AdminDashboardAiUsage,
   AdminPost,
+  AdminSiteFeatureSettings,
   AdminUsageMetric,
   AdminUsageUser,
   AdminUsersResponse,
@@ -1315,6 +1316,31 @@ const demoSearchSettings: AdminSearchSettings = {
 const demoSearchRuns = new Map<string, SearchValidationRun>();
 const demoSearchRevision = { rag: 0, rewrite: 0 };
 
+const demoSiteFeatureSettings: AdminSiteFeatureSettings = {
+  revision: 0,
+  updatedAt: null,
+  defaults: { assistant: { launcher: { enabled: true } } },
+  settings: {
+    assistant: { serviceEnabled: true, launcherEnabled: true },
+  },
+  resolved: {
+    assistant: {
+      serviceEnabled: true,
+      launcherEnabled: true,
+      publicLauncherEnabled: true,
+    },
+  },
+};
+
+function refreshDemoSiteFeatureResolution() {
+  const assistant = demoSiteFeatureSettings.settings.assistant;
+  demoSiteFeatureSettings.resolved.assistant = {
+    serviceEnabled: assistant.serviceEnabled,
+    launcherEnabled: assistant.launcherEnabled,
+    publicLauncherEnabled: assistant.serviceEnabled && assistant.launcherEnabled,
+  };
+}
+
 type DemoRagMetrics = {
   total: number;
   indexed: number | null;
@@ -1996,6 +2022,29 @@ async function handleAdminRequest(
       recordWebDemoMutation("保存搜索设置", "仅更新演示内存配置");
     }
     return json(demoSearchSettings);
+  }
+  if (path === "/api/admin/site-features") {
+    if (method === "PUT") {
+      if (body?.expectedRevision !== demoSiteFeatureSettings.revision) {
+        return json(
+          { error: { code: "SITE_FEATURE_SETTINGS_CONFLICT", message: "配置已被其他窗口更新" } },
+          409
+        );
+      }
+      const assistant = body?.assistant;
+      if (
+        typeof assistant?.serviceEnabled !== "boolean" ||
+        typeof assistant?.launcherEnabled !== "boolean"
+      ) {
+        return json({ error: { code: "BAD_REQUEST", message: "站点功能配置格式不正确" } }, 400);
+      }
+      demoSiteFeatureSettings.settings.assistant = assistant;
+      demoSiteFeatureSettings.revision += 1;
+      demoSiteFeatureSettings.updatedAt = Date.now();
+      refreshDemoSiteFeatureResolution();
+      recordWebDemoMutation("保存站点功能", "仅更新隔离 Web Demo 内存配置");
+    }
+    return json(demoSiteFeatureSettings);
   }
   if (path === "/api/admin/search-settings/validate" && method === "POST") {
     const mode = aiSearchModeSchema.safeParse(body?.mode);

@@ -208,6 +208,8 @@ export async function buildProducts(
       `BUN_BUILD_IMAGE=${config.baseImages.build}`,
       "--build-arg",
       `BUN_RUNTIME_IMAGE=${config.baseImages.runtime}`,
+      "--build-arg",
+      `PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${config.env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT || "true"}`,
       "--label",
       `org.opencontainers.image.version=${entry.version}`,
       "--label",

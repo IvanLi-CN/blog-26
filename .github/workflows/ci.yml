@@ -47,6 +47,7 @@ jobs:
       PUBLIC_API_BASE_URL: https://console.ivanli.cc
       PUBLIC_SITE_URL: https://ivanli.cc
       PUBLIC_SITE_BASE_PATH: /
+      PUBLIC_ASSISTANT_LAUNCHER_DEFAULT: "true"
       PRODUCT_RELEASE_FIXTURE_VERSION: ${{ matrix.version }}
     steps:
       - uses: actions/checkout@v7
@@ -407,6 +408,7 @@ jobs:
             PUBLIC_API_BASE_URL=https://console.ivanli.cc
             PUBLIC_SITE_URL=https://ivanli.cc
             PUBLIC_SITE_BASE_PATH=/
+            PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=true
             PUBLIC_CONTENT_BUNDLE_URL=preloaded
             WITH_PLAYWRIGHT=false
             DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}

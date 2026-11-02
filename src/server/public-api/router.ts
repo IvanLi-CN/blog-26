@@ -77,6 +77,10 @@ import {
   type SearchProgressPhase,
 } from "@/server/services/content-search";
 import { suggestPublicSearchTerms } from "@/server/services/search-suggestions";
+import {
+  getPublicSiteFeatureConfig,
+  SiteFeatureDisabledError,
+} from "@/server/services/site-features";
 import { getPlaybookSnapshotStore } from "../services/playbook-snapshot-store";
 import { handlePlaybookRequest } from "./playbook";
 
@@ -1363,6 +1367,30 @@ export async function handlePublicApiRequest(
       });
     }
 
+    if (pathname === "/runtime-config") {
+      if (request.method !== "GET" && request.method !== "HEAD")
+        return methodNotAllowed(request, request.method);
+      await initializeDB();
+      const clientVersion = url.searchParams.get("siteVersion");
+      if (clientVersion && clientVersion.length > 256) {
+        return json(request, { error: "siteVersion 过长", code: "BAD_REQUEST" }, { status: 400 });
+      }
+      const config = await getPublicSiteFeatureConfig(clientVersion);
+      const headers = new Headers({
+        "cache-control": "public, max-age=30, stale-while-revalidate=30",
+        "content-type": "application/json; charset=utf-8",
+        etag: config.etag,
+      });
+      appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
+      if (request.headers.get("if-none-match") === config.etag) {
+        return new Response(null, { status: 304, headers });
+      }
+      return new Response(request.method === "HEAD" ? null : config.body, {
+        status: 200,
+        headers,
+      });
+    }
+
     if (pathname === "/reader-auth/github/start") {
       if (request.method !== "GET") return methodNotAllowed(request, request.method);
       if (!hasTrustedPublicOrigin(request)) {
@@ -2094,6 +2122,9 @@ export async function handlePublicApiRequest(
 
     return json(request, { error: "Not found" }, { status: 404 }, resHeaders);
   } catch (error) {
+    if (error instanceof SiteFeatureDisabledError) {
+      return json(request, { error: error.message, code: error.code }, { status: error.status });
+    }
     if (error instanceof TRPCError) {
       return json(
         request,

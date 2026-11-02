@@ -54,3 +54,10 @@ export const versionInfo: VersionInfo = {
       ? parsedVersionInfo.branchUrl
       : FALLBACK_VERSION_INFO.branchUrl,
 };
+
+// Product/source identity is shared by the static artifact and the Console image;
+// their build artifact suffixes intentionally do not participate in this key.
+export const versionIdentity =
+  versionInfo.productVersion && versionInfo.sourceSha !== "unknown"
+    ? `${versionInfo.productVersion}:${versionInfo.sourceSha}`
+    : `${versionInfo.buildVersion}:${versionInfo.sourceSha}`;
