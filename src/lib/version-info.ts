@@ -1,5 +1,3 @@
-import versionJson from "@/generated/version.json";
-
 export interface VersionInfo {
   version: string;
   productVersion: string | null;
@@ -32,7 +30,17 @@ type PartialVersionInfo = {
   [Key in keyof VersionInfo]?: VersionInfo[Key];
 };
 
-const parsedVersionInfo = versionJson as PartialVersionInfo;
+const generatedVersionModules: Record<string, PartialVersionInfo> = (() => {
+  try {
+    return import.meta.glob<PartialVersionInfo>("../generated/version.json", {
+      eager: true,
+      import: "default",
+    });
+  } catch {
+    return {};
+  }
+})();
+const parsedVersionInfo = Object.values(generatedVersionModules)[0] ?? {};
 
 export const versionInfo: VersionInfo = {
   version: parsedVersionInfo.version ?? FALLBACK_VERSION_INFO.version,
@@ -54,3 +62,14 @@ export const versionInfo: VersionInfo = {
       ? parsedVersionInfo.branchUrl
       : FALLBACK_VERSION_INFO.branchUrl,
 };
+
+// Product/source identity is shared by the static artifact and the Console image;
+// their build artifact suffixes intentionally do not participate in this key.
+export const versionIdentity =
+  versionInfo.productVersion && versionInfo.sourceSha !== "unknown"
+    ? `${versionInfo.productVersion}:${versionInfo.sourceSha}`
+    : `${versionInfo.buildVersion}:${versionInfo.sourceSha}`;
+
+export const productVersionLabel = versionInfo.productVersion
+  ? `v${versionInfo.productVersion}`
+  : versionInfo.version;

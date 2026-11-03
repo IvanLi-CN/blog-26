@@ -712,6 +712,13 @@ export const searchSettings = sqliteTable("search_settings", {
   updatedAt: integer("updated_at").notNull(),
 });
 
+export const siteFeatureSettings = sqliteTable("site_feature_settings", {
+  id: text("id").primaryKey(),
+  config: text("config").notNull(),
+  revision: integer("revision").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 // 反应表
 export const reactions = sqliteTable("reactions", {
   id: text("id").primaryKey(),

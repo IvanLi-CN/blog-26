@@ -58,6 +58,7 @@ ARG BRANCH_URL
 ARG PUBLIC_API_BASE_URL
 ARG PUBLIC_SITE_URL
 ARG PUBLIC_SITE_BASE_PATH
+ARG PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=true
 ARG PUBLIC_CONTENT_BUNDLE_URL=preloaded
 ARG PLAYBOOK_USE_DEPLOYED=false
 ARG PLAYBOOK_REQUIRED=false
@@ -76,6 +77,7 @@ ENV BRANCH_URL=${BRANCH_URL}
 ENV PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL}
 ENV PUBLIC_SITE_URL=${PUBLIC_SITE_URL}
 ENV PUBLIC_SITE_BASE_PATH=${PUBLIC_SITE_BASE_PATH}
+ENV PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${PUBLIC_ASSISTANT_LAUNCHER_DEFAULT}
 ENV PUBLIC_CONTENT_BUNDLE_URL=${PUBLIC_CONTENT_BUNDLE_URL}
 ENV PLAYBOOK_USE_DEPLOYED=${PLAYBOOK_USE_DEPLOYED}
 ENV PLAYBOOK_REQUIRED=${PLAYBOOK_REQUIRED}
@@ -88,6 +90,7 @@ RUN bun run prebuild && bun run build:compiled
 FROM ${BUN_RUNTIME_IMAGE} AS app-image-built
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
+ARG PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=true
 RUN --mount=type=cache,target=/var/cache/apt \
     --mount=type=cache,target=/var/lib/apt \
     apt-get update && \
@@ -101,9 +104,9 @@ ENV NODE_ENV=production
 ENV BIND_HOST=0.0.0.0
 ENV PORT=25090
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
-ENV CONSOLE_RUNTIME=true
 ENV SERVE_PUBLIC_SITE=false
 ENV PUBLIC_CORS_ALLOWED_ORIGINS=https://ivanli.cc
+ENV PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${PUBLIC_ASSISTANT_LAUNCHER_DEFAULT}
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/backend-dist/ ./
 COPY --from=builder /app/admin-dist ./admin-dist
@@ -124,6 +127,7 @@ CMD ["bun", "run", "console:start"]
 FROM ${BUN_RUNTIME_IMAGE} AS app-image-prebuilt
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
+ARG PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=true
 RUN --mount=type=cache,target=/var/cache/apt \
     --mount=type=cache,target=/var/lib/apt \
     apt-get update && \
@@ -137,9 +141,9 @@ ENV NODE_ENV=production
 ENV BIND_HOST=0.0.0.0
 ENV PORT=25090
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
-ENV CONSOLE_RUNTIME=true
 ENV SERVE_PUBLIC_SITE=false
 ENV PUBLIC_CORS_ALLOWED_ORIGINS=https://ivanli.cc
+ENV PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${PUBLIC_ASSISTANT_LAUNCHER_DEFAULT}
 COPY --from=deps /app/node_modules ./node_modules
 COPY backend-dist/ ./
 COPY admin-dist ./admin-dist

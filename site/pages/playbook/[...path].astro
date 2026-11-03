@@ -7,7 +7,7 @@ import {publicRouteMetadata} from '../../lib/route-metadata';
 import {getPlaybookStaticPaths} from '../../lib/playbook';
 export async function getStaticPaths() { return getPlaybookStaticPaths(); }
 export const prerender =
-  process.env.CONSOLE_RUNTIME !== "true" && process.env.WEB_DEMO_BUILD !== "true";
+  process.env.BLOG_BUILD_TARGET !== "console" && process.env.WEB_DEMO_BUILD !== "true";
 const initial = await loadPublicRoute(Astro.request);
 if (initial.kind === 'notFound') Astro.response.status = 404;
 const metadata = publicRouteMetadata(initial);

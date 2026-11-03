@@ -14,6 +14,7 @@ import { ProjectStatusPage } from "~/pages/project-status";
 import { ScheduleDetailPage } from "~/pages/schedule-detail";
 import { ScheduleRunDetailPage } from "~/pages/schedule-run-detail";
 import { SchedulesPage } from "~/pages/schedules";
+import { SiteFeaturesPage } from "~/pages/site-features";
 import { TagIconsPage } from "~/pages/tag-icons";
 import { TagsPage } from "~/pages/tags";
 import { UsersPage } from "~/pages/users";
@@ -112,6 +113,11 @@ const llmSettingsRoute = createRoute({
   path: "llm-settings",
   component: LlmSettingsPage,
 });
+const siteFeaturesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "site-features",
+  component: SiteFeaturesPage,
+});
 const usersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "users",
@@ -165,6 +171,7 @@ export const routeTree = rootRoute.addChildren([
   tagIconsRoute,
   patsRoute,
   llmSettingsRoute,
+  siteFeaturesRoute,
   usersRoute,
   aiUsageRoute,
   postPreviewRoute,

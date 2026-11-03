@@ -77,6 +77,11 @@ import {
   type SearchProgressPhase,
 } from "@/server/services/content-search";
 import { suggestPublicSearchTerms } from "@/server/services/search-suggestions";
+import {
+  assertAssistantServiceEnabled,
+  getPublicSiteFeatureConfig,
+  SiteFeatureDisabledError,
+} from "@/server/services/site-features";
 import { getPlaybookSnapshotStore } from "../services/playbook-snapshot-store";
 import { handlePlaybookRequest } from "./playbook";
 
@@ -101,6 +106,16 @@ function isMissingPathError(error: unknown) {
 
 function isExistingPathError(error: unknown) {
   return error && typeof error === "object" && "code" in error && error.code === "EEXIST";
+}
+
+function matchesIfNoneMatch(request: Request, etag: string) {
+  const value = request.headers.get("if-none-match");
+  if (!value) return false;
+
+  return value.split(",").some((candidate) => {
+    const tag = candidate.trim();
+    return tag === "*" || tag.replace(/^W\//u, "") === etag;
+  });
 }
 
 async function ensureSafeSystemShareDirectory(basePath: string, directory: string) {
@@ -1363,6 +1378,31 @@ export async function handlePublicApiRequest(
       });
     }
 
+    if (pathname === "/runtime-config") {
+      if (request.method !== "GET" && request.method !== "HEAD")
+        return methodNotAllowed(request, request.method);
+      await initializeDB();
+      const clientVersion = url.searchParams.get("siteVersion");
+      if (clientVersion && clientVersion.length > 256) {
+        return json(request, { error: "siteVersion 过长", code: "BAD_REQUEST" }, { status: 400 });
+      }
+      const config = await getPublicSiteFeatureConfig(clientVersion);
+      const headers = new Headers({
+        "cache-control": "public, max-age=30, stale-while-revalidate=30",
+        "content-type": "application/json; charset=utf-8",
+        etag: config.etag,
+        vary: "Origin",
+      });
+      appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
+      if (matchesIfNoneMatch(request, config.etag)) {
+        return new Response(null, { status: 304, headers });
+      }
+      return new Response(request.method === "HEAD" ? null : config.body, {
+        status: 200,
+        headers,
+      });
+    }
+
     if (pathname === "/reader-auth/github/start") {
       if (request.method !== "GET") return methodNotAllowed(request, request.method);
       if (!hasTrustedPublicOrigin(request)) {
@@ -1565,6 +1605,11 @@ export async function handlePublicApiRequest(
 
     if (pathname === "/chat" || pathname.startsWith("/chat/")) {
       return handleAssistantRequest(request, pathname, new Headers(), assistantService);
+    }
+
+    if (/^\/memos\/[^/]+\/clipping\/chat(?:\/(?:events|stop))?$/u.test(pathname)) {
+      await initializeDB();
+      await assertAssistantServiceEnabled();
     }
 
     const { caller, resHeaders, ctx } = await createCallerForRequest(request);
@@ -2094,6 +2139,13 @@ export async function handlePublicApiRequest(
 
     return json(request, { error: "Not found" }, { status: 404 }, resHeaders);
   } catch (error) {
+    if (error instanceof SiteFeatureDisabledError) {
+      return json(
+        request,
+        { error: error.message, code: error.code },
+        { status: error.status, headers: { "cache-control": "no-store, private" } }
+      );
+    }
     if (error instanceof TRPCError) {
       return json(
         request,

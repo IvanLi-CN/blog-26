@@ -12,7 +12,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.CONSOLE_RUNTIME;
+  delete process.env.BLOG_BUILD_TARGET;
   delete process.env.DB_PATH;
   delete process.env.LOCAL_CONTENT_BASE_PATH;
   delete process.env.ADMIN_EMAIL;
@@ -21,7 +21,7 @@ afterEach(() => {
 
 describe("console file API route", () => {
   test("does not expose existing raw files to anonymous requests", async () => {
-    process.env.CONSOLE_RUNTIME = "true";
+    process.env.BLOG_BUILD_TARGET = "console";
     process.env.DB_PATH = "./dev-data/sqlite.db";
     process.env.LOCAL_CONTENT_BASE_PATH = CONTENT_ROOT;
 
@@ -34,7 +34,7 @@ describe("console file API route", () => {
   });
 
   test("allows administrators to read raw files for authoring", async () => {
-    process.env.CONSOLE_RUNTIME = "true";
+    process.env.BLOG_BUILD_TARGET = "console";
     process.env.DB_PATH = "./dev-data/sqlite.db";
     process.env.LOCAL_CONTENT_BASE_PATH = CONTENT_ROOT;
     process.env.ADMIN_EMAIL = "admin-test@test.local";
@@ -51,7 +51,7 @@ describe("console file API route", () => {
   });
 
   test("keeps system-share attachments behind the administrator boundary", async () => {
-    process.env.CONSOLE_RUNTIME = "true";
+    process.env.BLOG_BUILD_TARGET = "console";
     process.env.DB_PATH = "./dev-data/sqlite.db";
     process.env.LOCAL_CONTENT_BASE_PATH = CONTENT_ROOT;
     process.env.ADMIN_EMAIL = "admin-test@test.local";
@@ -78,7 +78,7 @@ describe("console file API route", () => {
   });
 
   test("does not allow anonymous raw file writes through the console route", async () => {
-    process.env.CONSOLE_RUNTIME = "true";
+    process.env.BLOG_BUILD_TARGET = "console";
     process.env.DB_PATH = "./dev-data/sqlite.db";
     process.env.LOCAL_CONTENT_BASE_PATH = CONTENT_ROOT;
 
@@ -94,7 +94,7 @@ describe("console file API route", () => {
   });
 
   test("decodes encoded percent sequences in file names exactly once", async () => {
-    process.env.CONSOLE_RUNTIME = "true";
+    process.env.BLOG_BUILD_TARGET = "console";
     process.env.DB_PATH = "./dev-data/sqlite.db";
     process.env.LOCAL_CONTENT_BASE_PATH = CONTENT_ROOT;
     process.env.ADMIN_EMAIL = "admin-test@test.local";

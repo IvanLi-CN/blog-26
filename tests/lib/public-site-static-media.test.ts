@@ -7,14 +7,14 @@ import { __resetSnapshotForTests, getSnapshot } from "../../site/lib/public-site
 
 let temporaryRoot: string | undefined;
 const previousSnapshotPath = process.env.PUBLIC_SNAPSHOT_PATH;
-const previousConsoleRuntime = process.env.CONSOLE_RUNTIME;
+const previousBuildTarget = process.env.BLOG_BUILD_TARGET;
 
 afterEach(async () => {
   __resetSnapshotForTests();
   if (previousSnapshotPath === undefined) delete process.env.PUBLIC_SNAPSHOT_PATH;
   else process.env.PUBLIC_SNAPSHOT_PATH = previousSnapshotPath;
-  if (previousConsoleRuntime === undefined) delete process.env.CONSOLE_RUNTIME;
-  else process.env.CONSOLE_RUNTIME = previousConsoleRuntime;
+  if (previousBuildTarget === undefined) delete process.env.BLOG_BUILD_TARGET;
+  else process.env.BLOG_BUILD_TARGET = previousBuildTarget;
   if (temporaryRoot) await rm(temporaryRoot, { recursive: true, force: true });
   temporaryRoot = undefined;
 });
@@ -110,7 +110,7 @@ describe("static public site snapshot media", () => {
       })
     );
     process.env.PUBLIC_SNAPSHOT_PATH = snapshotPath;
-    delete process.env.CONSOLE_RUNTIME;
+    delete process.env.BLOG_BUILD_TARGET;
 
     const snapshot = await getSnapshot();
     const items = [
@@ -173,7 +173,7 @@ describe("static public site snapshot media", () => {
       })
     );
     process.env.PUBLIC_SNAPSHOT_PATH = snapshotPath;
-    delete process.env.CONSOLE_RUNTIME;
+    delete process.env.BLOG_BUILD_TARGET;
 
     const snapshot = await getSnapshot();
     expect(snapshot.posts[0]?.body).toContain("/wm-b-v2/content.webp");

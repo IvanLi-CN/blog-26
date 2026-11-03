@@ -4,7 +4,7 @@ import { getSnapshot } from "../lib/public-site";
 import { toPublicSitePath } from "../lib/runtime-urls";
 
 export const GET: APIRoute = async () => {
-  if (process.env.CONSOLE_RUNTIME === "true") {
+  if (process.env.BLOG_BUILD_TARGET === "console") {
     return new Response(null, {
       status: 301,
       headers: {

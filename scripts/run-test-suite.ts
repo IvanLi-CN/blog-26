@@ -111,6 +111,17 @@ async function main() {
     GIT_COMMON_DIR: _gitCommonDir,
     ...testEnv
   } = process.env;
+  const versionProcess = spawn("bun", ["scripts/generate-version.ts"], {
+    stdio: "inherit",
+    env: testEnv,
+  });
+  const versionExitCode: number = await new Promise((resolve) => {
+    versionProcess.on("close", (code) => resolve(code ?? 1));
+  });
+  if (versionExitCode !== 0) {
+    console.error("Failed to generate build version metadata");
+    process.exit(versionExitCode);
+  }
   const proc = spawn(bin, args, { stdio: "inherit", env: testEnv });
   const exitCode: number = await new Promise((resolve) => {
     proc.on("close", (code) => resolve(code ?? 1));

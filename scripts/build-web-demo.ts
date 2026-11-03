@@ -77,9 +77,10 @@ export async function prepareWebDemoInputs() {
     ADMIN_OUT_DIR: relative(repoRoot, adminDist),
     ASTRO_CACHE_DIR: ".astro-web-demo",
     VITE_CACHE_DIR: "node_modules/.vite-web-demo",
-    CONSOLE_RUNTIME: "false",
+    BLOG_BUILD_TARGET: "public",
     CONSOLE_WEB_DEMO_BUILD: "false",
     PUBLIC_API_BASE_URL: "",
+    PUBLIC_ASSISTANT_LAUNCHER_DEFAULT: "true",
     PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: "https://metrics.example.test",
     PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: "https://metrics.example.test",
     PUBLIC_OCTO_RILL_METRICS_BASE_URL: "https://metrics.example.test",
@@ -105,6 +106,7 @@ export async function prepareWebDemoInputs() {
   await run("generate public assets", ["run", "generate:public-pwa"], env);
   await run("generate project posters", ["run", "generate:project-posters"], env);
   await run("generate project social previews", ["run", "generate:project-social-previews"], env);
+  await run("generate version metadata", ["scripts/generate-version.ts"], env);
   return env;
 }
 
@@ -121,13 +123,14 @@ async function main() {
   await rm(siteDist, { recursive: true, force: true });
   await rm(consoleSiteDist, { recursive: true, force: true });
   await rm(adminDist, { recursive: true, force: true });
+  await run("generate build version", ["scripts/generate-version.ts"], process.env);
   const env = await prepareWebDemoInputs();
   await run("build public Web Demo", ["x", "astro", "build"], env);
   await run("build Console Web Demo", ["x", "astro", "build"], {
     ...env,
     ASTRO_OUT_DIR: relative(repoRoot, consoleSiteDist),
     ASTRO_CACHE_DIR: ".astro-web-demo-console",
-    CONSOLE_RUNTIME: "true",
+    BLOG_BUILD_TARGET: "console",
     CONSOLE_WEB_DEMO_BUILD: "true",
     PUBLIC_WEB_DEMO_BUILD: "false",
   });

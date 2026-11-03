@@ -33,6 +33,10 @@ import {
   submitClippingAssistantMessage,
 } from "../lib/assistant-client";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
+import {
+  getBuildDefaultAssistantLauncherEnabled,
+  readSiteFeatureConfig,
+} from "../lib/site-feature-config";
 import "./KnowledgeAssistant.css";
 
 type Props = { fullPage?: boolean };
@@ -643,6 +647,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   }, []);
   const [open, setOpen] = useState(fullPage);
   const [isRendered, setIsRendered] = useState(fullPage);
+  const [launcherEnabled, setLauncherEnabled] = useState<boolean | null>(fullPage ? true : null);
   const [listExpanded, setListExpanded] = useState(false);
   const [helpExpanded, setHelpExpanded] = useState(false);
   const openRef = useRef(open);
@@ -746,6 +751,21 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     setListExpanded(false);
     setHelpExpanded(false);
   }, [open]);
+  useEffect(() => {
+    if (fullPage) return;
+    let cancelled = false;
+    void readSiteFeatureConfig()
+      .then((features) => {
+        if (!cancelled) setLauncherEnabled(features.assistant.launcher.enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setLauncherEnabled(getBuildDefaultAssistantLauncherEnabled());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fullPage]);
+
   useEffect(() => {
     selectedRef.current = selectedId;
     draftsRef.current = drafts;
@@ -990,6 +1010,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   }, [applyUiState, initialPathConversation, loadList, restoreAuthenticatedState]);
 
   useEffect(() => {
+    if (!fullPage && launcherEnabled !== true) return;
     void loadAuth();
     const unsubscribe = subscribeWebDemoRequestChanges((detail) => {
       if (detail?.changed.includes("scene") || detail?.changed.includes("data")) {
@@ -1033,7 +1054,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       window.removeEventListener(WEB_DEMO_ACTION_EVENT, handleAction);
       if (pollTimer.current !== null) window.clearTimeout(pollTimer.current);
     };
-  }, [clearStoredUiState, loadAuth]);
+  }, [clearStoredUiState, fullPage, launcherEnabled, loadAuth]);
 
   useEffect(() => {
     const handlePageLoad = () => {
@@ -1742,6 +1763,8 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       </main>
     );
   }
+
+  if (launcherEnabled !== true) return null;
 
   return (
     <>

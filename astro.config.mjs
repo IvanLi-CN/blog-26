@@ -14,9 +14,13 @@ const astroCacheDir = process.env.ASTRO_CACHE_DIR || "./.astro";
 const viteCacheDir = process.env.VITE_CACHE_DIR || "./node_modules/.vite";
 const configuredSiteUrl = process.env.PUBLIC_SITE_URL ?? "";
 const configuredSiteBasePath = process.env.PUBLIC_SITE_BASE_PATH ?? "";
-const consoleRuntime = process.env.CONSOLE_RUNTIME === "true";
+const buildTarget = process.env.BLOG_BUILD_TARGET || "public";
+if (buildTarget !== "public" && buildTarget !== "console") {
+  throw new Error(`Unsupported BLOG_BUILD_TARGET: ${buildTarget}`);
+}
+const consoleBuild = buildTarget === "console";
 const webDemoRuntime = process.env.WEB_DEMO_BUILD === "true";
-const serverRuntime = consoleRuntime || webDemoRuntime;
+const serverRuntime = consoleBuild || webDemoRuntime;
 const webDemoEdition = webDemoRuntime
   ? JSON.parse(
       await readFile(
@@ -30,7 +34,7 @@ const webDemoPlaybookBase = webDemoEdition
   : "";
 const astroOutDir =
   process.env.ASTRO_OUT_DIR ||
-  (consoleRuntime ? "./console-dist" : webDemoRuntime ? "./web-demo-site-dist" : "./site-dist");
+  (consoleBuild ? "./console-dist" : webDemoRuntime ? "./web-demo-site-dist" : "./site-dist");
 
 function normalizeBasePath(raw) {
   const value = typeof raw === "string" ? raw.trim() : "";
@@ -165,9 +169,7 @@ export default defineConfig({
         {
           find: memoAuthoringModule,
           replacement:
-            consoleRuntime || webDemoRuntime
-              ? memoAuthoringImplementation
-              : memoAuthoringPublicStub,
+            consoleBuild || webDemoRuntime ? memoAuthoringImplementation : memoAuthoringPublicStub,
         },
       ],
     },
@@ -178,7 +180,7 @@ export default defineConfig({
         process.env.PUBLIC_LUOSIMAO_SITE_KEY ?? ""
       ),
       "process.env.PUBLIC_API_BASE_URL": JSON.stringify(process.env.PUBLIC_API_BASE_URL ?? ""),
-      "process.env.CONSOLE_RUNTIME": JSON.stringify(process.env.CONSOLE_RUNTIME ?? ""),
+      "process.env.BLOG_BUILD_TARGET": JSON.stringify(buildTarget),
       "process.env.CONSOLE_WEB_DEMO_BUILD": JSON.stringify(
         process.env.CONSOLE_WEB_DEMO_BUILD ?? ""
       ),

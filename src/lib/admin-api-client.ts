@@ -53,6 +53,27 @@ export interface AdminSession {
   isAdmin: boolean;
 }
 
+export interface AdminSiteFeatureSettings {
+  revision: number;
+  updatedAt: number | null;
+  defaults: {
+    assistant: { launcher: { enabled: boolean } };
+  };
+  settings: {
+    assistant: {
+      serviceEnabled: boolean;
+      launcherEnabled: boolean;
+    };
+  };
+  resolved: {
+    assistant: {
+      serviceEnabled: boolean;
+      launcherEnabled: boolean;
+      publicLauncherEnabled: boolean;
+    };
+  };
+}
+
 export type {
   ProjectStatusHistoryResponse,
   ProjectStatusOverviewResponse,
@@ -761,6 +782,18 @@ export const adminApi = {
     timezone: string;
   }) =>
     adminRequest<AdminUsersResponse["policy"]>("/api/admin/ai-usage/policy", {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  getSiteFeatureSettings: () => adminRequest<AdminSiteFeatureSettings>("/api/admin/site-features"),
+  updateSiteFeatureSettings: (input: {
+    expectedRevision: number;
+    assistant: {
+      serviceEnabled: boolean;
+      launcherEnabled: boolean;
+    };
+  }) =>
+    adminRequest<AdminSiteFeatureSettings>("/api/admin/site-features", {
       method: "PUT",
       body: JSON.stringify(input),
     }),

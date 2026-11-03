@@ -58,6 +58,14 @@ const publicEnvNames = [
   "PUBLIC_API_BASE_URL",
   "PUBLIC_SITE_URL",
   "PUBLIC_SITE_BASE_PATH",
+  "PUBLIC_ASSISTANT_LAUNCHER_DEFAULT",
+  "PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL",
+  "PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL",
+  "PUBLIC_OCTO_RILL_METRICS_BASE_URL",
+] as const;
+const publicUrlEnvNames = [
+  "PUBLIC_API_BASE_URL",
+  "PUBLIC_SITE_URL",
   "PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL",
   "PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL",
   "PUBLIC_OCTO_RILL_METRICS_BASE_URL",
@@ -281,7 +289,13 @@ export async function freezeInputs(entry: ReleaseEntry, root: string): Promise<v
   env.PUBLIC_API_BASE_URL ||= "https://console.ivanli.cc";
   env.PUBLIC_SITE_URL ||= "https://ivanli.cc";
   env.PUBLIC_SITE_BASE_PATH ||= "/";
-  for (const name of publicEnvNames.filter((name) => name !== "PUBLIC_SITE_BASE_PATH")) {
+  env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT ||= "true";
+  if (
+    env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT !== "true" &&
+    env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT !== "false"
+  )
+    throw new Error("PUBLIC_ASSISTANT_LAUNCHER_DEFAULT must be true or false");
+  for (const name of publicUrlEnvNames) {
     if (!env[name]) continue;
     const url = new URL(env[name]);
     if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash)
