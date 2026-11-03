@@ -84,7 +84,7 @@
     "public_api": {
       "impact": "patch",
       "change": "unchanged",
-      "supported_consumer_versions": ["4.0.2"],
+      "supported_consumer_versions": ["4.0.2", "4.1.0"],
       "evidence": [
         {
           "path": "tests/server/version-api.test.ts",
