@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "10eb06f50f674c34f2f263d97e78b17e65af0d7a",
+  "base_sha": "79667f38e331dbfca0ca5fe85979213a90602da6",
   "covered_files": {
-    "apps/admin/src/components/app-shell.tsx": "5dc924ce75de132e0bf6e04cbf77db12e3594faa",
-    "scripts/build-web-demo.ts": "1cdc7ae7aa639e96dba368513e78a8710892a2eb",
-    "site/components/SiteFooter.tsx": "694029989cae23a105e39228141fcc7898926db0",
-    "src/lib/version-info.ts": "3061ca3a981604a201448e935adea7ec3e8bbb21"
+    "apps/admin/src/components/app-shell.tsx": "91c3ac869f5807d17e10d0bd63e843e68c3ed6e6",
+    "scripts/build-web-demo.ts": "53ac78ecc842edeed36b44eb0c279339cf59435e5",
+    "site/components/SiteFooter.tsx": "ad426063a98f4de03d59fb0cf7fbe3613be51ab0",
+    "src/lib/version-info.ts": "0742a99395eb4a4512e885409225a8a8e0c474ad"
   },
   "change": {
     "description": "Expose the product version in the public footer and admin brand block, and make Web Demo builds generate the version metadata required by those surfaces.",
@@ -21,12 +21,12 @@
       "evidence": [
         {
           "path": "site/components/SiteFooter.tsx",
-          "blob": "694029989cae23a105e39228141fcc7898926db0",
+          "blob": "ad426063a98f4de03d59fb0cf7fbe3613be51ab0",
           "command": "The footer adds one v-prefixed product version label beside the existing site name"
         },
         {
           "path": "apps/admin/src/components/app-shell.tsx",
-          "blob": "5dc924ce75de132e0bf6e04cbf77db12e3594faa",
+          "blob": "91c3ac869f5807d17e10d0bd63e843e68c3ed6e6",
           "command": "The admin brand block adds the same shared product version label"
         }
       ]
@@ -42,12 +42,12 @@
       "evidence": [
         {
           "path": "src/lib/version-info.ts",
-          "blob": "3061ca3a981604a201448e935adea7ec3e8bbb21",
+          "blob": "0742a99395eb4a4512e885409225a8a8e0c474ad",
           "command": "The shared label derives from the existing generated productVersion field and falls back to the existing development label"
         },
         {
           "path": "scripts/build-web-demo.ts",
-          "blob": "1cdc7ae7aa639e96dba368513e78a8710892a2eb",
+          "blob": "53ac78ecc842edeed36b44eb0c279339cf59435e5",
           "command": "Web Demo preparation now generates version metadata before clean builds"
         }
       ]
@@ -59,12 +59,12 @@
       "evidence": [
         {
           "path": "site/components/SiteFooter.tsx",
-          "blob": "694029989cae23a105e39228141fcc7898926db0",
+          "blob": "ad426063a98f4de03d59fb0cf7fbe3613be51ab0",
           "command": "Owner-confirmed footer version candidate C at desktop and mobile layouts"
         },
         {
           "path": "apps/admin/src/components/app-shell.tsx",
-          "blob": "5dc924ce75de132e0bf6e04cbf77db12e3594faa",
+          "blob": "91c3ac869f5807d17e10d0bd63e843e68c3ed6e6",
           "command": "Admin build passes with the shared product version label"
         },
         {
@@ -74,7 +74,7 @@
         },
         {
           "path": "scripts/build-web-demo.ts",
-          "blob": "1cdc7ae7aa639e96dba368513e78a8710892a2eb",
+          "blob": "53ac78ecc842edeed36b44eb0c279339cf59435e5",
           "command": "Clean Web Demo CI failure was reproduced at the missing generated/version.json boundary and fixed at the build entrypoint"
         }
       ]
@@ -93,7 +93,7 @@
         },
         {
           "path": "src/lib/version-info.ts",
-          "blob": "3061ca3a981604a201448e935adea7ec3e8bbb21",
+          "blob": "0742a99395eb4a4512e885409225a8a8e0c474ad",
           "command": "The UI reads the existing productVersion metadata without changing server payloads"
         }
       ]
@@ -107,7 +107,7 @@
       "evidence": [
         {
           "path": "site/components/SiteFooter.tsx",
-          "blob": "694029989cae23a105e39228141fcc7898926db0",
+          "blob": "ad426063a98f4de03d59fb0cf7fbe3613be51ab0",
           "command": "The change only adds existing metadata to footer presentation"
         }
       ]
