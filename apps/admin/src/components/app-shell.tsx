@@ -174,6 +174,7 @@ function BrandBlock({ children }: { children?: ReactNode }) {
             </span>
             <span
               className="mr-8 inline-flex shrink-0 items-center rounded-full border border-primary/45 bg-primary/6 px-2 py-0.5 font-mono text-[0.65rem] font-semibold leading-4 tracking-[0.08em] text-primary lg:mr-0"
+              aria-hidden="true"
               data-testid="admin-product-version"
             >
               {productVersionLabel}
