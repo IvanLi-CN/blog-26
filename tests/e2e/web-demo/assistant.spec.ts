@@ -17,6 +17,11 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await page.goto("/?d_persona=user&d_scene=assistant-ready");
     await page.getByTestId("assistant-fab").click();
     const panel = page.getByTestId("assistant-panel");
+    await expect(panel.locator(".knowledge-assistant-toolbar")).toHaveCount(0);
+    await expect(panel.getByTestId("assistant-quota")).toContainText("Token 10k/10k");
+    await expect(panel.getByTestId("assistant-quota")).not.toContainText("问题");
+    await expect(panel.getByTestId("assistant-quota")).not.toContainText("对话");
+    await expect(panel.getByTestId("assistant-quota")).not.toContainText("本周");
     const toggle = panel.getByRole("button", { name: "切换对话" });
     const list = panel.getByTestId("assistant-conversation-list");
     await toggle.click();
@@ -51,17 +56,80 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await page.getByTestId("assistant-fab").click();
     const panel = page.getByTestId("assistant-panel");
     const toggle = panel.locator("header").getByRole("button", { name: "切换对话" });
+    const headerConversation = panel.locator(".knowledge-assistant-header-conversation");
+    const quota = panel.getByTestId("assistant-quota");
+    const titleRow = panel.locator(".knowledge-assistant-header-conversation-title-row");
     const list = panel.getByTestId("assistant-conversation-list");
+    await expect(panel.getByRole("button", { name: "关闭知识对话" })).toHaveCount(1);
+    await expect(headerConversation).toHaveCSS("display", "flex");
+    const titleBeforeExpand = await titleRow.boundingBox();
+    const quotaBeforeExpand = await quota.boundingBox();
+    expect(titleBeforeExpand).not.toBeNull();
+    expect(quotaBeforeExpand).not.toBeNull();
+    if (!titleBeforeExpand || !quotaBeforeExpand) throw new Error("Header geometry is unavailable");
+    expect(quotaBeforeExpand.y).toBeGreaterThanOrEqual(titleBeforeExpand.y);
+    expect(quotaBeforeExpand.y + quotaBeforeExpand.height).toBeLessThanOrEqual(
+      titleBeforeExpand.y + titleBeforeExpand.height
+    );
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
     await expect(list).toBeHidden();
     await toggle.click();
     await expect(list).toBeVisible();
     await expect(list).toHaveCSS("flex-direction", "column");
+    const titleBox = await titleRow.boundingBox();
+    const listBox = await list.boundingBox();
+    expect(titleBox).not.toBeNull();
+    expect(listBox).not.toBeNull();
+    if (!titleBox || !listBox) throw new Error("Conversation list geometry is unavailable");
+    const listGap = listBox.y - (titleBox.y + titleBox.height);
+    expect(listGap).toBeGreaterThanOrEqual(4);
+    expect(listGap).toBeLessThanOrEqual(12);
+    await expect(panel).toHaveAttribute("data-list-expanded", "true");
+    await expect
+      .poll(async () =>
+        Number(
+          await panel
+            .locator(".knowledge-assistant-content")
+            .evaluate((element) => getComputedStyle(element, "::after").opacity)
+        )
+      )
+      .toBeGreaterThan(0.5);
+    await expect(list).toHaveCSS("backdrop-filter", "none");
     await expect(panel.getByLabel("知识对话问题")).toBeVisible();
+    await toggle.click();
+    await expect(list).toBeHidden();
+    await expect(panel).toHaveAttribute("data-list-expanded", "false");
+    await titleRow.locator(".knowledge-assistant-header-conversation-title-text").click();
+    await expect(list).toBeVisible();
+    const helpToggle = panel.getByRole("button", { name: "帮助" });
+    await expect(helpToggle).toHaveAttribute("aria-expanded", "false");
+    await helpToggle.click();
+    const helpPanel = panel.getByTestId("assistant-help-panel");
+    await expect(helpPanel).toBeVisible();
+    await expect(helpPanel).toContainText("可以问什么");
+    await expect(helpPanel).toContainText("额度与保留");
+    await expect(panel.locator(".knowledge-assistant-notice")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(helpPanel).toBeHidden();
+    await expect(helpToggle).toBeFocused();
+    await helpToggle.click();
+    await expect(helpPanel).toBeVisible();
+    await helpPanel.getByRole("button", { name: "关闭帮助" }).click();
+    await expect(helpPanel).toBeHidden();
+    await expect(list).toBeHidden();
+    await toggle.click();
+    await expect(list).toBeVisible();
     await list.locator(".knowledge-assistant-list-select").first().click();
     await expect(list).toBeHidden();
     await expect(panel.getByLabel("知识对话问题")).toBeVisible();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await panel.locator("header").getByRole("button", { name: "关闭知识对话" }).click();
+    const closingState = await page.evaluate(() => {
+      const node = document.querySelector<HTMLElement>('[data-testid="assistant-panel"]');
+      return node ? { ariaHidden: node.getAttribute("aria-hidden"), inert: node.inert } : null;
+    });
+    expect(closingState).toEqual({ ariaHidden: "true", inert: true });
+    await expect(panel).toHaveCount(0);
   });
 
   test("loads home cover media after navigating from chat without a development error overlay", async ({
@@ -127,7 +195,15 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await page.getByRole("option", { name: "Dark" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-ui-preference", "dark");
     await expect(page.getByText("公开知识库", { exact: true })).toHaveCount(0);
-    await expect(page.getByTestId("assistant-quota")).toContainText("问题");
+    await expect(page.getByTestId("assistant-quota")).toHaveText("Token 10k/10k");
+    const helpToggle = page.getByRole("button", { name: "帮助" });
+    await helpToggle.click();
+    const helpPanel = page.getByTestId("assistant-help-panel");
+    await expect(helpPanel).toBeVisible();
+    await expect(helpPanel).toContainText("回答如何来");
+    await page.keyboard.press("Escape");
+    await expect(helpPanel).toBeHidden();
+    await expect(helpToggle).toBeFocused();
     await expect(page.getByTestId("assistant-send-shortcuts").getByText("发送")).toBeVisible();
     await expect(page.getByTestId("assistant-send-shortcuts").getByText("换行")).toBeVisible();
     const shortcutBox = await page.getByTestId("assistant-send-shortcuts").boundingBox();
@@ -182,6 +258,8 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(footer).not.toContainText("站点入口");
     await expect(page.getByRole("heading", { name: "登录后使用知识对话" })).toBeVisible();
     await expect(page.getByTestId("assistant-conversation-list")).toBeVisible();
+    await expect(page.getByText("登录后保存对话", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("最多保留 3 段临时对话。", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("assistant-guest-empty-state")).toBeVisible();
     await expect(
       page.getByText("登录后可以询问本站公开文章、项目经验和工作方法。", { exact: false })
