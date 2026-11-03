@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "79667f38e331dbfca0ca5fe85979213a90602da6",
+  "covered_files": {
+    "docs/specs/site-knowledge-assistant/SPEC.md": "7ab2ba186d6cfe6264bd1e9ff6f86a81f9fa2149",
+    "docs/specs/site-knowledge-assistant/assets/assistant-mobile-conversation-sheet-393x852.png": "c97af88338315df90d8057b802dc95b8ed7f9df7",
+    "site/components/KnowledgeAssistant.css": "0a0cdf8f7d9f6e6a0c69653d025d8320a178163e",
+    "site/components/KnowledgeAssistant.tsx": "25398b87f603004de9c7e9b7596b8075c54b1019",
+    "site/components/SiteHeader.tsx": "939a18318ded394416d24a94cd3c0c842eee2fd2",
+    "site/layouts/AssistantRouteLayout.astro": "337dfae96130ac9181d2e612f7a4e20c3234b344",
+    "tests/e2e/web-demo/assistant.spec.ts": "2c6b13fd24bba93a6c92831f2be38881524f6860"
+  },
+  "change": {
+    "description": "Add the responsive mobile assistant conversation modal sheet, reuse the public header on mobile without extra entry points, and keep the new-conversation action visible as the final sheet item without changing assistant APIs or persistent state.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible responsive presentation change. The mobile conversation list moves into a modal sheet and the mobile route reuses the existing public header while desktop markup and assistant request contracts remain unchanged.",
+      "assessed_at": "2026-11-04T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/site-knowledge-assistant/SPEC.md",
+          "blob": "7ab2ba186d6cfe6264bd1e9ff6f86a81f9fa2149",
+          "command": "The assistant specification records the owner-confirmed 393x852 mobile conversation sheet evidence"
+        },
+        {
+          "path": "site/components/KnowledgeAssistant.tsx",
+          "blob": "25398b87f603004de9c7e9b7596b8075c54b1019",
+          "command": "The assistant keeps conversation selection and creation behavior while rendering the mobile list as a dialog portal"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate is limited to responsive assistant chrome, the mobile conversation sheet, the existing public navigation surface, synchronized Web Demo coverage, and owner-facing mobile evidence. Authentication, assistant APIs, durable state, and desktop default markup remain unchanged.",
+      "assessed_at": "2026-11-04T00:00:00+08:00",
+      "scope_drift": {
+        "detected": false,
+        "description": "No route contract, API payload, authentication boundary, database schema, durable storage, or release-version input was added; the change only adapts the existing assistant UI and its responsive acceptance coverage."
+      },
+      "evidence": [
+        {
+          "path": "site/components/KnowledgeAssistant.css",
+          "blob": "0a0cdf8f7d9f6e6a0c69653d025d8320a178163e",
+          "command": "The mobile-only sheet styles set the approximately 60 percent viewport height, backdrop, safe-area padding, and internal scrolling"
+        },
+        {
+          "path": "site/components/SiteHeader.tsx",
+          "blob": "939a18318ded394416d24a94cd3c0c842eee2fd2",
+          "command": "Existing public header behavior is opt-in for the assistant mobile route and does not add search or RSS controls"
+        },
+        {
+          "path": "tests/e2e/web-demo/assistant.spec.ts",
+          "blob": "2c6b13fd24bba93a6c92831f2be38881524f6860",
+          "command": "Official Web Demo coverage checks desktop preservation, mobile public navigation, portal sheet geometry, focus return, and guest chat-first behavior"
+        }
+      ]
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Repository checks, the Web Demo build, focused desktop and mobile assistant browser coverage, and the owner-confirmed mobile evidence verify a compatible presentation-only change. The assistant request, authentication, public API, and persistent-state contracts are unchanged.",
+      "assessed_at": "2026-11-04T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/assistant.spec.ts",
+          "blob": "2c6b13fd24bba93a6c92831f2be38881524f6860",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:10410 bunx playwright test assistant.spec.ts --config=playwright.config.ts (10 assistant tests pass locally; desktop and mobile branches are covered)"
+        },
+        {
+          "path": "site/components/KnowledgeAssistant.tsx",
+          "blob": "25398b87f603004de9c7e9b7596b8075c54b1019",
+          "command": "bun run check and bun run web-demo:build pass with the assistant sheet implementation"
+        },
+        {
+          "path": "docs/specs/site-knowledge-assistant/assets/assistant-mobile-conversation-sheet-393x852.png",
+          "blob": "c97af88338315df90d8057b802dc95b8ed7f9df7",
+          "command": "Owner-confirmed 393x852 Web Demo capture shows the mobile conversation sheet with the final new-conversation card"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["4.1.0"],
+      "evidence": [
+        {
+          "path": "site/components/KnowledgeAssistant.tsx",
+          "blob": "25398b87f603004de9c7e9b7596b8075c54b1019",
+          "command": "The change keeps existing assistant request handlers and response rendering while changing only conversation-list presentation"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No database schema, local content, browser persistence contract, or durable assistant storage format changes are introduced.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/components/KnowledgeAssistant.tsx",
+          "blob": "25398b87f603004de9c7e9b7596b8075c54b1019",
+          "command": "The implementation changes modal focus and layout state only; conversation data continues through the existing storage boundary"
+        }
+      ]
+    }
+  }
+}
