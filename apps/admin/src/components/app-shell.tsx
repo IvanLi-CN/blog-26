@@ -159,25 +159,27 @@ export function useAppShellSidebarFloatingFooter(footer: ReactNode | null) {
 
 function BrandBlock({ children }: { children?: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex min-w-0 items-center justify-between gap-2">
       <Link
         to="/dashboard"
-        className="admin-nav-link group flex min-h-11 min-w-0 items-center gap-3 rounded-3xl p-2 lg:rounded-[1rem]"
+        className="admin-nav-link group flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-3xl p-2 lg:rounded-[1rem]"
       >
         <span className="flex size-12 shrink-0 items-center justify-center rounded-3xl bg-primary/14 text-primary shadow-lg shadow-primary/12 transition-transform group-hover:-translate-y-0.5 lg:size-10 lg:rounded-[1rem]">
           <Shield className="size-5" />
         </span>
-        <span className="min-w-0">
-          <span className="block truncate text-base font-semibold leading-tight text-foreground">
-            管理后台
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-base font-semibold leading-tight text-foreground">
+              管理后台
+            </span>
+            <span
+              className="mr-8 inline-flex shrink-0 items-center rounded-full border border-primary/45 bg-primary/6 px-2 py-0.5 font-mono text-[0.65rem] font-semibold leading-4 tracking-[0.08em] text-primary lg:mr-0"
+              data-testid="admin-product-version"
+            >
+              {productVersionLabel}
+            </span>
           </span>
           <span className="block truncate text-xs text-muted-foreground">内容工作台</span>
-          <span
-            className="mt-1 inline-flex rounded-full bg-primary/12 px-2 py-0.5 font-mono text-[0.65rem] font-semibold tracking-[0.08em] text-primary"
-            data-testid="admin-product-version"
-          >
-            {productVersionLabel}
-          </span>
         </span>
       </Link>
       {children}

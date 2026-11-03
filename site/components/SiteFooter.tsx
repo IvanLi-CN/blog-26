@@ -23,11 +23,11 @@ export default function SiteFooter(_props: Record<string, unknown>) {
                   />
                 </div>
                 <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="font-heading text-xl font-semibold tracking-[-0.04em]">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <div className="font-heading text-xl font-semibold leading-tight tracking-[-0.04em]">
                       {SITE.name}
                     </div>
-                    <span className="nature-chip nature-chip-accent px-2 py-1 font-mono text-xs tracking-normal">
+                    <span className="nature-chip inline-flex h-5 items-center rounded-md px-1.5 py-0 font-mono text-[0.68rem] font-semibold leading-none tracking-[0.01em]">
                       {productVersionLabel}
                     </span>
                   </div>
