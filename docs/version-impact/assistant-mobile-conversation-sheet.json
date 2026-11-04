@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "79667f38e331dbfca0ca5fe85979213a90602da6",
+  "base_sha": "f59c0c88bb72f5c15121d13c42c8d297905dfdd6",
   "covered_files": {
     "docs/specs/site-knowledge-assistant/SPEC.md": "7ab2ba186d6cfe6264bd1e9ff6f86a81f9fa2149",
     "docs/specs/site-knowledge-assistant/assets/assistant-mobile-conversation-sheet-393x852.png": "c97af88338315df90d8057b802dc95b8ed7f9df7",
@@ -87,7 +87,7 @@
     "public_api": {
       "impact": "patch",
       "change": "unchanged",
-      "supported_consumer_versions": ["4.0.2", "4.1.0"],
+      "supported_consumer_versions": ["4.0.2", "4.1.0", "4.1.1"],
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
