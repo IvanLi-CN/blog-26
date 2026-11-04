@@ -342,8 +342,15 @@
   border-radius: 10px;
   padding: 0.7rem 0.85rem;
   line-height: 1.7;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.knowledge-assistant-message [data-markdown-surface] > :first-child {
+  margin-top: 0;
+}
+
+.knowledge-assistant-message [data-markdown-surface] > :last-child {
+  margin-bottom: 0;
 }
 
 .knowledge-assistant-message--user {

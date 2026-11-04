@@ -171,6 +171,9 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(
       page.getByTestId("assistant-message-assistant").filter({ hasText: "根据公开知识库" })
     ).toBeVisible();
+    const assistantMessage = page.getByTestId("assistant-message-assistant").last();
+    await expect(assistantMessage.locator("strong")).toContainText("文章");
+    await expect(assistantMessage.locator("ul")).toBeVisible();
     await expect(page.getByRole("list", { name: "回答来源" }).first()).toBeVisible();
 
     const conversationId = new URL(page.url()).searchParams.get("conversation");

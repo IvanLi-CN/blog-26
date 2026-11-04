@@ -1291,7 +1291,7 @@ function getDemoAssistantResponse(
           ? "这次生成没有完成，请点击重试。"
           : assistantStatus === "streaming"
             ? "正在整理公开资料……"
-            : "根据公开知识库，这个问题可以从文章、项目和工程方法三个方向理解。",
+            : "根据公开知识库，这个问题可以从文章、项目和工程方法三个方向理解。\n\n- **文章**：先确认相关原文和上下文。\n- **项目**：再核对实现边界与验证证据。\n- **方法**：最后沉淀为可复用的工作步骤。",
       status: assistantStatus,
       clientRequestId: null,
       createdAt: now + 1,

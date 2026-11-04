@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/Icon";
@@ -533,7 +534,18 @@ function MessageStream({
               data-testid={`assistant-message-${message.role}`}
               key={message.id}
             >
-              {message.content || (message.status === "streaming" ? "正在生成……" : "")}
+              {message.content ? (
+                <MarkdownRenderer
+                  content={message.content}
+                  variant="memo"
+                  surface="public"
+                  enableMath
+                  enableMermaid={false}
+                  nofollowExternalLinks
+                />
+              ) : message.status === "streaming" ? (
+                "正在生成……"
+              ) : null}
               {message.status === "failed" && onRetry ? (
                 <button
                   type="button"
