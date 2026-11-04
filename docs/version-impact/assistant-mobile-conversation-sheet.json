@@ -6,12 +6,14 @@
     "docs/specs/site-knowledge-assistant/SPEC.md": "7ab2ba186d6cfe6264bd1e9ff6f86a81f9fa2149",
     "docs/specs/site-knowledge-assistant/assets/assistant-mobile-conversation-sheet-393x852.png": "c97af88338315df90d8057b802dc95b8ed7f9df7",
     "site/components/KnowledgeAssistant.css": "b856e1ec2df82f11838502203bd87c8be19548e0",
-    "site/components/KnowledgeAssistant.tsx": "a6857300b28b153a776c766753a53ea4787d49d8",
+    "site/components/KnowledgeAssistant.tsx": "74c240d1986db9f73b8c1e89ffd63e136e8bcf8f",
     "site/components/SiteHeader.tsx": "939a18318ded394416d24a94cd3c0c842eee2fd2",
     "site/layouts/AssistantRouteLayout.astro": "337dfae96130ac9181d2e612f7a4e20c3234b344",
+    "src/lib/public-header-scroll.ts": "b0f6d9c3146be3e712d895ebefa046aaae97e2e8",
     "src/styles/globals.css": "320c00c16bf09c94bd1cecb3417446ae2e06578b",
+    "src/styles/nature-restored.css": "d7921dde3dbb500dbd3e65e191d5b3eb4961f64b",
     "tests/components/KnowledgeAssistant.test.tsx": "a372b60f9e7cf003a908af1dc87edbfadaa83525",
-    "tests/e2e/web-demo/assistant.spec.ts": "7e8398ce1fd7bb5cbbf4f3b8c4af366d79b474b6"
+    "tests/e2e/web-demo/assistant.spec.ts": "9d3043ace7857602ad33c3eb90e53cb0688e7df3"
   },
   "change": {
     "description": "Add the responsive mobile assistant conversation modal sheet, reuse the public header on mobile without extra entry points, and keep the new-conversation action visible as the final sheet item without changing assistant APIs or persistent state.",
@@ -31,7 +33,7 @@
         },
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "a6857300b28b153a776c766753a53ea4787d49d8",
+          "blob": "74c240d1986db9f73b8c1e89ffd63e136e8bcf8f",
           "command": "The assistant keeps conversation selection and creation behavior while rendering the mobile list as a dialog portal"
         }
       ]
@@ -57,7 +59,7 @@
         },
         {
           "path": "tests/e2e/web-demo/assistant.spec.ts",
-          "blob": "7e8398ce1fd7bb5cbbf4f3b8c4af366d79b474b6",
+          "blob": "9d3043ace7857602ad33c3eb90e53cb0688e7df3",
           "command": "Official Web Demo coverage checks desktop preservation, mobile public navigation, portal sheet geometry, focus return, and guest chat-first behavior"
         }
       ]
@@ -69,12 +71,12 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/assistant.spec.ts",
-          "blob": "7e8398ce1fd7bb5cbbf4f3b8c4af366d79b474b6",
+          "blob": "9d3043ace7857602ad33c3eb90e53cb0688e7df3",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:10410 bunx playwright test assistant.spec.ts --config=playwright.config.ts (10 assistant tests pass locally; desktop and mobile branches are covered)"
         },
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "a6857300b28b153a776c766753a53ea4787d49d8",
+          "blob": "74c240d1986db9f73b8c1e89ffd63e136e8bcf8f",
           "command": "bun run check and bun run web-demo:build pass with the assistant sheet implementation"
         },
         {
@@ -93,7 +95,7 @@
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "a6857300b28b153a776c766753a53ea4787d49d8",
+          "blob": "74c240d1986db9f73b8c1e89ffd63e136e8bcf8f",
           "command": "The change keeps existing assistant request handlers and response rendering while changing only conversation-list presentation"
         }
       ]
@@ -107,7 +109,7 @@
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "a6857300b28b153a776c766753a53ea4787d49d8",
+          "blob": "74c240d1986db9f73b8c1e89ffd63e136e8bcf8f",
           "command": "The implementation changes modal focus and layout state only; conversation data continues through the existing storage boundary"
         }
       ]

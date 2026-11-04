@@ -72,6 +72,7 @@ test.describe("Knowledge Assistant Web Demo", () => {
   test("opens the vertical conversation switcher from the floating panel header", async ({
     page,
   }) => {
+    test.skip(isMobileViewport, "Mobile uses the modal conversation sheet contract.");
     await page.goto("/?d_persona=user&d_scene=assistant-ready");
     await page.getByTestId("assistant-fab").click();
     const panel = page.getByTestId("assistant-panel");

@@ -173,8 +173,9 @@
 
   @media (max-width: 639px) {
     .nature-site-header[data-public-header] {
-      top: var(--public-header-sticky-top, 0px);
-      transition: top 180ms var(--nature-ease);
+      top: 0;
+      transform: translateY(var(--public-header-sticky-top, 0px));
+      transition: transform 180ms var(--nature-ease);
     }
 
     .nature-site-header[data-public-header][data-public-header-scrolling="true"] {

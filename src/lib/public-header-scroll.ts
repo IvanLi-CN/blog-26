@@ -467,6 +467,8 @@ function handleTouchEnd(event: TouchEvent) {
 
 function handleWindowScroll() {
   const timestamp = performance.now();
+  const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
+  const atDocumentBottom = maxScroll > 0 && window.scrollY >= maxScroll - 1;
   for (const controller of controllers.values()) {
     const previousOffset = controller.state.visibleOffset;
     const delta = window.scrollY - controller.state.lastScrollY;
@@ -483,6 +485,9 @@ function handleWindowScroll() {
       touchActive && controller.touchFollowActive && canMoveHeader
     );
     controller.state = result.state;
+    if (delta > 0 && atDocumentBottom) {
+      controller.state = resetGesture(controller.state, 0);
+    }
     if (touchActive && result.state.visibleOffset !== previousOffset) {
       controller.touchFollowActive = true;
     }

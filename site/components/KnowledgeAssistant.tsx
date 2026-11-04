@@ -778,7 +778,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       document.removeEventListener("keydown", handleEscape, true);
       document.removeEventListener("keydown", handleTab);
       document.body.style.overflow = previousOverflow;
-      previousFocus?.focus();
+      if (mobileSheet) previousFocus?.focus();
     };
   }, [helpExpanded, helpId, isMobileViewport, listExpanded, listId]);
   const [auth, setAuth] = useState<AuthState>(null);
