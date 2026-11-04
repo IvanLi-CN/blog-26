@@ -233,6 +233,10 @@ Web Demo 只使用隔离 fixture 和内存模拟回答；这些证据不代表�
 - [Console 助手入口：2320×1335 桌面](./assets/assistant-console-launcher-desktop-2320x1335.png)
 - [Console 助手入口：393×852 移动端](./assets/assistant-console-launcher-mobile-393x852.png)
 
+当前完整对话移动端对话列表证据：
+
+- [完整对话：393×852 移动端对话 sheet 与新建对话卡片](./assets/assistant-mobile-conversation-sheet-393x852.png)
+
 以上截图来自当前候选提交的独立 Web Demo/后台正式路由，覆盖后台配置页面和 Console 入口的桌面、小屏状态；截图已由负责人确认。截图保留原始页面范围，空白裁剪未检查。
 
 ## Related ADRs

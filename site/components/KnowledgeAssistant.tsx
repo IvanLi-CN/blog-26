@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/Icon";
@@ -464,43 +465,62 @@ function ConversationList({
   hasNewDraft,
   listId,
   expanded,
+  sheet = false,
   onSelect,
   onDelete,
   onCreate,
+  onClose,
 }: {
   conversations: AssistantConversation[];
   selectedId: string | null;
   hasNewDraft: boolean;
   listId: string;
   expanded: boolean;
+  sheet?: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onCreate: () => void;
+  onClose: () => void;
 }) {
+  const titleId = `${listId}-title`;
   return (
     <div
       id={listId}
-      className="knowledge-assistant-list"
+      className={`knowledge-assistant-list${sheet ? " knowledge-assistant-list--sheet" : ""}`}
       data-expanded={expanded}
+      data-mobile-sheet={sheet ? "true" : undefined}
       data-testid="assistant-conversation-list"
     >
       <div className="knowledge-assistant-list-heading">
         <div className="min-w-0">
-          <p className="text-sm font-semibold">对话</p>
+          <p id={titleId} className="text-sm font-semibold">
+            对话
+          </p>
           <p className="mt-0.5 text-xs text-[color:var(--nature-text-faint)]">
             {conversations.length ? `${conversations.length} 段已保存` : "从这里开始"}
           </p>
         </div>
-        <button
-          type="button"
-          className="knowledge-assistant-list-new"
-          onClick={onCreate}
-          aria-label="新建对话"
-          title="新建对话"
-        >
-          <Icon name="tabler:plus" className="h-4 w-4" />
-          <span>新建</span>
-        </button>
+        <div className="knowledge-assistant-list-actions">
+          <button
+            type="button"
+            className="knowledge-assistant-list-new"
+            onClick={onCreate}
+            aria-label="新建对话"
+            title="新建对话"
+          >
+            <Icon name="tabler:plus" className="h-4 w-4" />
+            <span>新建</span>
+          </button>
+          <button
+            type="button"
+            className="knowledge-assistant-list-close"
+            onClick={onClose}
+            aria-label="关闭对话列表"
+            title="关闭对话列表"
+          >
+            <Icon name="tabler:x" className="h-5 w-5" />
+          </button>
+        </div>
       </div>
       {selectedId === "new" || hasNewDraft ? (
         <div
@@ -556,6 +576,29 @@ function ConversationList({
           </div>
         ))
       )}
+      {sheet ? (
+        <button
+          type="button"
+          className="knowledge-assistant-list-create-card"
+          data-testid="assistant-create-conversation-card"
+          onClick={onCreate}
+        >
+          <span className="knowledge-assistant-list-create-icon" aria-hidden="true">
+            <Icon name="tabler:plus" className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 text-left">
+            <span className="block text-sm font-semibold">新建对话</span>
+            <span className="mt-0.5 block text-xs text-[color:var(--nature-text-soft)]">
+              从一个新的问题开始
+            </span>
+          </span>
+          <Icon
+            name="tabler:arrow-up-right"
+            className="ml-auto h-4 w-4 shrink-0"
+            aria-hidden="true"
+          />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -650,19 +693,46 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   const [launcherEnabled, setLauncherEnabled] = useState<boolean | null>(fullPage ? true : null);
   const [listExpanded, setListExpanded] = useState(false);
   const [helpExpanded, setHelpExpanded] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const openRef = useRef(open);
   openRef.current = open;
   const listId = useId();
   const helpId = useId();
   const listToggleRef = useRef<HTMLButtonElement>(null);
   const helpToggleRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 639px)");
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
+
   useEffect(() => {
     if (!listExpanded && !helpExpanded) return;
+    const list = () => document.getElementById(listId);
+    const previousFocus =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    const mobileSheet = isMobileViewport && listExpanded;
+    const focusable = () =>
+      Array.from(
+        list()?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], textarea:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ) || []
+      );
+    const focusFrame = mobileSheet
+      ? window.requestAnimationFrame(() => focusable()[0]?.focus())
+      : null;
+
+    if (mobileSheet) document.body.style.overflow = "hidden";
+
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
       if (
-        document.getElementById(listId)?.contains(target) ||
+        list()?.contains(target) ||
         document.getElementById(helpId)?.contains(target) ||
         target.closest(
           ".knowledge-assistant-list-toggle, .knowledge-assistant-header-conversation-toggle, .knowledge-assistant-help-toggle"
@@ -676,7 +746,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       if (event.key !== "Escape") return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (document.getElementById(listId)?.contains(document.activeElement)) {
+      if (list()?.contains(document.activeElement)) {
         listToggleRef.current?.focus();
       }
       if (document.getElementById(helpId)?.contains(document.activeElement)) {
@@ -685,13 +755,32 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       setListExpanded(false);
       setHelpExpanded(false);
     };
+    const handleTab = (event: KeyboardEvent) => {
+      if (!mobileSheet || event.key !== "Tab") return;
+      const items = focusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleEscape, true);
+    document.addEventListener("keydown", handleTab);
     return () => {
+      if (focusFrame !== null) window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleEscape, true);
+      document.removeEventListener("keydown", handleTab);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
     };
-  }, [helpExpanded, helpId, listExpanded, listId]);
+  }, [helpExpanded, helpId, isMobileViewport, listExpanded, listId]);
   const [auth, setAuth] = useState<AuthState>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [conversations, setConversations] = useState<AssistantConversation[]>([]);
@@ -1558,13 +1647,14 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     : selectedId === "new"
       ? "新对话"
       : ASSISTANT_DISPLAY_NAME;
-  const conversationList = (
+  const renderConversationList = (sheet = false) => (
     <ConversationList
       conversations={conversations}
       selectedId={selectedId}
       hasNewDraft={Boolean(drafts[draftKey("new", getClippingContext())]?.trim())}
       listId={listId}
       expanded={listExpanded}
+      sheet={sheet}
       onSelect={(id) => {
         selectConversation(id);
         if (listExpanded) listToggleRef.current?.focus();
@@ -1576,8 +1666,10 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         if (listExpanded) listToggleRef.current?.focus();
         setListExpanded(false);
       }}
+      onClose={() => setListExpanded(false)}
     />
   );
+  const conversationList = renderConversationList();
   const helpPopover = (
     <AssistantHelpPanel
       helpId={helpId}
@@ -1589,6 +1681,32 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       }}
     />
   );
+  const conversationListView =
+    isMobileViewport && listExpanded && typeof document !== "undefined"
+      ? createPortal(
+          <>
+            <button
+              type="button"
+              className="knowledge-assistant-list-backdrop"
+              data-testid="assistant-conversation-sheet-backdrop"
+              aria-label="关闭对话列表"
+              onClick={() => setListExpanded(false)}
+            />
+            <div
+              className="knowledge-assistant-list-dialog"
+              data-testid="assistant-conversation-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`${listId}-title`}
+            >
+              {renderConversationList(true)}
+            </div>
+          </>,
+          document.body
+        )
+      : fullPage
+        ? conversationList
+        : null;
   const body = (
     <>
       {authLoading ? (
@@ -1608,7 +1726,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         />
       ) : (
         <div className="knowledge-assistant-body">
-          {fullPage ? conversationList : null}
+          {conversationListView}
           <div className="knowledge-assistant-content">
             {fullPage ? (
               <div className="knowledge-assistant-toolbar">
@@ -1826,7 +1944,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                         />
                       </button>
                     </h2>
-                    {!fullPage ? conversationList : null}
+                    {!fullPage && !isMobileViewport ? conversationList : null}
                   </div>
                   <p className="knowledge-assistant-status" data-testid="assistant-quota">
                     {formatQuota(quota)}

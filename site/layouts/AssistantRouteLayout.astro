@@ -3,6 +3,7 @@ import ThemeToggle from "@/components/common/ThemeToggle";
 import { footerData, headerData } from "@/config/navigation";
 import { SITE } from "@/config/site";
 import { toPublicSitePath } from "../lib/runtime-urls";
+import SiteHeader from "../components/SiteHeader";
 import BaseLayout from "./BaseLayout.astro";
 
 interface Props {
@@ -49,6 +50,17 @@ const currentYear = new Date().getFullYear();
       </div>
     </header>
 
+    <SiteHeader
+      client:load
+      className="assistant-route-mobile-header"
+      enableScrollBehavior
+      pathname={Astro.url.pathname}
+      contextLabel="知识对话"
+      showRss={false}
+      showSearch={false}
+      testId="assistant-route-mobile-header"
+    />
+
     <div class="assistant-route-content">
       <slot />
     </div>
@@ -88,6 +100,10 @@ const currentYear = new Date().getFullYear();
     display: flex;
     min-height: 100vh;
     flex-direction: column;
+  }
+
+  :global(.assistant-route-mobile-header) {
+    display: none;
   }
 
   .assistant-route-header {
@@ -254,7 +270,12 @@ const currentYear = new Date().getFullYear();
   }
 
   @media (max-width: 639px) {
+    :global(.assistant-route-mobile-header) {
+      display: block;
+    }
+
     .assistant-route-header {
+      display: none;
       padding-top: 0.35rem;
     }
 
