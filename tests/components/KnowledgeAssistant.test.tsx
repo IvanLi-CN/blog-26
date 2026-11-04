@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register({ url: "http://localhost/" });
@@ -154,7 +154,9 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     const fab = await waitFor(() => view.getByTestId("assistant-fab"));
     fireEvent.click(fab);
     await waitFor(() => view.getAllByRole("button", { name: /general-conversation/ })[0]);
-    fireEvent.click(view.getAllByRole("button", { name: "关闭知识对话" })[1]);
+    fireEvent.click(
+      within(view.getByTestId("assistant-panel")).getByRole("button", { name: "关闭知识对话" })
+    );
     document.dispatchEvent(new Event("astro:page-load"));
     await waitFor(() => expect(listCalls).toBe(2));
     fireEvent.click(fab);
@@ -380,7 +382,9 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await waitFor(() => expect(view.getByTestId("assistant-fab")).toBeTruthy());
     fireEvent.click(view.getByTestId("assistant-fab"));
     await waitFor(() => expect(view.getByRole("heading", { name: "新对话" })).toBeTruthy());
-    fireEvent.click(view.getAllByRole("button", { name: "关闭知识对话" })[1]);
+    fireEvent.click(
+      within(view.getByTestId("assistant-panel")).getByRole("button", { name: "关闭知识对话" })
+    );
 
     window.history.replaceState({}, "", "/posts/b/?clipping=clip-b");
     clippingMarker.dataset.assistantClippingSlug = "clip-b";

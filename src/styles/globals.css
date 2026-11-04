@@ -34,6 +34,7 @@
   --nature-action-primary-gradient-end: #294e3a;
   --nature-action-primary-fg: #f7fff8;
   --nature-highlight-rgb: 255, 255, 255;
+  --nature-overlay-rgb: 16, 34, 26;
   --nature-timeline-node-highlight-alpha: 0.46;
   --nature-timeline-node-inset-highlight-alpha: 0.22;
   --nature-mist-rgb: 244, 248, 244;
@@ -92,6 +93,7 @@ html[data-ui-theme="dark"] {
   --nature-action-primary-gradient-end: #4f966e;
   --nature-action-primary-fg: #0f1613;
   --nature-highlight-rgb: 247, 255, 250;
+  --nature-overlay-rgb: 0, 0, 0;
   --nature-timeline-node-highlight-alpha: 0.22;
   --nature-timeline-node-inset-highlight-alpha: 0.12;
   --nature-mist-rgb: 59, 86, 72;
