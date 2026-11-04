@@ -107,7 +107,7 @@
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "25398b87f603004de9c7e9b7596b8075c54b1019",
+          "blob": "a6857300b28b153a776c766753a53ea4787d49d8",
           "command": "The implementation changes modal focus and layout state only; conversation data continues through the existing storage boundary"
         }
       ]
