@@ -562,11 +562,29 @@ export function createPlaybookGitHubSourceTransport(
     "X-GitHub-Api-Version": "2022-11-28",
   };
   async function request(url: string, accept = headers.Accept, invalidStatus = false) {
-    const response = await fetchImpl(url, {
+    let response = await fetchImpl(url, {
       headers: { ...headers, Accept: accept },
-      redirect: "error",
+      redirect: accept === "application/octet-stream" ? "manual" : "error",
       signal: AbortSignal.timeout(requestTimeoutMs),
     });
+    if (accept === "application/octet-stream" && response.status === 302) {
+      const location = response.headers.get("location");
+      await response.body?.cancel().catch(() => undefined);
+      const target = location ? new URL(location) : null;
+      if (
+        !target ||
+        target.protocol !== "https:" ||
+        target.hostname !== "release-assets.githubusercontent.com" ||
+        target.username ||
+        target.password
+      )
+        throw new PlaybookGitHubSourceInvalidError("GitHub release asset redirect is invalid");
+      response = await fetchImpl(target.toString(), {
+        headers: { Accept: accept },
+        redirect: "error",
+        signal: AbortSignal.timeout(requestTimeoutMs),
+      });
+    }
     if (!response.ok) {
       await response.body?.cancel().catch(() => undefined);
       if (invalidStatus && (response.status === 404 || response.status === 422))
