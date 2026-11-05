@@ -1,11 +1,6 @@
 name: Product Release
 on:
-  workflow_dispatch:
-    inputs:
-      diagnose_only:
-        description: Run read-only EdgeOne credential and network diagnostics without publication
-        type: boolean
-        default: false
+  workflow_dispatch: {}
   workflow_run:
     workflows: [CI/CD Pipeline, E2E Tests]
     types: [completed]
@@ -14,52 +9,8 @@ permissions:
   contents: read
   actions: read
 jobs:
-  diagnose-edgeone:
-    if: github.event_name == 'workflow_dispatch' && inputs.diagnose_only
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22.23.2
-      - name: Inspect EdgeOne domestic API without deployment
-        run: node scripts/diagnose-edgeone-ci.mjs
-        env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
-          EDGEONE_PROJECT_NAME: ${{ vars.EDGEONE_PROJECT_NAME }}
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.2
-      - name: Download the original frozen archive for read-only CLI preflight
-        run: |
-          gh release download v4.1.6 --pattern frontend.tar.gz --pattern release-manifest.json --dir "$RUNNER_TEMP/edgeone-original"
-          python3 - <<'PY'
-          import hashlib, json, os, pathlib, tarfile
-          root = pathlib.Path(os.environ['RUNNER_TEMP'])
-          artifact = root / 'edgeone-original/frontend.tar.gz'
-          manifest = json.loads((root / 'edgeone-original/release-manifest.json').read_text())
-          assert manifest['productVersion'] == '4.1.6'
-          assert manifest['sourceSha'] == '39285cf98bbc02b03115615fb63f772272b97651'
-          with artifact.open('rb') as stream:
-              assert hashlib.file_digest(stream, 'sha256').hexdigest() == manifest['staticSha256']
-          with tarfile.open(artifact) as archive:
-              archive.extractall(root / 'edgeone-frozen-static', filter='data')
-          print('Frozen 4.1.6 archive digest verified')
-          PY
-        env:
-          GH_TOKEN: ${{ github.token }}
-      - name: Reproduce frozen CLI upload with deployment creation blocked
-        run: bun scripts/diagnose-edgeone-cli.mjs
-        env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
-          EDGEONE_PROJECT_NAME: ${{ vars.EDGEONE_PROJECT_NAME }}
   production:
-    if: (github.event_name == 'workflow_dispatch' && !inputs.diagnose_only) || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository)
+    if: github.event_name == 'workflow_dispatch' || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 360
     permissions:

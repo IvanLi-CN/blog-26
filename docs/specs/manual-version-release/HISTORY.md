@@ -26,6 +26,8 @@
 
 ## References
 
+- 发布恢复将工具执行提交与冻结产品来源分离，保持原 run 和产物证明；决策见 ADR 0040。调查 4.1.6 时，CI 中的国内 API、原凭据、CLI 安装及冻结归档上传均已单独验证，但原两次失败因全部丢弃 CLI 输出而无法追溯具体原因。
+
 - [PR #177](https://github.com/IvanLi-CN/blog-26/pull/177) 承载预发布实现；候选保留主干 Web Demo 和发布快照恢复变更，并将 content search 的重复路由测试数据放入单个事务，保留测试数量和全部断言。经证明的 VERSION-only 写入使用业务语义投影校验证据，未登记的写入仍阻断。
 
 - [SPEC.md](./SPEC.md)

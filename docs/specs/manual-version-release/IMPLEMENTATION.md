@@ -34,6 +34,8 @@
 
 ## References
 
+- 已发布恢复通过 `releaseExecutionCheckout` 选择通过 main 门禁的发布工具，构建阶段保持冻结来源；EdgeOne 子进程输出仅投影为固定阶段、失败类别和退出码。单测覆盖恢复来源不变、工具门禁失败关闭和诊断脱敏；真实原 run 恢复仍须单独验收。
+
 - [SPEC.md](./SPEC.md)
 - [HISTORY.md](./HISTORY.md)
 - [运行手册](../../runbooks/manual-version-release.md)

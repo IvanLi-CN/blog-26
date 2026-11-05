@@ -16,6 +16,7 @@ import {
   mainEvaluationResult,
   manualReleaseWorkflowRun,
   readQuality,
+  releaseExecutionCheckout,
   releaseRecoveryEventSchema,
   resolveCompletedRelease,
   runSchema,
@@ -49,7 +50,7 @@ import {
   publishProducts,
   readProductionPointers,
 } from "../src/lib/release/publication";
-import { assertPolicyIdentity, readContract } from "../src/lib/release/source";
+import { assertPolicyIdentity, gitOutput, readContract } from "../src/lib/release/source";
 import { isPrerelease } from "../src/lib/release/version";
 
 const contract = readContract();
@@ -314,13 +315,23 @@ if (command === "notification") {
       Number(process.env.GITHUB_RUN_ID),
       !process.argv.includes("--read-only")
     );
+    const executionCheckout = entry
+      ? releaseExecutionCheckout(entry, gitOutput(["rev-parse", "HEAD"]).trim(), (sha) =>
+          mainEvaluationResult(app, sha, quality)
+        )
+      : "";
     await output({
       active: String(Boolean(entry)),
-      source_sha: entry?.mergeSha || "",
+      source_sha: executionCheckout,
       identity: entry?.id || "",
       prerelease: entry ? String(isPrerelease(entry.version)) : "false",
     });
-    if (entry) await save(entry);
+    if (entry) {
+      console.log(
+        `Release product source: ${entry.mergeSha}; execution tooling: ${executionCheckout}`
+      );
+      await save(entry);
+    }
   }
 } else if (command === "retry") {
   const requestedId = process.env.RELEASE_ID || "";
