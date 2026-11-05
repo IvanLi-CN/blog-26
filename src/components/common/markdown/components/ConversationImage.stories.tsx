@@ -12,7 +12,7 @@ import "@/styles/nature-restored.css";
 const sources = [...externalImages.message.content.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map(
   (match) => match[1]!
 );
-const localImage = "/site-assets/ivan-blog-mark.svg";
+const localImage = "/site-assets/favicon.ico";
 const brokenImage = "data:image/png;base64,broken";
 
 /**
@@ -73,7 +73,7 @@ function ImageStates({ dark = false }: { dark?: boolean }) {
         boxSizing: "border-box",
       }}
     >
-      <div data-visual-evidence-target style={{ display: "grid", gap: 24 }}>
+      <div data-visual-evidence-target className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">
         <section aria-label="等待主动加载">
           <h2>等待主动加载</h2>
           <ConversationImage {...externalImages.message} src={sources[0]!} alt="外部图片 A" />
@@ -110,6 +110,7 @@ const meta = {
   component: ImageStates,
   tags: ["autodocs"],
   beforeEach: interceptStoryImages,
+  globals: { viewport: { value: "imageDesktop", isRotated: false } },
   parameters: {
     publicSurface: true,
     layout: "fullscreen",
@@ -121,6 +122,11 @@ const meta = {
     },
     viewport: {
       options: {
+        imageDesktop: {
+          name: "Image 1440 × 1000",
+          styles: { width: "1440px", height: "1000px" },
+          type: "desktop",
+        },
         image393: {
           name: "Image 393 × 852",
           styles: { width: "393px", height: "852px" },
