@@ -124,6 +124,10 @@ const verifySurface: Story["play"] = async ({ args, canvasElement }) => {
   if (table) await expect(getComputedStyle(table).overflowX).toBe("auto");
   const displayMath = canvasElement.querySelector(".katex-display");
   if (displayMath) await expect(getComputedStyle(displayMath).overflowX).toBe("auto");
+  const ordinaryLink = canvasElement.querySelector('a[href="/posts/contract"]');
+  if (ordinaryLink) {
+    await expect(getComputedStyle(ordinaryLink).textDecorationLine).toContain("underline");
+  }
   const surface = canvasElement.querySelector("[data-visual-evidence-surface]");
   const target = canvasElement.querySelector("[data-visual-evidence-target]");
   if (!surface || !target) throw new Error("Missing source-owned visual evidence surface");

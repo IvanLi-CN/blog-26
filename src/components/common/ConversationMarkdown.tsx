@@ -256,10 +256,19 @@ export function ConversationMarkdown({
         return <BlockCodeContext.Provider value>{children}</BlockCodeContext.Provider>;
       },
       code: ConversationCode,
-      a({ children, href, title, node: _node, ...props }) {
+      a({ children, href, title, className: inheritedClassName, node: _node, ...props }) {
         if (!href) return <span {...props}>{children}</span>;
         return (
-          <a href={href} title={title} {...linkProps(href)} {...props}>
+          <a
+            href={href}
+            title={title}
+            {...linkProps(href)}
+            {...props}
+            className={classNames(
+              "nature-link-inline break-words underline decoration-[rgba(var(--nature-accent-rgb),0.35)] underline-offset-4",
+              inheritedClassName
+            )}
+          >
             {children}
           </a>
         );
