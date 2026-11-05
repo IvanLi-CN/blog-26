@@ -1,3 +1,4 @@
+import { gunzipSync } from "node:zlib";
 import {
   computePlaybookContentHash,
   decodeUtf8,
@@ -60,6 +61,8 @@ export interface PlaybookGitHubSourceConfig {
 export interface PlaybookGitHubSourceTransport {
   resolveRef(input: { repository: string; ref: string }): Promise<string>;
   readFile(input: { repository: string; commit: string; path: string }): Promise<Uint8Array>;
+  readReleaseBundle?(input: { repository: string; ref: string }): Promise<Uint8Array>;
+  readReleaseManifest?(input: { repository: string; ref: string }): Promise<Uint8Array>;
 }
 
 export interface PlaybookGitHubSourceTransportOptions {
@@ -300,6 +303,31 @@ function readExportManifest(bytes: Uint8Array) {
   }
 }
 
+function readReleaseManifest(bytes: Uint8Array) {
+  const value = readExportValue(bytes, "GitHub Playbook release manifest");
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    invalid("GitHub Playbook release manifest is invalid");
+  const record = value as Record<string, unknown>;
+  if (record.schemaVersion !== 1 || !Array.isArray(record.files) || record.files.length !== 2)
+    invalid("GitHub Playbook release manifest is invalid");
+  const files = record.files.map((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry))
+      invalid("GitHub Playbook release manifest is invalid");
+    const item = entry as Record<string, unknown>;
+    if (
+      typeof item.path !== "string" ||
+      typeof item.sha256 !== "string" ||
+      !/^\w{64}$/u.test(item.sha256) ||
+      typeof item.size !== "number" ||
+      !Number.isSafeInteger(item.size) ||
+      item.size < 0
+    )
+      invalid("GitHub Playbook release manifest is invalid");
+    return { path: item.path, sha256: item.sha256, size: item.size };
+  });
+  return { contentHash: typeof record.contentHash === "string" ? record.contentHash : null, files };
+}
+
 function readExportJson(bytes: Uint8Array, label: string) {
   return readExportValue(bytes, label);
 }
@@ -400,6 +428,89 @@ export async function loadPlaybookGitHubSnapshot(
   if (!config.token)
     return { status: "unconfigured", repository: config.repository, ref: config.ref };
   try {
+    if (transport.readReleaseBundle) {
+      try {
+        return { status: "ready", snapshot: await readPlaybookGitHubSnapshot(transport, config) };
+      } catch (error) {
+        if (
+          config.ref !== "main" ||
+          !(
+            error instanceof PlaybookGitHubSourceReadError ||
+            error instanceof PlaybookGitHubSourceInvalidError
+          ) ||
+          !(
+            error.message.includes("public export read failed") ||
+            error.message.includes("public export path is unavailable")
+          )
+        )
+          throw error;
+      }
+      const tar = gunzipSync(
+        await transport.readReleaseBundle({ repository: config.repository, ref: config.ref })
+      );
+      const files = new Map<string, Uint8Array>();
+      for (let offset = 0; offset + 512 <= tar.length; ) {
+        const header = tar.subarray(offset, offset + 512);
+        if (header.every((value) => value === 0)) break;
+        const name = Buffer.from(header.subarray(0, 100)).toString().replace(/\0.*$/u, "");
+        const size = Number.parseInt(
+          Buffer.from(header.subarray(124, 136)).toString().replace(/\0.*$/u, "").trim() || "0",
+          8
+        );
+        const start = offset + 512;
+        if (
+          !name ||
+          name.includes("..") ||
+          name.startsWith("/") ||
+          !Number.isSafeInteger(size) ||
+          start + size > tar.length
+        )
+          invalid("GitHub Playbook release asset contains an unsafe or truncated entry");
+        if (header[156] === 48) files.set(name, tar.subarray(start, start + size));
+        offset += 512 + Math.ceil(size / 512) * 512;
+      }
+      const catalog = files.get("catalog.json");
+      const search = files.get("search-documents.json");
+      const manifest =
+        files.get("manifest.json") ??
+        files.get("playbook-public-manifest.json") ??
+        (transport.readReleaseManifest
+          ? await transport.readReleaseManifest({ repository: config.repository, ref: config.ref })
+          : undefined);
+      if (!catalog || !search || !manifest) invalid("GitHub Playbook release asset is incomplete");
+      const parsedManifest = readReleaseManifest(manifest);
+      for (const entry of parsedManifest.files) {
+        const content = files.get(entry.path);
+        if (!content) invalid(`GitHub Playbook release asset is missing: ${entry.path}`);
+        try {
+          verifyFile(content, entry);
+        } catch (error) {
+          invalid(`GitHub Playbook release asset digest mismatch: ${entry.path}`, { cause: error });
+        }
+      }
+      const normalized = normalizePlaybookSnapshot(
+        readExportJson(catalog, "GitHub Playbook public catalog"),
+        readExportJson(search, "GitHub Playbook search documents")
+      );
+      if (
+        parsedManifest.contentHash &&
+        parsedManifest.contentHash !== computePlaybookContentHash(normalized)
+      )
+        invalid("GitHub Playbook public export content digest mismatch");
+      return {
+        status: "ready",
+        snapshot: {
+          ...normalized,
+          sourceRevision: {
+            provider: "github",
+            repository: config.repository,
+            ref: config.ref,
+            commit: await transport.resolveRef(config),
+          },
+          contentHash: computePlaybookContentHash(normalized),
+        },
+      };
+    }
     return { status: "ready", snapshot: await readPlaybookGitHubSnapshot(transport, config) };
   } catch (error) {
     const message = error instanceof Error ? error.message : "GitHub Playbook source failed";
@@ -512,6 +623,32 @@ export function createPlaybookGitHubSourceTransport(
     const response = await request(url, GITHUB_RAW_ACCEPT, true);
     return readResponseBytes(response, GITHUB_SOURCE_MAX_FILE_BYTES, "GitHub raw file response");
   }
+  async function releaseAsset(repository: string, ref: string, name: string) {
+    const release = await json(
+      ref === "main"
+        ? `https://api.github.com/repos/${repository}/releases/latest`
+        : `https://api.github.com/repos/${repository}/releases/tags/${encodeURIComponent(ref)}`
+    );
+    const asset = Array.isArray(release.assets)
+      ? (release.assets.find(
+          (item) =>
+            item && typeof item === "object" && (item as Record<string, unknown>).name === name
+        ) as Record<string, unknown> | undefined)
+      : undefined;
+    if (typeof asset?.id !== "number" || !Number.isSafeInteger(asset.id))
+      throw new PlaybookGitHubSourceInvalidError(
+        `GitHub Playbook release asset is unavailable: ${name}`
+      );
+    const response = await request(
+      `https://api.github.com/repos/${repository}/releases/assets/${asset.id}`,
+      "application/octet-stream"
+    );
+    return readResponseBytes(
+      response,
+      GITHUB_SOURCE_MAX_FILE_BYTES,
+      `GitHub Playbook release asset: ${name}`
+    );
+  }
   return {
     async resolveRef({ repository, ref }) {
       const response = await request(
@@ -559,6 +696,10 @@ export function createPlaybookGitHubSourceTransport(
         throw new PlaybookGitHubSourceInvalidError(`GitHub file exceeds byte limit: ${path}`);
       return bytes;
     },
+    readReleaseBundle: ({ repository, ref }) =>
+      releaseAsset(repository, ref, "playbook-public.tar.gz"),
+    readReleaseManifest: ({ repository, ref }) =>
+      releaseAsset(repository, ref, "playbook-public-manifest.json"),
   };
 }
 
