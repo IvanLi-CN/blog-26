@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { cleanup, render } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { AssistantMessageContent } from "../../../site/components/AssistantMessageContent";
 import {
   codeCases,
   completeMarkdown,
@@ -31,6 +32,22 @@ function renderMessage(message = completeMarkdown.message) {
 }
 
 describe("ConversationMarkdown", () => {
+  test("composes with AssistantMessageContent without duplicating the message boundary", () => {
+    const message = { ...completeMarkdown.message, status: "completed" as const };
+    const view = render(
+      <AssistantMessageContent {...message} renderMarkdown={ConversationMarkdown} />
+    );
+    const body = getMessageBody(view.container, message);
+    expect(body.querySelector("h1")?.textContent).toBe("阅读合同");
+    expect(view.container.querySelectorAll("[data-message-body]")).toHaveLength(1);
+    expect(
+      view.container.querySelectorAll(`[data-message-id="${message.messageId}"]`)
+    ).toHaveLength(1);
+    expect(
+      view.container.querySelectorAll(`[data-presentation-id="${message.presentationId}"]`)
+    ).toHaveLength(1);
+  });
+
   test("keeps raw HTML literal and renders the standard GFM contract", () => {
     const view = renderMessage();
     const body = getMessageBody(view.container, completeMarkdown.message);
