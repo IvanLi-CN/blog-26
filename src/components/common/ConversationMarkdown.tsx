@@ -264,6 +264,7 @@ export function ConversationMarkdown({
             title={title}
             {...linkProps(href)}
             {...props}
+            style={{ textDecorationLine: "underline" }}
             className={classNames(
               "nature-link-inline break-words underline decoration-[rgba(var(--nature-accent-rgb),0.35)] underline-offset-4",
               inheritedClassName
