@@ -75,6 +75,27 @@ export function rehypeNamespaceConversationFootnotes(messageId: string, presenta
   };
 }
 
+/** Keep wide tables and display equations inside their own scroll containers. */
+export function rehypeConversationOverflow() {
+  return (tree: Root) => {
+    visit(tree, "element", (node: Element) => {
+      const classes = Array.isArray(node.properties?.className)
+        ? node.properties.className.map(String)
+        : typeof node.properties?.className === "string"
+          ? [node.properties.className]
+          : [];
+      if (!classes.includes("katex-display") && !classes.includes("table-responsive")) return;
+      node.properties = {
+        ...node.properties,
+        style: [
+          typeof node.properties.style === "string" ? node.properties.style : "",
+          "max-width:100%;overflow-x:auto;overflow-y:hidden;",
+        ].join(""),
+      };
+    });
+  };
+}
+
 function safeHref(value: string): boolean {
   // biome-ignore lint/suspicious/noControlCharactersInRegex: Reject browser URL normalization before navigation.
   if (!value || value !== value.trim() || /[\u0000-\u0020\u007f\\]/u.test(value)) return false;
@@ -83,8 +104,19 @@ function safeHref(value: string): boolean {
     value.startsWith("/") ||
     value.startsWith("./") ||
     value.startsWith("../")
-  )
+  ) {
+    if (value.startsWith("//")) {
+      try {
+        const url = new URL(`https:${value}`);
+        return Boolean(url.hostname) && !url.username && !url.password;
+      } catch {
+        return false;
+      }
+    }
     return true;
+  }
+  // Standard Markdown permits bare relative paths such as guide/page and images/photo.png.
+  if (!value.includes(":")) return true;
   try {
     const url = new URL(value);
     return (
@@ -98,12 +130,22 @@ function safeHref(value: string): boolean {
   }
 }
 
-export function conversationUrlTransform(value: string): string | null {
+export function conversationUrlTransform(value: string, key: string): string | null {
+  // Images remain subject to ConversationImage's exact-source authorization and protocol gate.
+  if (key === "src") return safeHref(value) ? value : null;
   return safeHref(value) ? value : null;
 }
 
 export function isConversationExternalHref(value: string | undefined): boolean {
   if (!value) return false;
+  if (value.startsWith("//")) {
+    try {
+      const url = new URL(`https:${value}`);
+      return Boolean(url.hostname) && !url.username && !url.password;
+    } catch {
+      return false;
+    }
+  }
   try {
     const url = new URL(value);
     return url.protocol === "http:" || url.protocol === "https:";

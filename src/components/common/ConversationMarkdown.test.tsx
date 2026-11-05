@@ -128,4 +128,93 @@ describe("ConversationMarkdown", () => {
     expect(partialBody.querySelector("a")).toBeNull();
     expect(partialBody.textContent).toContain("[x](https://exa");
   });
+
+  test("keeps URL policy exact for dangerous, relative and network-path links", () => {
+    const message = {
+      ...completeMarkdown.message,
+      messageId: "url-policy",
+      content:
+        "[danger](javascript:alert(1)) [relative](guide/page) [network](//example.invalid/path) [scheme](foo:bar)",
+    };
+    const view = renderMessage(message);
+    const body = getMessageBody(view.container, message);
+    expect(body.querySelector('a[href="javascript:alert(1)"]')).toBeNull();
+    expect(body.querySelector('a[href="foo:bar"]')).toBeNull();
+    expect(body.querySelector('a[href="guide/page"]')).not.toBeNull();
+    const network = body.querySelector('a[href="//example.invalid/path"]');
+    expect(network?.getAttribute("target")).toBe("_blank");
+    expect(network?.getAttribute("rel")).toBe("noopener noreferrer");
+  });
+
+  test("passes exact bare relative image sources to the trusted resolver", () => {
+    const calls: string[] = [];
+    const message = {
+      ...completeMarkdown.message,
+      messageId: "bare-relative-image",
+      content: "![approved](images/photo.png)",
+      resourceContext: {
+        resolveAuthorizedImage: (src: string) => {
+          calls.push(src);
+          return src === "images/photo.png" ? { src: "/approved/image.png" } : null;
+        },
+      },
+    };
+    const view = renderMessage(message);
+    expect(calls).toEqual(["images/photo.png"]);
+    expect(view.container.querySelector("img")?.getAttribute("src")).toBe("/approved/image.png");
+
+    const externalCalls: string[] = [];
+    const external = {
+      ...message,
+      messageId: "external-image",
+      content: "![external](https://images.example.invalid/photo.png)",
+      resourceContext: {
+        resolveAuthorizedImage: (src: string) => {
+          externalCalls.push(src);
+          return null;
+        },
+      },
+    };
+    const externalView = renderMessage(external);
+    expect(externalCalls).toEqual(["https://images.example.invalid/photo.png"]);
+    expect(externalView.container.querySelector("img")).toBeNull();
+  });
+
+  test("keeps unselected images unavailable without a resource context", () => {
+    const message = {
+      ...completeMarkdown.message,
+      messageId: "image-without-context",
+      content: "![approved](images/photo.png)",
+    };
+    const view = renderMessage(message);
+    expect(view.container.querySelector("img, source, picture, [srcset]")).toBeNull();
+    expect(view.container.textContent).toContain("approved");
+  });
+
+  test("keeps multiple incomplete explicit links readable while completing valid links", () => {
+    const message = {
+      ...completeMarkdown.message,
+      messageId: "partial-links",
+      content: "[one](https://exa [two](guide/ [ok](guide/page)",
+    };
+    const view = renderMessage(message);
+    const body = getMessageBody(view.container, message);
+    expect(body.querySelectorAll("a")).toHaveLength(1);
+    expect(body.querySelector('a[href="guide/page"]')?.textContent).toBe("ok");
+    expect(body.textContent).toContain("[one](https://exa");
+    expect(body.textContent).toContain("[two](guide/");
+  });
+
+  test("keeps invalid math and adjacent prose readable", () => {
+    const message = {
+      ...escapingAndCurrency.message,
+      messageId: "invalid-math-readable",
+      content: "有效 $x$，无效公式 $\\notARealCommand{x}$ 后仍有正文。",
+    };
+    const view = renderMessage(message);
+    const body = getMessageBody(view.container, message);
+    expect(body.querySelector(".katex")).not.toBeNull();
+    expect(body.textContent).toContain("无效公式");
+    expect(body.textContent).toContain("后仍有正文。");
+  });
 });

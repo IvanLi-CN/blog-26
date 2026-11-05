@@ -94,9 +94,36 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const verifySurface: Story["play"] = async ({ canvasElement }) => {
+const verifySurface: Story["play"] = async ({ args, canvasElement }) => {
   const canvas = within(canvasElement);
-  await expect(canvas.getByRole("heading", { name: "阅读合同" })).toBeInTheDocument();
+  const content = args.content ?? completeMarkdown.message.content;
+  if (content === maliciousHtml.message.content) {
+    await expect(
+      canvas.getByText("<script>globalThis.__amrExecuted = true</script>")
+    ).toBeInTheDocument();
+    await expect(canvasElement.querySelector("script, img, video, iframe")).toBeNull();
+  } else if (content === escapingAndCurrency.message.content) {
+    await expect(canvasElement.querySelector(".katex")).not.toBeNull();
+    await expect(canvas.getByText(/无效公式/)).toBeInTheDocument();
+  } else {
+    await expect(canvas.getByRole("heading", { name: "阅读合同" })).toBeInTheDocument();
+  }
+
+  const heading = canvasElement.querySelector("h1");
+  if (heading) {
+    const style = getComputedStyle(heading);
+    await expect(Number.parseFloat(style.fontSize)).toBeGreaterThan(18);
+    await expect(Number.parseInt(style.fontWeight, 10)).toBeGreaterThanOrEqual(600);
+  }
+  const paragraph = canvasElement.querySelector("p");
+  if (paragraph) await expect(getComputedStyle(paragraph).marginBottom).not.toBe("0px");
+  for (const list of canvasElement.querySelectorAll("ul, ol")) {
+    await expect(getComputedStyle(list).listStyleType).not.toBe("none");
+  }
+  const table = canvasElement.querySelector(".table-responsive");
+  if (table) await expect(getComputedStyle(table).overflowX).toBe("auto");
+  const displayMath = canvasElement.querySelector(".katex-display");
+  if (displayMath) await expect(getComputedStyle(displayMath).overflowX).toBe("auto");
   const surface = canvasElement.querySelector("[data-visual-evidence-surface]");
   const target = canvasElement.querySelector("[data-visual-evidence-target]");
   if (!surface || !target) throw new Error("Missing source-owned visual evidence surface");
