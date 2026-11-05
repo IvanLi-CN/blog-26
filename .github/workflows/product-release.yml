@@ -52,7 +52,7 @@ jobs:
           PY
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Reproduce CLI initialization with upload blocked
+      - name: Reproduce frozen CLI upload with deployment creation blocked
         run: node scripts/diagnose-edgeone-cli.mjs
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}

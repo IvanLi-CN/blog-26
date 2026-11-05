@@ -11,7 +11,9 @@ for (const name of await readdir(cache)) {
     await access(candidate);
     cli = candidate;
     break;
-  } catch {}
+  } catch {
+    // Other npx cache entries may not contain EdgeOne.
+  }
 }
 if (!cli) throw new Error("Pinned CLI installation missing");
 const token = process.env.EDGEONE_API_TOKEN;
@@ -52,10 +54,10 @@ console.log(
   JSON.stringify({
     exitCode,
     reached: stages.filter((stage) => output.includes(stage)),
-    stoppedBeforeUpload: output.includes("DIAGNOSTIC_STOP_BEFORE_UPLOAD"),
+    stoppedBeforeDeployment: output.includes("DIAGNOSTIC_STOP_BEFORE_DEPLOYMENT"),
   })
 );
-// No COS credentials have been obtained. Still remove credentials and every URL.
+// Emit errors only, removing the configured credential and every URL.
 const errors = output
   .split(/\r?\n/)
   .filter((line) => /error|failed|invalid|DIAGNOSTIC_STOP/i.test(line));
@@ -66,4 +68,4 @@ for (let line of errors.slice(-15)) {
     .replace(new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"), "");
   console.log(line.slice(0, 600));
 }
-if (!output.includes("DIAGNOSTIC_STOP_BEFORE_UPLOAD")) process.exitCode = 1;
+if (!output.includes("DIAGNOSTIC_STOP_BEFORE_DEPLOYMENT")) process.exitCode = 1;
