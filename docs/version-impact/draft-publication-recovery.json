@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "7adc8d363e56ac9d0f32fd918f7a5a6eff913fd0",
+  "covered_files": {
+    "docs/adr/0040-published-product-recovery-tooling.md": "61a6fa787754d399fd335fc097404fc3bea90b81",
+    "docs/specs/manual-version-release/HISTORY.md": "696fcf676914d829505090459c4e7497d9261c26",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "f8ee9350e6df6787a089b34c0c452369cbc89249",
+    "docs/specs/manual-version-release/SPEC.md": "0b298c0e3f4b1ca13d5ecf5fdd46f9eb2a5869a4",
+    "src/lib/release/completion.ts": "469464dbec3c74725ac5382c8144c80df5d1a306",
+    "src/lib/release/publication.ts": "c08b9d368dec6e4c2222d4dc6ee6c0211e863918",
+    "tests/lib/manual-release-publication.test.ts": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+    "tests/lib/manual-release-recovery.test.ts": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6"
+  },
+  "change": {
+    "description": "Resume immutable partially published products through matching draft discovery and bounded registry visibility verification without rebuilding or overwriting frozen bytes.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Resume immutable partially published products through matching draft discovery and bounded registry visibility verification without rebuilding or overwriting frozen bytes.",
+      "assessed_at": "2026-11-05T19:44:46.400736+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Resume immutable partially published products through matching draft discovery and bounded registry visibility verification without rebuilding or overwriting frozen bytes.",
+      "assessed_at": "2026-11-05T19:44:46.401003+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Partial frozen product publication recovery and matching contract documentation."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Resume immutable partially published products through matching draft discovery and bounded registry visibility verification without rebuilding or overwriting frozen bytes.",
+      "assessed_at": "2026-11-05T19:44:46.401007+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7"
+      ],
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No ledger schema, durable identity or product digest changes; original-run artifact restoration remains mandatory.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        }
+      ]
+    }
+  }
+}

@@ -113,12 +113,22 @@ describe("frozen release recovery", () => {
       );
     }
   });
-  test("build and unpublished recovery stay pinned to the product source", () => {
+  test("frozen publication recovery uses gated tooling while builds remain pinned", () => {
     const { entry } = frozenStore();
+    expect(releaseExecutionCheckout(entry, "a".repeat(40), () => ({ state: "passed" }))).toBe(
+      "a".repeat(40)
+    );
+    expect(() =>
+      releaseExecutionCheckout(entry, "a".repeat(40), () => ({ state: "failed" }))
+    ).toThrow("has not passed main quality gates");
     expect(
-      releaseExecutionCheckout(entry, "a".repeat(40), () => {
-        throw new Error("Build execution must not select current tooling");
-      })
+      releaseExecutionCheckout(
+        { ...entry, stage: "merged", products: undefined },
+        "a".repeat(40),
+        () => {
+          throw new Error("Build execution must not select current tooling");
+        }
+      )
     ).toBe(entry.mergeSha);
   });
   const pointers = {
