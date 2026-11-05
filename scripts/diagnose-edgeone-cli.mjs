@@ -1,30 +1,13 @@
-import { spawn } from "node:child_process";
-import { access, readdir } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
+import { withoutDeploymentCredentials } from "../src/lib/playbook/child-env";
 
-const cache = join(homedir(), ".npm", "_npx");
-let cli;
-for (const name of await readdir(cache)) {
-  const candidate = join(cache, name, "node_modules/edgeone/edgeone-bin/edgeone.js");
-  try {
-    await access(candidate);
-    cli = candidate;
-    break;
-  } catch {
-    // Other npx cache entries may not contain EdgeOne.
-  }
-}
-if (!cli) throw new Error("Pinned CLI installation missing");
 const token = process.env.EDGEONE_API_TOKEN;
 const project = process.env.EDGEONE_PROJECT_NAME;
 if (!token || !project) throw new Error("EdgeOne diagnostic configuration missing");
-const child = spawn(
-  process.execPath,
+const child = Bun.spawn(
   [
-    "--require",
-    resolve("scripts/diagnose-edgeone-cli-guard.cjs"),
-    cli,
+    "npx",
+    "edgeone@1.6.34",
     "makers",
     "deploy",
     resolve(process.env.RUNNER_TEMP, "edgeone-frozen-static"),
@@ -35,15 +18,23 @@ const child = spawn(
     "-e",
     "production",
   ],
-  { stdio: ["ignore", "pipe", "pipe"] }
+  {
+    env: {
+      ...withoutDeploymentCredentials(process.env),
+      EDGEONE_API_TOKEN: token,
+      EDGEONE_PROJECT_NAME: project,
+      NODE_OPTIONS: `--require ${resolve("scripts/diagnose-edgeone-cli-guard.cjs")}`,
+    },
+    stdout: "pipe",
+    stderr: "pipe",
+  }
 );
-let output = "";
-for (const stream of [child.stdout, child.stderr]) {
-  stream.on("data", (chunk) => {
-    output += chunk.toString();
-  });
-}
-const exitCode = await new Promise((done) => child.on("close", done));
+const chunks = await Promise.all([
+  new Response(child.stdout).text(),
+  new Response(child.stderr).text(),
+]);
+const output = chunks.join("\n");
+const exitCode = await child.exited;
 const stages = [
   "Using provided API token",
   "Validating API endpoint",
