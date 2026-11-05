@@ -1,6 +1,6 @@
 # 需求收敛与设计树
 
-本记录保留用户明确回答、由源码确定的事实，以及已获准实施的设计建议。正式需求以 [SPEC.md](./SPEC.md) 为准；技术方案以 [DESIGN.md](./DESIGN.md) 和 [TECHNOLOGY.md](./TECHNOLOGY.md) 为审阅入口。用户已确认整体方案并授权开始本地实施与任务派发；远端写入仍需准确目标的单独授权。
+本记录保留用户明确回答、由源码确定的事实，以及已获准实施的设计建议。正式需求以 [SPEC.md](./SPEC.md) 为准；技术方案以 [DESIGN.md](./DESIGN.md) 和 [TECHNOLOGY.md](./TECHNOLOGY.md) 为审阅入口。用户已确认整体方案并授权实施、任务派发及下述准确分支和 PR 操作。
 
 ## 设计树
 
@@ -48,4 +48,8 @@
 
 ## 文档与执行的授权边界
 
-用户已确认七项产品决定、整体设计与 plan-2，并要求开始实现。正式运行 `blog26-chat-rendering-20261105` 已批准 plan-2，授权本地实施及任务派发；主控先提交本地文档基线。源码调查不等于 audit 任务的可执行样本、测试和交接已完成。此前约定的推送、PR、合并、发布和部署尚未获准确目标授权。贡献任务原生派发要求已发布的父分支，必须在父分支发布授权与真实回执齐备后执行，不能伪造派发或集成事实。
+用户已确认七项产品决定、整体设计，并要求开始实现。正式运行 `blog26-chat-rendering-20261105` 保存任务依赖、执行身份、计划修订及真实回执；主控先提交共享文档基线，再按依赖派发贡献任务。
+
+用户明确授权 GitHub 仓库 `IvanLi-CN/blog-26` 的父分支 `th/assistant-message-rendering`，以及 `th/amr-audit`、`th/amr-code-blocks`、`th/amr-media`、`th/amr-streaming`、`th/amr-renderer`、`th/amr-integration`、`th/amr-regression` 的分支发布和子 PR。验证通过后，子 PR 只合入该父分支；父 PR 到 `main` 仅创建待审。`main` 合并、release 和部署仍需另行授权。
+
+贡献任务以已发布父分支的准确 SHA 和真实子 PR 集成为交接点；本地完成、反馈 Draft 或视觉截图均不代替正式集成回执。实现及验证的当前事实由 [IMPLEMENTATION.md](./IMPLEMENTATION.md) 和运行账本记录。

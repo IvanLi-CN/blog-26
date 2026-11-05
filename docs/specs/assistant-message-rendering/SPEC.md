@@ -131,3 +131,25 @@
 - [现有能力与缺口](./CAPABILITY-MATRIX.md)
 - [实现覆盖](./IMPLEMENTATION.md)
 - [兼容背景](./HISTORY.md)
+
+## Visual Evidence
+
+以下组件证据来自当前 Storybook Canvas 的可控输入，已由主人确认准确并同意纳入本轮 PR。视口为 1440×1000 CSS px；捕获范围仅含声明的组件展示面，不含真实对话、系统桌面或无关程序。页面接入与最终 Markdown 渲染仍需单独验证。
+
+### 代码复制
+
+![代码块复制成功状态](./assets/code-copy.png)
+
+来源：`public-conversation-code-block--copy-success`；剪贴板使用 Story mock，验证复制成功反馈与默认展开。展示面采用主题实色背景及约 29 px 外边距。
+
+### 图片状态
+
+![授权图片、外图待加载和失败状态](./assets/image-states.png)
+
+来源：`public-conversation-image--state-gallery`；图片传输由 Story 控制，覆盖授权、待选择、加载失败与重试状态；真实请求隔离由后续浏览器网络回归验证。展示面外边距为 32 px。
+
+### 消息状态与降级
+
+![流式消息、失败与局部降级状态](./assets/message-states.png)
+
+来源：`public-conversation-message-states--overview`；使用简化预览渲染器，覆盖用户字面输入、生成状态、停止、失败及单消息降级，不能替代最终 Markdown 语义验收。展示面外边距为 48 px。
