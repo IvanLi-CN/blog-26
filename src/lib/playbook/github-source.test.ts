@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { gzipSync } from "node:zlib";
 import { publicFixtureCatalog, publicFixtureSearch } from "./fixture";
 import {
   comparePlaybookSnapshots,
@@ -8,6 +9,7 @@ import {
   normalizePlaybookSnapshot,
   PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST,
   type PlaybookGitHubSourceConfig,
+  PlaybookGitHubSourceInvalidError,
   type PlaybookGitHubSourceTransport,
   readPlaybookGitHubSnapshot,
   readPlaybookGitHubSourceConfig,
@@ -116,6 +118,19 @@ function makeFixtureFiles(catalog = publicFixtureCatalog, search = completeFixtu
   ]);
 }
 
+function makeTarGz(files: ReadonlyMap<string, Uint8Array>) {
+  const blocks: Uint8Array[] = [];
+  for (const [name, bytes] of files) {
+    const header = Buffer.alloc(512);
+    header.write(name, 0, 100, "utf8");
+    header.write(bytes.byteLength.toString(8).padStart(11, "0") + "\0", 124, 12, "ascii");
+    header[156] = 48;
+    blocks.push(header, bytes, Buffer.alloc((512 - (bytes.byteLength % 512)) % 512));
+  }
+  blocks.push(Buffer.alloc(1024));
+  return gzipSync(Buffer.concat(blocks));
+}
+
 function makeTransport(
   files: ReadonlyMap<string, Uint8Array>,
   resolvedCommit = commit,
@@ -163,6 +178,70 @@ test("reconstructs one complete snapshot from one fixed commit and never calls t
     ...PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST.map((path) => `read:${commit}:${path}`),
   ]);
   expect(calls.some((call) => call.includes("ivanli.cc") || call.includes("static"))).toBe(false);
+});
+
+test("loads and validates the GitHub release bundle and separate manifest asset", async () => {
+  const files = makeFixtureFiles();
+  const bundleFiles = new Map([
+    ["catalog.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[1])!],
+    ["search-documents.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[2])!],
+  ]);
+  const manifest = Buffer.from(
+    encodeJson({
+      schemaVersion: 1,
+      files: [
+        fileRecord("catalog.json", bundleFiles.get("catalog.json")!),
+        fileRecord("search-documents.json", bundleFiles.get("search-documents.json")!),
+      ],
+    })
+  );
+  const transport: PlaybookGitHubSourceTransport = {
+    resolveRef: async () => commit,
+    readFile: async () => {
+      throw new PlaybookGitHubSourceInvalidError("GitHub public export path is unavailable: 404");
+    },
+    readReleaseBundle: async () => makeTarGz(bundleFiles),
+    readReleaseManifest: async () => manifest,
+  };
+  const result = await loadPlaybookGitHubSnapshot(transport, config);
+  expect(result.status).toBe("ready");
+  if (result.status === "ready")
+    expect(result.snapshot.contentHash).toBe(
+      computePlaybookContentHash(
+        normalizePlaybookSnapshot(publicFixtureCatalog, completeFixtureSearch)
+      )
+    );
+});
+
+test("rejects a release bundle whose manifest digest does not match", async () => {
+  const files = makeFixtureFiles();
+  const manifest = {
+    schemaVersion: 1,
+    contentHash: "0".repeat(64),
+    files: [
+      fileRecord("catalog.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[1])!),
+      fileRecord("search-documents.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[2])!),
+    ],
+  };
+  const transport: PlaybookGitHubSourceTransport = {
+    resolveRef: async () => commit,
+    readFile: async () => {
+      throw new PlaybookGitHubSourceInvalidError("GitHub public export path is unavailable: 404");
+    },
+    readReleaseBundle: async () =>
+      makeTarGz(
+        new Map([
+          ["catalog.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[1])!],
+          ["search-documents.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[2])!],
+        ])
+      ),
+    readReleaseManifest: async () => Buffer.from(encodeJson(manifest)),
+  };
+  const result = await loadPlaybookGitHubSnapshot(transport, config);
+  expect(result).toMatchObject({
+    status: "invalid",
+    message: "GitHub Playbook public export content digest mismatch",
+  });
 });
 
 test("classifies commit and content identity changes without rebuilding unchanged projections", () => {
@@ -868,7 +947,7 @@ test("cancels response bodies before non-success status failures", async () => {
   }) as unknown as typeof fetch;
   const result = await loadPlaybookGitHubSnapshot(
     createPlaybookGitHubSourceTransport("fixture-token", fetchImpl),
-    config
+    { ...config, ref: "feature/ref" }
   );
   expect(result.status).toBe("invalid");
   expect(cancellations).toBe(1);
