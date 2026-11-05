@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "31c84f4a5b1f46c53ea2a99038740a2f5032ea2e",
+  "base_sha": "39285cf98bbc02b03115615fb63f772272b97651",
   "covered_files": {
     "docs/specs/style-playbook-integration/HISTORY.md": "6217a37eb0d12af6b016cebcc31fe3ec34e1e34c",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "2033ffc3407f30a8655a4a7680f8945e97a72799",
