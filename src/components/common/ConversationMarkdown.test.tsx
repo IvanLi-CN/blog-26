@@ -134,13 +134,17 @@ describe("ConversationMarkdown", () => {
       ...completeMarkdown.message,
       messageId: "url-policy",
       content:
-        "[danger](javascript:alert(1)) [relative](guide/page) [network](//example.invalid/path) [scheme](foo:bar)",
+        "[danger](javascript:alert(1)) [relative](guide/page) [colon](guide/part:one) [query](guide/page?return=https://example.invalid) [network](//example.invalid/path) [scheme](foo:bar)",
     };
     const view = renderMessage(message);
     const body = getMessageBody(view.container, message);
     expect(body.querySelector('a[href="javascript:alert(1)"]')).toBeNull();
     expect(body.querySelector('a[href="foo:bar"]')).toBeNull();
     expect(body.querySelector('a[href="guide/page"]')).not.toBeNull();
+    expect(body.querySelector('a[href="guide/part:one"]')).not.toBeNull();
+    expect(
+      body.querySelector('a[href="guide/page?return=https://example.invalid"]')
+    ).not.toBeNull();
     const network = body.querySelector('a[href="//example.invalid/path"]');
     expect(network?.getAttribute("target")).toBe("_blank");
     expect(network?.getAttribute("rel")).toBe("noopener noreferrer");

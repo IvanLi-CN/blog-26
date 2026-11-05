@@ -115,8 +115,9 @@ function safeHref(value: string): boolean {
     }
     return true;
   }
-  // Standard Markdown permits bare relative paths such as guide/page and images/photo.png.
-  if (!value.includes(":")) return true;
+  // Standard Markdown permits colons after the first path segment and inside query values.
+  // Only a colon before the first slash/query/hash is treated as a scheme candidate.
+  if (!/^[^/?#]*:/u.test(value)) return true;
   try {
     const url = new URL(value);
     return (
