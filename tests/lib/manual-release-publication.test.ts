@@ -60,13 +60,15 @@ describe("immutable prerelease publication adapter", () => {
     const executable = join(registry, "skopeo");
     await writeFile(
       executable,
-      `#!/usr/bin/env bun\nimport { existsSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";\nconst root = ${JSON.stringify(registry)};\nif (process.argv[2] === "copy") { appendFileSync(root + "/copies", JSON.stringify(process.argv.slice(2)) + "\\n"); writeFileSync(root + "/registry", ${JSON.stringify(imageBytes)}); }\nelse if (existsSync(root + "/registry")) process.stdout.write(readFileSync(root + "/registry"));\nelse { process.stderr.write("MANIFEST_UNKNOWN"); process.exit(1); }\n`
+      `#!/usr/bin/env bun\nimport { existsSync, readFileSync, writeFileSync, appendFileSync, unlinkSync } from "node:fs";\nconst root = ${JSON.stringify(registry)};\nif (process.argv[2] === "copy") { appendFileSync(root + "/copies", JSON.stringify(process.argv.slice(2)) + "\\n"); writeFileSync(root + "/registry", ${JSON.stringify(imageBytes)}); writeFileSync(root + "/visibility-delay", ""); }\nelse if (existsSync(root + "/visibility-delay")) { unlinkSync(root + "/visibility-delay"); process.stderr.write("MANIFEST_UNKNOWN"); process.exit(1); }\nelse if (existsSync(root + "/registry")) process.stdout.write(readFileSync(root + "/registry"));\nelse { process.stderr.write("MANIFEST_UNKNOWN"); process.exit(1); }\n`
     );
     await chmod(executable, 0o755);
     const previousPath = process.env.PATH;
     process.env.PATH = `${registry}:${previousPath}`;
     let tagExists = false;
     let release: Record<string, unknown> | undefined;
+    let duplicate: Record<string, unknown> | undefined;
+    let duplicateHasAssets = false;
     const assets: { id: number; name: string; state: string; digest: string }[] = [];
     const requests: unknown[] = [];
     let fail = true;
@@ -89,9 +91,11 @@ describe("immutable prerelease publication adapter", () => {
           return {};
         }
         if (endpoint.includes("/releases/tags/")) {
-          if (!release) throw new GitHubError(404);
+          if (!release || release.draft) throw new GitHubError(404);
           return release;
         }
+        if (endpoint.endsWith("/releases?per_page=100"))
+          return [release ? [release, ...(duplicate ? [duplicate] : [])] : []];
         if (endpoint.endsWith("/releases") && method === "POST") {
           requests.push(payload);
           release = {
@@ -101,6 +105,7 @@ describe("immutable prerelease publication adapter", () => {
           };
           return release;
         }
+        if (endpoint.includes("/releases/11/assets?")) return [duplicateHasAssets ? assets : []];
         if (endpoint.includes("/assets?")) return [assets];
         if (method === "PATCH" && release) {
           requests.push(payload);
@@ -132,9 +137,26 @@ describe("immutable prerelease publication adapter", () => {
     try {
       await expect(publishProducts(github, frozen, root)).rejects.toThrow("second asset failure");
       expect(assets.map((asset) => asset.name)).toEqual(["frontend.tar.gz"]);
+      duplicate = { ...release, id: 11, target_commitish: "a".repeat(40) };
+      await expect(publishProducts(github, frozen, root)).rejects.toThrow("different identity");
+      duplicate.target_commitish = entry.mergeSha;
+      duplicateHasAssets = true;
+      await expect(publishProducts(github, frozen, root)).rejects.toThrow(
+        "Multiple release drafts"
+      );
+      duplicateHasAssets = false;
       expect((await publishProducts(github, frozen, root)).imageDigest).toBe(manifest.imageDigest);
       await publishProducts(github, frozen, root);
       expect(assets).toHaveLength(2);
+      expect(
+        requests.filter(
+          (request: unknown) =>
+            typeof request === "object" &&
+            request !== null &&
+            "draft" in request &&
+            request.draft === true
+        )
+      ).toHaveLength(1);
       const copies = (await readFile(join(registry, "copies"), "utf8")).trim().split("\n");
       expect(copies).toHaveLength(1);
       expect(copies[0]).toContain("docker://ghcr.io/ivanli-cn/blog-26:v2.8.0-alpha.1_Build.001");
@@ -144,6 +166,11 @@ describe("immutable prerelease publication adapter", () => {
       );
       expect(requests).toContainEqual({ draft: false, make_latest: "false" });
       expect(release?.prerelease).toBe(true);
+      await writeFile(join(registry, "registry"), "different immutable image");
+      await expect(publishProducts(github, frozen, root)).rejects.toThrow(
+        "Version image already has different immutable bytes"
+      );
+      expect((await readFile(join(registry, "copies"), "utf8")).trim().split("\n")).toHaveLength(1);
     } finally {
       process.env.PATH = previousPath;
     }

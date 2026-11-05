@@ -132,9 +132,13 @@ export function releaseExecutionCheckout(
   evaluateTooling: (sha: string) => EvaluationChecksResult
 ): string {
   const source = shaSchema.parse(entry.mergeSha);
-  // Only already-published products may execute repaired publication tooling.
+  // Frozen products may need repaired tooling even before publication completes.
   // Recorded products cannot be rebuilt: artifact restoration fails closed on loss.
-  if (!["published", "deployed"].includes(entry.stage) || !entry.products || !entry.publication)
+  if (
+    !entry.products ||
+    (entry.stage !== "frozen" &&
+      (!entry.publication || !["published", "deployed"].includes(entry.stage)))
+  )
     return source;
   const tooling = shaSchema.parse(toolingSha);
   if (tooling !== source && evaluateTooling(tooling).state !== "passed")

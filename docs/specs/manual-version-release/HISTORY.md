@@ -32,3 +32,5 @@
 
 - [SPEC.md](./SPEC.md)
 - [IMPLEMENTATION.md](./IMPLEMENTATION.md)
+
+- 修复部分发布后 draft 无法按 tag 查询导致重复创建和重复上传的问题；区分 GHCR 上传后暂不可见与真实 digest 冲突，并将受门禁保护的修复工具恢复覆盖到 frozen products 阶段。

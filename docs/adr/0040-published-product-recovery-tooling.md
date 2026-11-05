@@ -10,9 +10,11 @@ Product Release 原 run 重试先读取 main 上的登记工具，再 checkout �
 
 ## Decision
 
-只有登记状态为 published 或 deployed、且已有 products 和 publication 证明的恢复，才使用当前受信 main checkout 的发布工具执行。该工具提交必须通过既有 main CI/E2E 门禁；未通过时失败关闭。其他阶段继续 checkout 登记的 merge SHA，避免使用新源码重建历史产品。
+登记状态为 frozen 且已有 products 证明，或状态为 published / deployed 且同时已有 products 和 publication 证明的恢复，使用当前受信 main checkout 的发布工具执行。该工具提交必须通过既有 main CI/E2E 门禁；未通过时失败关闭。尚无完整冻结 products 的阶段继续 checkout 登记的 merge SHA，避免使用新源码重建历史产品。
 
 原 run、登记身份、产品版本、merge SHA 和冻结产物 digest 保持绑定。恢复仍从原 run 下载并验证产物，已登记产物缺失、过期或不匹配时拒绝恢复，不允许重新构建。原工作流的 source_sha 输出在这一恢复分支表示执行 checkout；产品来源仍只来自登记和 manifest。日志分别记录产品来源和执行工具提交。
+
+发布恢复不能依赖按 tag 的 API 查找 draft：404 后枚举同 tag release，严格核验来源、机器人作者和完整身份 marker；唯一含产物的 draft 优先恢复，空重复 draft 保留，多个含产物的 draft 或任何身份冲突均失败关闭。镜像上传后仅对暂不可见进行有限读取重试，实际 digest 不一致立即拒绝并记录两个 digest，不重传或改写版本镜像。
 
 EdgeOne CLI 诊断仅输出退出码和固定枚举的阶段、错误类别，不输出原始响应、凭据、项目标识或签名预览 URL。
 
