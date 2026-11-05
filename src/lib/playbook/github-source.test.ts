@@ -1045,3 +1045,103 @@ test("rejects redirects to an untrusted asset host", async () => {
     transport.readReleaseBundle!({ repository: config.repository, ref: "main" })
   ).rejects.toThrow("redirect is invalid");
 });
+
+function releaseContractFixture(
+  options: {
+    omitSection?: boolean;
+    repository?: string;
+    resolvedCommit?: string;
+    corruptCatalog?: boolean;
+  } = {}
+) {
+  const upstream = {
+    ...completeFixtureSearch,
+    documents: completeFixtureSearch.documents
+      .filter(
+        (document) => !document.id.startsWith("policy:") && !document.id.startsWith("resource:")
+      )
+      .filter((document) => !options.omitSection || document.kind !== "section")
+      .map((document) => ({
+        ...document,
+        id: document.kind === "page" ? `page:${document.id}` : document.id,
+        subtitle: null,
+        title: `Upstream ${document.title}`,
+        body: "Upstream display text",
+        keywords: ["upstream"],
+      })),
+  };
+  const catalog = Buffer.from(JSON.stringify(publicFixtureCatalog, null, 2) + "\n");
+  const search = Buffer.from(JSON.stringify(upstream, null, 2) + "\n");
+  const bundle = makeTarGz(
+    new Map([
+      ["catalog.json", options.corruptCatalog ? Buffer.from("{}") : catalog],
+      ["search-documents.json", search],
+    ])
+  );
+  const manifest = {
+    schemaVersion: 1,
+    source: {
+      repository: options.repository ?? config.repository,
+      tag: "v2.4.7",
+      commit,
+      releaseId: "425087400",
+    },
+    bundle: fileRecord("playbook-public.tar.gz", bundle),
+    files: [fileRecord("catalog.json", catalog), fileRecord("search-documents.json", search)],
+  };
+  const transport: PlaybookGitHubSourceTransport = {
+    resolveRef: async () => options.resolvedCommit ?? commit,
+    readFile: async () => {
+      throw new PlaybookGitHubSourceInvalidError("GitHub public export path is unavailable: 404");
+    },
+    readReleaseBundle: async () => bundle,
+    readReleaseManifest: async () =>
+      Buffer.from(
+        JSON.stringify(
+          {
+            ...manifest,
+            bundle: {
+              name: "playbook-public.tar.gz",
+              sha256: manifest.bundle.sha256,
+              size: manifest.bundle.size,
+            },
+          },
+          null,
+          2
+        ) + "\n"
+      ),
+  };
+  return transport;
+}
+
+test("adapts the published Release JSON and page identities into complete public projections", async () => {
+  const result = await loadPlaybookGitHubSnapshot(releaseContractFixture(), config);
+  expect(result.status).toBe("ready");
+  if (result.status !== "ready") throw new Error(result.status);
+  expect(result.snapshot.sourceRevision).toEqual({
+    provider: "github",
+    repository: config.repository,
+    ref: "v2.4.7",
+    commit,
+  });
+  expect(result.snapshot.search).toEqual(
+    normalizePlaybookSnapshot(publicFixtureCatalog, completeFixtureSearch).search
+  );
+  expect(
+    result.snapshot.search.documents.some((document) =>
+      document.body.includes("Upstream display text")
+    )
+  ).toBe(false);
+});
+
+test("rejects incomplete Release coverage and mismatched repository, tag commit, or file digest", async () => {
+  for (const options of [
+    { omitSection: true },
+    { repository: "other/repo" },
+    { resolvedCommit: nextCommit },
+    { corruptCatalog: true },
+  ]) {
+    const result = await loadPlaybookGitHubSnapshot(releaseContractFixture(options), config);
+    expect(result.status).not.toBe("ready");
+  }
+});

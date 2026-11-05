@@ -138,11 +138,13 @@ export function normalizePlaybookSnapshot(
 
 function assertCompletePlaybookSearch(
   catalog: PlaybookPublicCatalog,
-  search: PlaybookSearchPayload
+  search: PlaybookSearchPayload,
+  releaseProjection = false
 ) {
   const sectionDocumentId = (kind: "topic" | "project", slug: string, sectionId: string) =>
     `section:${kind}:${slug}:${sectionId}`;
   const expectedIds = new Set<string>();
+  const projected: PlaybookSearchDocument[] = [];
   const find = (id: string) => search.documents.find((document) => document.id === id);
   const requireDocument = (input: {
     id: string;
@@ -155,10 +157,34 @@ function assertCompletePlaybookSearch(
     bodyParts: string[];
   }) => {
     expectedIds.add(input.id);
-    const document = find(input.id);
+    const document = find(input.id) ?? (releaseProjection ? find(`page:${input.id}`) : undefined);
     const canonicalRoute = playbookHref(input.route, input.sectionId);
     const sectionId = document?.section_id ?? null;
     const commandId = document?.command_id ?? null;
+    if (releaseProjection) {
+      if (
+        (!document && !input.id.startsWith("policy:") && !input.id.startsWith("resource:")) ||
+        (document &&
+          (document.kind !== input.kind ||
+            document.route !== canonicalRoute ||
+            (document.section_id ?? null) !== input.sectionId ||
+            document.command_id != null))
+      )
+        throw new Error(`Search projection coverage mismatch: ${canonicalRoute}`);
+      if (document) expectedIds.add(document.id);
+      projected.push({
+        id: input.id,
+        kind: input.kind,
+        title: input.title,
+        subtitle: input.subtitle,
+        route: canonicalRoute,
+        section_id: input.sectionId,
+        command_id: null,
+        keywords: input.keywords,
+        body: input.bodyParts.filter(Boolean).join(" "),
+      });
+      return document;
+    }
     if (
       !document ||
       document.id !== input.id ||
@@ -260,6 +286,24 @@ function assertCompletePlaybookSearch(
         bodyParts: [resource.content],
       });
   }
+  if (releaseProjection) {
+    const seen = new Set<string>();
+    for (const document of search.documents) {
+      if (seen.has(document.id)) throw new Error("Duplicate search document identity");
+      seen.add(document.id);
+      if (
+        !expectedIds.has(document.id) &&
+        document.kind !== "command" &&
+        !(
+          document.kind === "page" &&
+          ((document.id === "page:surface:projects" && document.route === "/playbook/projects/") ||
+            (document.id === "page:surface:topics" && document.route === "/playbook/topics/"))
+        )
+      )
+        throw new Error(`Search projection contains unexpected document: ${document.id}`);
+    }
+    return { generated_at: search.generated_at, documents: projected };
+  }
   const unexpected = search.documents.find((document) => !expectedIds.has(document.id));
   if (unexpected)
     throw new Error(`Search projection contains unexpected document: ${unexpected.id}`);
@@ -304,7 +348,7 @@ function readExportManifest(bytes: Uint8Array) {
 }
 
 function readReleaseManifest(bytes: Uint8Array) {
-  const value = readExportValue(bytes, "GitHub Playbook release manifest");
+  const value = parseJson(decodeUtf8(bytes, "GitHub Playbook release manifest"));
   if (!value || typeof value !== "object" || Array.isArray(value))
     invalid("GitHub Playbook release manifest is invalid");
   const record = value as Record<string, unknown>;
@@ -317,7 +361,7 @@ function readReleaseManifest(bytes: Uint8Array) {
     if (
       typeof item.path !== "string" ||
       typeof item.sha256 !== "string" ||
-      !/^\w{64}$/u.test(item.sha256) ||
+      !/^[a-f0-9]{64}$/u.test(item.sha256) ||
       typeof item.size !== "number" ||
       !Number.isSafeInteger(item.size) ||
       item.size < 0
@@ -325,7 +369,36 @@ function readReleaseManifest(bytes: Uint8Array) {
       invalid("GitHub Playbook release manifest is invalid");
     return { path: item.path, sha256: item.sha256, size: item.size };
   });
-  return { contentHash: typeof record.contentHash === "string" ? record.contentHash : null, files };
+  if (
+    new Set(files.map((file) => file.path)).size !== 2 ||
+    !files.some((file) => file.path === "catalog.json") ||
+    !files.some((file) => file.path === "search-documents.json")
+  )
+    invalid("GitHub Playbook release manifest file allowlist is invalid");
+  const source = record.source as Record<string, unknown> | undefined;
+  if (
+    source &&
+    (typeof source.tag !== "string" ||
+      typeof source.commit !== "string" ||
+      !/^[a-f0-9]{40}$/u.test(source.commit) ||
+      typeof source.repository !== "string" ||
+      typeof source.releaseId !== "string" ||
+      !/^\d+$/u.test(source.releaseId))
+  )
+    invalid("GitHub Playbook release source identity is invalid");
+  return {
+    contentHash: typeof record.contentHash === "string" ? record.contentHash : null,
+    files,
+    source: source
+      ? {
+          repository: source.repository as string,
+          tag: source.tag as string,
+          commit: source.commit as string,
+          releaseId: source.releaseId as string,
+        }
+      : null,
+    bundle: record.bundle as { name: string; sha256: string; size: number } | undefined,
+  };
 }
 
 function readExportJson(bytes: Uint8Array, label: string) {
@@ -445,9 +518,11 @@ export async function loadPlaybookGitHubSnapshot(
         )
           throw error;
       }
-      const tar = gunzipSync(
-        await transport.readReleaseBundle({ repository: config.repository, ref: config.ref })
-      );
+      const bundle = await transport.readReleaseBundle({
+        repository: config.repository,
+        ref: config.ref,
+      });
+      const tar = gunzipSync(bundle, { maxOutputLength: GITHUB_SOURCE_MAX_FILE_BYTES * 2 });
       const files = new Map<string, Uint8Array>();
       for (let offset = 0; offset + 512 <= tar.length; ) {
         const header = tar.subarray(offset, offset + 512);
@@ -466,7 +541,10 @@ export async function loadPlaybookGitHubSnapshot(
           start + size > tar.length
         )
           invalid("GitHub Playbook release asset contains an unsafe or truncated entry");
-        if (header[156] === 48) files.set(name, tar.subarray(start, start + size));
+        if (header[156] === 48) {
+          if (files.has(name)) invalid("GitHub Playbook release asset contains duplicate files");
+          files.set(name, tar.subarray(start, start + size));
+        }
         offset += 512 + Math.ceil(size / 512) * 512;
       }
       const catalog = files.get("catalog.json");
@@ -479,6 +557,21 @@ export async function loadPlaybookGitHubSnapshot(
           : undefined);
       if (!catalog || !search || !manifest) invalid("GitHub Playbook release asset is incomplete");
       const parsedManifest = readReleaseManifest(manifest);
+      if (parsedManifest.bundle) {
+        if (parsedManifest.bundle.name !== "playbook-public.tar.gz")
+          invalid("GitHub Playbook release bundle identity mismatch");
+        verifyFile(bundle, parsedManifest.bundle);
+      }
+      if (
+        parsedManifest.source &&
+        (parsedManifest.source.repository !== config.repository ||
+          (config.ref !== "main" && config.ref !== parsedManifest.source.tag) ||
+          (await transport.resolveRef({
+            repository: config.repository,
+            ref: parsedManifest.source.tag,
+          })) !== parsedManifest.source.commit)
+      )
+        invalid("GitHub Playbook release source identity mismatch");
       for (const entry of parsedManifest.files) {
         const content = files.get(entry.path);
         if (!content) invalid(`GitHub Playbook release asset is missing: ${entry.path}`);
@@ -488,10 +581,27 @@ export async function loadPlaybookGitHubSnapshot(
           invalid(`GitHub Playbook release asset digest mismatch: ${entry.path}`, { cause: error });
         }
       }
-      const normalized = normalizePlaybookSnapshot(
-        readExportJson(catalog, "GitHub Playbook public catalog"),
-        readExportJson(search, "GitHub Playbook search documents")
+      // Release exports use upstream page IDs and display-oriented search text.
+      // Validate full public route/section coverage, then derive the Blog projection
+      // exclusively from the digest-verified public catalog.
+      const publicCatalog = assertPublicCatalog(
+        catalogSchema.parse(parseJson(decodeUtf8(catalog, "GitHub Playbook public catalog")))
       );
+      const upstreamSearch = searchSchema.parse(
+        parseJson(decodeUtf8(search, "GitHub Playbook search documents"))
+      );
+      const projection = assertCompletePlaybookSearch(
+        publicCatalog,
+        {
+          ...upstreamSearch,
+          documents: upstreamSearch.documents.map((document) => ({
+            ...document,
+            route: validatePlaybookSearchRoute(publicCatalog, document),
+          })),
+        },
+        true
+      );
+      const normalized = normalizePlaybookSnapshot(publicCatalog, projection);
       if (
         parsedManifest.contentHash &&
         parsedManifest.contentHash !== computePlaybookContentHash(normalized)
@@ -504,8 +614,8 @@ export async function loadPlaybookGitHubSnapshot(
           sourceRevision: {
             provider: "github",
             repository: config.repository,
-            ref: config.ref,
-            commit: await transport.resolveRef(config),
+            ref: parsedManifest.source?.tag ?? config.ref,
+            commit: parsedManifest.source?.commit ?? (await transport.resolveRef(config)),
           },
           contentHash: computePlaybookContentHash(normalized),
         },
@@ -641,12 +751,27 @@ export function createPlaybookGitHubSourceTransport(
     const response = await request(url, GITHUB_RAW_ACCEPT, true);
     return readResponseBytes(response, GITHUB_SOURCE_MAX_FILE_BYTES, "GitHub raw file response");
   }
+  const releases = new Map<string, Promise<Record<string, unknown>>>();
   async function releaseAsset(repository: string, ref: string, name: string) {
-    const release = await json(
-      ref === "main"
-        ? `https://api.github.com/repos/${repository}/releases/latest`
-        : `https://api.github.com/repos/${repository}/releases/tags/${encodeURIComponent(ref)}`
-    );
+    const key = `${repository}:${ref}`;
+    if (!releases.has(key))
+      releases.set(
+        key,
+        json(
+          ref === "main"
+            ? `https://api.github.com/repos/${repository}/releases/latest`
+            : `https://api.github.com/repos/${repository}/releases/tags/${encodeURIComponent(ref)}`
+        )
+      );
+    const release = await releases.get(key)!;
+    const matches = Array.isArray(release.assets)
+      ? release.assets.filter(
+          (item) =>
+            item && typeof item === "object" && (item as Record<string, unknown>).name === name
+        )
+      : [];
+    if (matches.length !== 1)
+      invalid(`GitHub Playbook release asset is missing or duplicated: ${name}`);
     const asset = Array.isArray(release.assets)
       ? (release.assets.find(
           (item) =>
