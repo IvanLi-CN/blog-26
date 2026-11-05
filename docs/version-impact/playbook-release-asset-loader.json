@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "8f5b2920bb718c198a5ad743881a04f94d1af1da",
+  "covered_files": {
+    "src/lib/playbook/github-source.ts": "51d3081350ef5b3b28348a1adc25e32317eb5ca6",
+    "src/lib/playbook/github-source.test.ts": "c214e8be5821138beceedfac3d9f62b55bcc0314"
+  },
+  "change": {
+    "description": "Load the public Style Playbook bundle and manifest from GitHub Release assets while preserving integrity and public-boundary validation.",
+    "release_unit_description": "Blog runtime and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a patch-level runtime correctness fix for the Playbook synchronization transport; it preserves the public API and snapshot adoption contract.",
+      "assessed_at": "2026-10-23T20:27:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/playbook/github-source.test.ts",
+          "blob": "c214e8be5821138beceedfac3d9f62b55bcc0314",
+          "command": "bun test src/lib/playbook/github-source.test.ts: 30 passed, 0 failed"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The loader now reads the published Release assets and validates their manifest, file digests, schema, and complete search projection before adoption.",
+      "assessed_at": "2026-10-23T20:27:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/playbook/github-source.test.ts",
+          "blob": "c214e8be5821138beceedfac3d9f62b55bcc0314",
+          "command": "bun test src/lib/playbook/github-source.test.ts: 30 passed, 0 failed"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to the false-positive Playbook release gate and its focused contract test."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Release asset fixtures and focused GitHub source tests pass; malformed and digest-mismatched bundles remain rejected.",
+      "assessed_at": "2026-10-23T20:27:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/playbook/github-source.test.ts",
+          "blob": "c214e8be5821138beceedfac3d9f62b55bcc0314",
+          "command": "bun test src/lib/playbook/github-source.test.ts: 30 passed, 0 failed"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/playbook/release.ts",
+          "blob": "06744d5a7ba4180ac4c385c5147d89a0746e7036",
+          "command": "The change preserves public API and Playbook content contracts."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "The change does not alter SQLite schema, local content, browser persistence, release ledger state, or published artifact formats.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/playbook/release.ts",
+          "blob": "06744d5a7ba4180ac4c385c5147d89a0746e7036",
+          "command": "The helper only compares source and bundle identities and does not write durable state."
+        }
+      ]
+    }
+  }
+}
