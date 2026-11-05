@@ -1,0 +1,14 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "types": ["bun"]
+  },
+  "include": [],
+  "files": [
+    "../../../src/components/common/conversation/types.ts",
+    "index.ts",
+    "contract-helper.test.ts",
+    "../../helpers/assistant-markdown-contract.ts"
+  ]
+}
