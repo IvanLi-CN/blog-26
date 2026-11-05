@@ -1012,3 +1012,36 @@ test("rejects chunked raw responses that exceed the byte limit", async () => {
   ).rejects.toThrow("exceeds byte limit");
   expect(chunks).toBeGreaterThan(32);
 });
+
+test("follows asset redirects without forwarding the repository token", async () => {
+  const calls: { url: string; headers: Headers }[] = [];
+  const transport = createPlaybookGitHubSourceTransport("fixture-token", (async (url, init) => {
+    calls.push({ url: String(url), headers: new Headers(init?.headers) });
+    if (String(url).endsWith("/releases/latest"))
+      return Response.json({ assets: [{ id: 123, name: "playbook-public.tar.gz" }] });
+    if (String(url).includes("/releases/assets/"))
+      return new Response(null, {
+        status: 302,
+        headers: { location: "https://release-assets.githubusercontent.com/asset" },
+      });
+    return new Response("bundle");
+  }) as typeof fetch);
+  expect(
+    Buffer.from(
+      await transport.readReleaseBundle!({ repository: config.repository, ref: "main" })
+    ).toString()
+  ).toBe("bundle");
+  expect(calls[1]?.headers.get("Authorization")).toBe("Bearer fixture-token");
+  expect(calls[2]?.headers.has("Authorization")).toBe(false);
+});
+
+test("rejects redirects to an untrusted asset host", async () => {
+  const transport = createPlaybookGitHubSourceTransport("fixture-token", (async (url) => {
+    if (String(url).endsWith("/releases/latest"))
+      return Response.json({ assets: [{ id: 123, name: "playbook-public.tar.gz" }] });
+    return new Response(null, { status: 302, headers: { location: "https://example.com/asset" } });
+  }) as typeof fetch);
+  await expect(
+    transport.readReleaseBundle!({ repository: config.repository, ref: "main" })
+  ).rejects.toThrow("redirect is invalid");
+});
