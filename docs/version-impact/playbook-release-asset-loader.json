@@ -8,7 +8,7 @@
   },
   "change": {
     "description": "Load the public Style Playbook bundle and manifest from GitHub Release assets while preserving integrity and public-boundary validation.",
-    "release_unit_description": "Blog runtime and full-feature Docker image",
+    "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
   "classification": {
