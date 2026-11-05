@@ -57,17 +57,12 @@
     "public_api": {
       "impact": "patch",
       "change": "unchanged",
-      "supported_consumer_versions": ["4.0.2", "4.1.0"],
+      "supported_consumer_versions": ["4.0.2", "4.1.0", "4.1.1", "4.1.2"],
       "evidence": [
         {
-          "path": "tests/server/version-api.test.ts",
-          "blob": "c86011cb95db3b9f8358570c62e22630af004ac0",
-          "command": "The existing version metadata API tests preserve the version response contract"
-        },
-        {
-          "path": "src/lib/version-info.ts",
-          "blob": "0742a99395eb4a4512e885409225a8a8e0c474ad",
-          "command": "The UI reads the existing productVersion metadata without changing server payloads"
+          "path": "site/components/KnowledgeAssistant.tsx",
+          "blob": "74c240d1986db9f73b8c1e89ffd63e136e8bcf8f",
+          "command": "The change keeps existing assistant request handlers and response rendering while changing only conversation-list presentation"
         }
       ]
     },
