@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "39285cf98bbc02b03115615fb63f772272b97651",
+  "covered_files": {
+    "docs/specs/style-playbook-integration/HISTORY.md": "6217a37eb0d12af6b016cebcc31fe3ec34e1e34c",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "2033ffc3407f30a8655a4a7680f8945e97a72799",
+    "src/lib/playbook/artifacts.ts": "2a54f5fb3d3ef428ffdf4b28d5c691b7651bfea2",
+    "src/lib/playbook/bundle.ts": "0f62b2d8502aa5c31556daa6d19729c5417727df",
+    "src/lib/playbook/cache.ts": "b66287b90db324cc9d3f036aec0e993f76e7ac8f",
+    "src/lib/playbook/types.ts": "91f02338e7096dea9975099266157620efd07b7d",
+    "tests/lib/playbook-deployed-compat.test.ts": "d4f3feae80c3fe5c376f618496219cbf1bdb3342"
+  },
+  "change": {
+    "description": "Preserve and verify original public Playbook bytes across normalized modern edition seeds and cache restart without changing published file identities.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Preserve and verify original public Playbook bytes across normalized modern edition seeds and cache restart without changing published file identities.",
+      "assessed_at": "2026-11-05T17:56:16.328029+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-deployed-compat.test.ts",
+          "blob": "d4f3feae80c3fe5c376f618496219cbf1bdb3342",
+          "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-static-reader.test.ts tests/lib/playbook-snapshot-restart.test.ts: 73 pass; real v2.4.7 public bundle seed JSON roundtrip and writePublicEdition pass"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Preserve and verify original public Playbook bytes across normalized modern edition seeds and cache restart without changing published file identities.",
+      "assessed_at": "2026-11-05T17:56:16.328029+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-deployed-compat.test.ts",
+          "blob": "d4f3feae80c3fe5c376f618496219cbf1bdb3342",
+          "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-static-reader.test.ts tests/lib/playbook-snapshot-restart.test.ts: 73 pass; real v2.4.7 public bundle seed JSON roundtrip and writePublicEdition pass"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Existing public edition byte identity/projection invariant only."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Preserve and verify original public Playbook bytes across normalized modern edition seeds and cache restart without changing published file identities.",
+      "assessed_at": "2026-11-05T17:56:16.328029+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-deployed-compat.test.ts",
+          "blob": "d4f3feae80c3fe5c376f618496219cbf1bdb3342",
+          "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-static-reader.test.ts tests/lib/playbook-snapshot-restart.test.ts: 73 pass; real v2.4.7 public bundle seed JSON roundtrip and writePublicEdition pass"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6"
+      ],
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-deployed-compat.test.ts",
+          "blob": "d4f3feae80c3fe5c376f618496219cbf1bdb3342",
+          "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-static-reader.test.ts tests/lib/playbook-snapshot-restart.test.ts: 73 pass; real v2.4.7 public bundle seed JSON roundtrip and writePublicEdition pass"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "Optional raw byte proof in generated public edition envelopes only; SQLite schema, GitHub snapshot and release ledger unchanged. Existing valid seeds remain readable.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/playbook-deployed-compat.test.ts",
+          "blob": "d4f3feae80c3fe5c376f618496219cbf1bdb3342",
+          "command": "bun test tests/lib/playbook-deployed-compat.test.ts tests/lib/playbook-contract.test.ts tests/lib/playbook-static-reader.test.ts tests/lib/playbook-snapshot-restart.test.ts: 73 pass; real v2.4.7 public bundle seed JSON roundtrip and writePublicEdition pass"
+        }
+      ]
+    }
+  }
+}

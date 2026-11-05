@@ -210,6 +210,7 @@ export interface PlaybookEdition {
   search: PlaybookSearchPayload;
   legacyCatalog?: boolean;
   legacyRawFiles?: { catalog: string; search: string };
+  rawFiles?: { catalog: string; search: string };
 }
 
 export interface PlaybookSupplementEnvelope extends PlaybookSupplement {

@@ -89,7 +89,9 @@ export function validatePlaybookEdition(
     ? input.legacyRawFiles === undefined
       ? undefined
       : decodePlaybookRawFiles(input.legacyRawFiles)
-    : undefined;
+    : input.rawFiles === undefined
+      ? undefined
+      : decodePlaybookRawFiles(input.rawFiles);
   const verifiedRawFiles = rawFiles ?? embeddedRawFiles;
   if (legacyCatalog && !verifiedRawFiles)
     throw new Error("Legacy public edition raw file bytes are required");
@@ -135,7 +137,12 @@ export function validatePlaybookEdition(
       )
         continue;
       if (encodeJson(rawValue) !== encodeJson(source))
-        throw new Error(`Playbook file projection mismatch: ${file.path}`);
+        if (
+          file.path !== "search-documents.json" ||
+          encodeJson(normalizePlaybookSearch(catalog, searchSchema.parse(rawValue))) !==
+            encodeJson(search)
+        )
+          throw new Error(`Playbook file projection mismatch: ${file.path}`);
       continue;
     }
     if (legacyCatalog) continue;
@@ -166,7 +173,12 @@ export function validatePlaybookEdition(
         legacyCatalog: true,
         legacyRawFiles: encodePlaybookRawFiles(verifiedRawFiles),
       }
-    : { edition, catalog, search };
+    : {
+        edition,
+        catalog,
+        search,
+        ...(verifiedRawFiles ? { rawFiles: encodePlaybookRawFiles(verifiedRawFiles) } : {}),
+      };
 }
 
 function freezeEdition(edition: PlaybookEdition) {
