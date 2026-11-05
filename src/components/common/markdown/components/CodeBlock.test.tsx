@@ -1,5 +1,38 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { countLines, extractTextContent } from "../utils";
+import { CodeBlock } from "./CodeBlock";
+
+if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
+afterEach(cleanup);
+
+describe("article CodeBlock folding policy", () => {
+  const source = Array.from({ length: 35 }, (_, i) => `line ${i + 1}`).join("\n");
+
+  test("long article code still starts folded and expands on request", () => {
+    const { container, getByRole } = render(<CodeBlock>{source}</CodeBlock>);
+    expect(container.querySelector(".collapsible-code-full")?.classList.contains("hidden")).toBe(
+      true
+    );
+    expect(container.querySelector(".collapsible-code-preview code")?.textContent).not.toContain(
+      "line 35"
+    );
+    fireEvent.click(getByRole("button", { name: /展开全部/ }));
+    expect(container.querySelector(".collapsible-code-full")?.classList.contains("hidden")).toBe(
+      false
+    );
+    expect(container.querySelector(".collapsible-code-full code")?.textContent).toBe(source);
+  });
+
+  test("short or explicitly non-folding article code stays plain", () => {
+    const { container, rerender } = render(<CodeBlock>short</CodeBlock>);
+    expect(container.querySelector(".collapsible-code-container")).toBeNull();
+    rerender(<CodeBlock enableFolding={false}>{source}</CodeBlock>);
+    expect(container.querySelector(".collapsible-code-container")).toBeNull();
+    expect(container.querySelector("code")?.textContent).toBe(source);
+  });
+});
 
 describe("CodeBlock functionality", () => {
   const shortCode = 'console.log("hello");';
