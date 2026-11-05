@@ -3,16 +3,16 @@
   "kind": "version-impact-record",
   "base_sha": "39285cf98bbc02b03115615fb63f772272b97651",
   "covered_files": {
-    "docs/adr/0040-published-product-recovery-tooling.md": "878e70d26d9f7f04479c7b72c4f4f6f592caf765",
-    "docs/specs/manual-version-release/HISTORY.md": "95f0a57040d0215c7f6529af5685955b15536a00",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "528dd912013714d2d40aaf8fef9dc6debe445fd0",
-    "docs/specs/manual-version-release/SPEC.md": "4b73dbda22aa8c67749788d977165103575e1390",
+    "docs/adr/0040-published-product-recovery-tooling.md": "61a6fa787754d399fd335fc097404fc3bea90b81",
+    "docs/specs/manual-version-release/HISTORY.md": "696fcf676914d829505090459c4e7497d9261c26",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "f8ee9350e6df6787a089b34c0c452369cbc89249",
+    "docs/specs/manual-version-release/SPEC.md": "0b298c0e3f4b1ca13d5ecf5fdd46f9eb2a5869a4",
     "scripts/product-release.ts": "b8d040de54d903c35b027eee66fef4cc4012c731",
-    "src/lib/release/completion.ts": "edbdb7feb990285332e0ff4ce0a5f81616e30f07",
+    "src/lib/release/completion.ts": "469464dbec3c74725ac5382c8144c80df5d1a306",
     "src/lib/release/deployment.ts": "1ade845ef0da89f2ec79e17bddd98bff0e1dcbc7",
     "src/lib/release/edgeone-cli.ts": "a1a0531f3acf2b45633f8d081be793fe671f625d",
     "tests/lib/edgeone-cli.test.ts": "2e229a8fec32648497b9130132409d8a1123e167",
-    "tests/lib/manual-release-recovery.test.ts": "9bd83de509175bc5bbcbe3559819382790c66a82"
+    "tests/lib/manual-release-recovery.test.ts": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6"
   },
   "change": {
     "description": "Repair original-run published-product recovery so gated main tooling can diagnose and fix deployment failures without rebuilding or changing frozen products.",
@@ -27,7 +27,7 @@
       "evidence": [
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
-          "blob": "9bd83de509175bc5bbcbe3559819382790c66a82",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
         },
         {
@@ -44,7 +44,7 @@
       "evidence": [
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
-          "blob": "9bd83de509175bc5bbcbe3559819382790c66a82",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
         },
         {
@@ -65,7 +65,7 @@
       "evidence": [
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
-          "blob": "9bd83de509175bc5bbcbe3559819382790c66a82",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
         },
         {
@@ -93,7 +93,7 @@
       "evidence": [
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
-          "blob": "9bd83de509175bc5bbcbe3559819382790c66a82",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
         },
         {
@@ -112,7 +112,7 @@
       "evidence": [
         {
           "path": "tests/lib/manual-release-recovery.test.ts",
-          "blob": "9bd83de509175bc5bbcbe3559819382790c66a82",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
         },
         {

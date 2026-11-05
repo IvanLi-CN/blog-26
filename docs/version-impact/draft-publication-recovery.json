@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "7adc8d363e56ac9d0f32fd918f7a5a6eff913fd0",
+  "base_sha": "39285cf98bbc02b03115615fb63f772272b97651",
   "covered_files": {
     "docs/adr/0040-published-product-recovery-tooling.md": "61a6fa787754d399fd335fc097404fc3bea90b81",
     "docs/specs/manual-version-release/HISTORY.md": "696fcf676914d829505090459c4e7497d9261c26",
