@@ -99,8 +99,8 @@ const verifySurface: Story["play"] = async ({ args, canvasElement }) => {
   const content = args.content ?? completeMarkdown.message.content;
   if (content === maliciousHtml.message.content) {
     await expect(
-      canvas.getByText("<script>globalThis.__amrExecuted = true</script>")
-    ).toBeInTheDocument();
+      canvasElement.querySelector(".conversation-markdown")?.textContent ?? ""
+    ).toContain("<script>globalThis.__amrExecuted = true</script>");
     await expect(canvasElement.querySelector("script, img, video, iframe")).toBeNull();
   } else if (content === escapingAndCurrency.message.content) {
     await expect(canvasElement.querySelector(".katex")).not.toBeNull();
