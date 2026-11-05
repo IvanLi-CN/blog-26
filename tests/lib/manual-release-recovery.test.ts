@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import contractJson from "../../.github/release-contract.json";
 import { findArtifact, sealDirectory, verifyDirectory } from "../../src/lib/release/artifacts";
+import { releaseExecutionCheckout } from "../../src/lib/release/completion";
 import { GitHubRelease } from "../../src/lib/release/github";
 import {
   initialLedger,
@@ -88,6 +89,38 @@ function proofs(entry: ReleaseEntry) {
   };
 }
 describe("frozen release recovery", () => {
+  test("published recovery uses gated tooling without changing frozen product provenance", () => {
+    const { entry } = frozenStore();
+    const published = {
+      ...entry,
+      stage: "published" as const,
+      publication: proofs(entry).publication,
+    };
+    const original = structuredClone(published);
+    const tooling = "a".repeat(40);
+    let evaluated = "";
+    expect(
+      releaseExecutionCheckout(published, tooling, (sha) => {
+        evaluated = sha;
+        return { state: "passed" };
+      })
+    ).toBe(tooling);
+    expect(evaluated).toBe(tooling);
+    expect(published).toEqual(original);
+    for (const state of ["pending", "failed"] as const) {
+      expect(() => releaseExecutionCheckout(published, tooling, () => ({ state }))).toThrow(
+        "has not passed main quality gates"
+      );
+    }
+  });
+  test("build and unpublished recovery stay pinned to the product source", () => {
+    const { entry } = frozenStore();
+    expect(
+      releaseExecutionCheckout(entry, "a".repeat(40), () => {
+        throw new Error("Build execution must not select current tooling");
+      })
+    ).toBe(entry.mergeSha);
+  });
   const pointers = {
     githubLatest: { id: 1, tag: "v2.7.0" },
     imageLatest: `sha256:${"a".repeat(64)}`,
