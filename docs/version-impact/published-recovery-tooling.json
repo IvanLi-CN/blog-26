@@ -3,12 +3,16 @@
   "kind": "version-impact-record",
   "base_sha": "39285cf98bbc02b03115615fb63f772272b97651",
   "covered_files": {
+    "docs/adr/0040-published-product-recovery-tooling.md": "878e70d26d9f7f04479c7b72c4f4f6f592caf765",
+    "docs/specs/manual-version-release/HISTORY.md": "95f0a57040d0215c7f6529af5685955b15536a00",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "528dd912013714d2d40aaf8fef9dc6debe445fd0",
+    "docs/specs/manual-version-release/SPEC.md": "4b73dbda22aa8c67749788d977165103575e1390",
     "scripts/product-release.ts": "b8d040de54d903c35b027eee66fef4cc4012c731",
     "src/lib/release/completion.ts": "edbdb7feb990285332e0ff4ce0a5f81616e30f07",
     "src/lib/release/deployment.ts": "1ade845ef0da89f2ec79e17bddd98bff0e1dcbc7",
     "src/lib/release/edgeone-cli.ts": "a1a0531f3acf2b45633f8d081be793fe671f625d",
-    "tests/lib/manual-release-recovery.test.ts": "9bd83de509175bc5bbcbe3559819382790c66a82",
-    "tests/lib/edgeone-cli.test.ts": "2e229a8fec32648497b9130132409d8a1123e167"
+    "tests/lib/edgeone-cli.test.ts": "2e229a8fec32648497b9130132409d8a1123e167",
+    "tests/lib/manual-release-recovery.test.ts": "9bd83de509175bc5bbcbe3559819382790c66a82"
   },
   "change": {
     "description": "Repair original-run published-product recovery so gated main tooling can diagnose and fix deployment failures without rebuilding or changing frozen products.",
