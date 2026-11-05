@@ -1,6 +1,11 @@
 name: Product Release
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      diagnose_only:
+        description: Run read-only EdgeOne credential and network diagnostics without publication
+        type: boolean
+        default: false
   workflow_run:
     workflows: [CI/CD Pipeline, E2E Tests]
     types: [completed]
@@ -9,8 +14,28 @@ permissions:
   contents: read
   actions: read
 jobs:
+  diagnose-edgeone:
+    if: github.event_name == 'workflow_dispatch' && inputs.diagnose_only
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+      - name: Inspect EdgeOne domestic API without deployment
+        run: node scripts/diagnose-edgeone-ci.mjs
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_PROJECT_NAME: ${{ vars.EDGEONE_PROJECT_NAME }}
+      - name: Verify pinned CLI installation
+        run: npx --yes edgeone@1.6.34 --version
   production:
-    if: github.event_name == 'workflow_dispatch' || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository)
+    if: (github.event_name == 'workflow_dispatch' && !inputs.diagnose_only) || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 360
     permissions:
