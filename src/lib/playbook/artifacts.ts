@@ -160,7 +160,11 @@ export async function writePublicEdition(
   publicSnapshot: Uint8Array | string,
   catalogOptions: PublicCatalogOptions = {}
 ) {
-  let rawFiles = edition.legacyCatalog ? decodePlaybookRawFiles(edition.legacyRawFiles) : undefined;
+  let rawFiles = edition.legacyCatalog
+    ? decodePlaybookRawFiles(edition.legacyRawFiles)
+    : edition.rawFiles
+      ? decodePlaybookRawFiles(edition.rawFiles)
+      : undefined;
   if (!rawFiles && catalogOptions.stripInternalMetadata === true) {
     rawFiles = new Map<string, Uint8Array>([
       ["catalog.json", await readFile(join(bundleRoot, "catalog.json"))],

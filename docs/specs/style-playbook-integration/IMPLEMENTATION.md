@@ -2,6 +2,8 @@
 
 ## Current Status
 
+- 静态内容构建保留公开 catalog/search 原始字节及其摘要；现代 edition 的构建 seed 与缓存持久化同时携带原始字节证据，读取时先校验摘要，再比对受控的目录/搜索规范化投影。真实 `v2.4.7` 公共 bundle 的 seed JSON 往返与公开文件写出已通过；原始字节损坏或搜索投影篡改仍拒绝，生产内容采用仍须通过 CI 部署验证。
+
 - Lifecycle: active
 - Implementation: historical Release/static-pointer implementation notes remain below, but the current source contract is now GitHub-only for dynamic sync. This decision update does not claim that runtime code, migrations, or deployment configuration has been switched to ADR 0030.
 - Catalog note: the static public publication path remains documented separately; dynamic runtime adoption, current/previous database snapshots, GitHub configuration, and the new administrator-only status boundary require implementation work before they can be called complete.
