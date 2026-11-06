@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { revokePrincipalPresentation } from "@/components/common/conversation/presentation-state";
 import type { FrontendAuthState } from "@/lib/assistant-contracts";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
@@ -103,13 +104,14 @@ export function useUserInfo() {
   }, [fetchUserInfo]);
 
   const logout = useCallback(async () => {
+    if (userInfo?.id) revokePrincipalPresentation(userInfo.id);
     try {
       await readJson(toPublicApiUrl("/api/public/frontend-auth/logout"), { method: "POST" });
     } finally {
       setUserInfo(null);
       window.location.reload();
     }
-  }, []);
+  }, [userInfo?.id]);
 
   return { userInfo, logout, isLoading, refetchUserInfo: fetchUserInfo };
 }

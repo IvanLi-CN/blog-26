@@ -114,6 +114,51 @@ export function changedBlobs(base: string, head: string): Record<string, string 
   );
 }
 
+/** Follow only VERSION-preserving edges; an equal value elsewhere in history is not proof. */
+function nestedCarriedRelease(
+  ledger: ReleaseLedger,
+  incoming: string[],
+  versionBlob: string,
+  nodes: Map<string, { versionBlob: string | undefined; parents: string[] }>
+): ReleaseEntry | undefined {
+  const pending = [...incoming];
+  const visited = new Set<string>();
+  while (pending.length) {
+    const sha = pending.pop();
+    if (!sha) continue;
+    if (visited.has(sha)) continue;
+    visited.add(sha);
+    let node = nodes.get(sha);
+    if (!node) {
+      const versionTree = gitOutput(["ls-tree", sha, "--", "VERSION"]).trim();
+      node = {
+        versionBlob: /^100644 blob ([a-f0-9]+)\tVERSION$/.exec(versionTree)?.[1],
+        parents: gitOutput(["rev-list", "--parents", "-n", "1", sha]).trim().split(" ").slice(1),
+      };
+      nodes.set(sha, node);
+    }
+    if (node.versionBlob !== versionBlob) continue;
+    const version = gitFile(sha, "VERSION")?.trim();
+    const registered = ledger.entries.find(
+      (entry) => entry.mergeSha === sha && entry.version === version
+    );
+    if (registered) return registered;
+    const prepared = ledger.entries.find(
+      (entry) =>
+        (entry.stage === "pr_open" || entry.stage === "abandoned") &&
+        entry.prNumber &&
+        entry.preparationHead &&
+        entry.mergeSha === undefined &&
+        entry.sourceSha === node.parents[0] &&
+        entry.version === version
+    );
+    // The caller must authenticate this exact commit through the original release PR.
+    if (prepared) return { ...prepared, mergeSha: sha };
+    pending.push(...node.parents);
+  }
+  return undefined;
+}
+
 /** Separate authenticated protocol-only VERSION writes from business compatibility evidence. */
 export function semanticSourceBlobs(
   ledger: ReleaseLedger,
@@ -124,6 +169,7 @@ export function semanticSourceBlobs(
   const changed = changedBlobs(baseline.sourceSha, sourceSha);
   const blobs = { ...treeBlobs(sourceSha), ...changed };
   let businessVersion = treeBlobs(baseline.sourceSha).VERSION ?? null;
+  const versionNodes = new Map<string, { versionBlob: string | undefined; parents: string[] }>();
   for (const sha of gitOutput([
     "rev-list",
     "--first-parent",
@@ -157,6 +203,19 @@ export function semanticSourceBlobs(
         );
       if (carriedRelease) {
         if (proveRelease) proveRelease(carriedRelease.entry);
+        continue;
+      }
+      const incoming = gitOutput(["rev-list", "--parents", "-n", "1", sha])
+        .trim()
+        .split(" ")
+        .slice(2);
+      const nestedRelease =
+        candidateVersion && gitOutput(["ls-tree", sha, "--", "VERSION"]).startsWith("100644 blob ")
+          ? nestedCarriedRelease(ledger, incoming, candidateVersion, versionNodes)
+          : undefined;
+      if (nestedRelease) {
+        if (!proveRelease) throw new Error("VERSION release provenance must be verified");
+        proveRelease(nestedRelease);
         continue;
       }
       const preparedRelease = ledger.entries.find(

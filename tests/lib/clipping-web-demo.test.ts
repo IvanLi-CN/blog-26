@@ -133,6 +133,35 @@ describe("clipping Web Demo on the official route", () => {
     expect(model.getArticle().content).not.toContain("新增的备注");
   });
 
+  it("advances Markdown snapshots without mutating published history", async () => {
+    const model = createClippingWebDemoModel({ ...admin, scene: "assistant-markdown-incremental" });
+    const snapshots: ClippingChat[] = [];
+    model.transport.subscribe(
+      (value) => snapshots.push(value),
+      () => undefined
+    );
+    expect(snapshots[0]?.generating).toBe(true);
+    expect(snapshots[0]?.partial).toBe("```c++\nint");
+    model.simulateSave();
+    expect(snapshots).toHaveLength(2);
+    expect(snapshots[0]?.partial).toBe("```c++\nint");
+    expect(snapshots[1]?.partial).toContain("https://example.invalid/pa");
+    model.simulateSave();
+    model.simulateSave();
+    model.simulateSave();
+    expect(snapshots.at(-1)?.generating).toBe(false);
+    expect(snapshots.at(-1)?.messages.at(-1)?.text).toContain("https://example.invalid/path");
+    model.setState({ ...admin, scene: "assistant-markdown-failed" });
+    expect(snapshots.at(-1)?.error).toContain("模拟生成失败");
+    expect(snapshots.at(-1)?.messages.at(-1)?.text).toContain("int x = 1");
+    model.setState({ ...admin, scene: "assistant-markdown-stopped" });
+    expect(snapshots.at(-1)?.generating).toBe(false);
+    expect(snapshots.at(-1)?.error).toBe("已停止生成");
+    expect((await model.transport.request<ClippingChat>("chat")).messages.at(-1)?.text).toContain(
+      "int x = 1"
+    );
+  });
+
   it("does not apply delayed reprocessing after the Inspector resets the model", async () => {
     const model = createClippingWebDemoModel({ ...admin, network: "slow" });
     const pending = model.transport.request("reprocess", {});

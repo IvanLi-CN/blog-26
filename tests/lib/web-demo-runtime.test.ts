@@ -5,6 +5,7 @@ import {
   getWebDemoEditSlug,
   getWebDemoEnvironment,
   getWebDemoRequestDelayMs,
+  getWebDemoRuntimeState,
   getWebDemoSceneOptions,
   getWebDemoShareUrl,
   getWebDemoState,
@@ -104,6 +105,31 @@ describe("Web Demo runtime state", () => {
     expect(boundUrl).toContain("d_github_binding=bound");
   });
 
+  it("propagates Inspector state to a destination without losing conversation identity", () => {
+    const state = getWebDemoState({
+      pathname: "/",
+      search: "?d_scene=assistant-markdown-code&d_persona=admin&d_data=dense",
+    });
+    const destination = new URL("https://demo.example/chat/?conversation=demo-code#history");
+    const shared = new URL(getWebDemoShareUrl(state, destination));
+
+    expect(shared.pathname).toBe("/chat/");
+    expect(shared.searchParams.get("conversation")).toBe("demo-code");
+    expect(shared.hash).toBe("#history");
+    expect(getWebDemoState(shared)).toEqual(state);
+    expect(destination.search).toBe("?conversation=demo-code");
+
+    const runtime = getWebDemoRuntimeState({
+      pathname: "/",
+      search:
+        "?d_scene=assistant-markdown-code&d_persona=admin&d_data=dense&d_github_binding=bound&d_connection=online&d_delay=custom&d_delay_ms=1700&d_theme=dark&d_motion=reduce",
+    });
+    const fullStateUrl = new URL(getWebDemoShareUrl(runtime, destination));
+    expect(getWebDemoRuntimeState(fullStateUrl)).toEqual(runtime);
+    expect(fullStateUrl.searchParams.get("conversation")).toBe("demo-code");
+    expect(fullStateUrl.hash).toBe("#history");
+  });
+
   it("exposes route-specific scene choices for public and admin surfaces", () => {
     expect(getWebDemoSceneOptions("/memos/", "public").map((option) => option.value)).toContain(
       "memo-network-fault"
@@ -126,6 +152,13 @@ describe("Web Demo runtime state", () => {
       "assistant-expired",
       "assistant-failure",
       "assistant-reconnecting",
+      "assistant-markdown-complete",
+      "assistant-markdown-code",
+      "assistant-markdown-safety",
+      "assistant-markdown-incremental",
+      "assistant-markdown-failed",
+      "assistant-markdown-stopped",
+      "assistant-markdown-final",
     ]);
   });
 

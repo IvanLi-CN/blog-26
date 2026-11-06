@@ -1,4 +1,9 @@
 import { setThemePreference } from "./theme";
+import {
+  type AssistantMarkdownScene,
+  assistantMarkdownSceneNames,
+  assistantMarkdownSceneOptions,
+} from "./web-demo-scenes";
 
 export const WEB_DEMO_STATE_EVENT = "web-demo:state-change";
 export const WEB_DEMO_ACTION_EVENT = "web-demo:action";
@@ -24,6 +29,7 @@ export type WebDemoNetwork = "healthy" | "slow" | "offline";
 
 export type WebDemoDataMode = "fixture" | "dense" | "empty" | "motion";
 export type WebDemoScene =
+  | AssistantMarkdownScene
   | "public-reading"
   | "comments-target-unavailable"
   | "comments-avatar-failure"
@@ -173,6 +179,7 @@ const defaultEnvironment: WebDemoEnvironment = {
 };
 
 const scenes = [
+  ...assistantMarkdownSceneNames,
   "public-reading",
   "comments-target-unavailable",
   "comments-avatar-failure",
@@ -389,7 +396,8 @@ export function normalizeWebDemoSceneState(
   if (
     isClippingWebDemoPath(pathname) &&
     !scene.startsWith("clipping-") &&
-    !scene.startsWith("comments-")
+    !scene.startsWith("comments-") &&
+    !scene.startsWith("assistant-markdown-")
   )
     scene = fallback.scene;
   return {
@@ -645,6 +653,7 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
         label: "助手 · 重连中",
         description: "模拟快照读取失败时的重连提示。",
       },
+      ...assistantMarkdownSceneOptions,
     ];
   }
 
@@ -675,6 +684,7 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
 
   if (isClippingWebDemoPath(pathname)) {
     return [
+      ...assistantMarkdownSceneOptions,
       {
         value: "clipping-ready",
         label: "剪藏 · 已完成",
@@ -784,6 +794,7 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
   }
 
   return [
+    ...assistantMarkdownSceneOptions,
     {
       value: "public-reading",
       label: "公共站点 · 阅读",
@@ -866,7 +877,7 @@ export function writeWebDemoStateToLocation(state: WebDemoState, location = wind
 
 export function getWebDemoShareUrl(
   state: WebDemoState | WebDemoRuntimeState,
-  location = window.location
+  location: Pick<Location, "href" | "pathname"> = window.location
 ) {
   const runtimeState =
     "environment" in state
