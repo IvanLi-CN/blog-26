@@ -1,6 +1,7 @@
 "use client";
 
 import type { Element } from "hast";
+import { CornerUpLeft } from "lucide-react";
 import type { JSX } from "react";
 import { createContext, useContext, useMemo } from "react";
 import type { Components } from "react-markdown";
@@ -259,20 +260,35 @@ export function ConversationMarkdown({
       a({ children, href, title, className: inheritedClassName, node, ...props }) {
         if (!href) return <span {...props}>{children}</span>;
         const isFootnoteBackref = node?.properties?.dataFootnoteBackref != null;
+        if (isFootnoteBackref) {
+          return (
+            <a
+              href={href}
+              {...props}
+              aria-label="返回正文"
+              title="返回正文"
+              className={classNames(
+                "nature-icon-button inline-flex shrink-0 align-middle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)]",
+                inheritedClassName
+              )}
+            >
+              <CornerUpLeft size={16} aria-hidden="true" focusable="false" />
+            </a>
+          );
+        }
         return (
           <a
             href={href}
             title={title}
             {...linkProps(href)}
             {...props}
-            aria-label={isFootnoteBackref ? "返回正文" : props["aria-label"]}
             style={{ textDecorationLine: "underline" }}
             className={classNames(
               "nature-link-inline break-words underline decoration-[rgba(var(--nature-accent-rgb),0.35)] underline-offset-4",
               inheritedClassName
             )}
           >
-            {isFootnoteBackref ? "返回正文" : children}
+            {children}
           </a>
         );
       },

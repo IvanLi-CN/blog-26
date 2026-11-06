@@ -107,7 +107,13 @@ const verifySurface: Story["play"] = async ({ args, canvasElement }) => {
     await expect(canvas.getByText(/无效公式/)).toBeInTheDocument();
   } else {
     await expect(canvas.getByRole("heading", { name: "阅读合同" })).toBeInTheDocument();
-    await expect(canvas.getByRole("link", { name: "返回正文" })).toHaveTextContent("返回正文");
+    const backlink = canvas.getByRole("link", { name: "返回正文" });
+    await expect(backlink.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+    await expect(backlink.textContent).toBe("");
+    await expect(getComputedStyle(backlink).textDecorationLine).toBe("none");
+    const minimumTarget = matchMedia("(min-width: 1024px) and (pointer: fine)").matches ? 32 : 44;
+    await expect(backlink.getBoundingClientRect().width).toBeGreaterThanOrEqual(minimumTarget);
+    await expect(backlink.getBoundingClientRect().height).toBeGreaterThanOrEqual(minimumTarget);
   }
 
   const heading = canvasElement.querySelector("h1");

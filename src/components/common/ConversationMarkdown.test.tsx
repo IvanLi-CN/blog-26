@@ -92,8 +92,11 @@ describe("ConversationMarkdown", () => {
       const references = inspectFootnoteReferences(body);
       expect(references).toHaveLength(1);
       const backlink = body.querySelector("a[data-footnote-backref]");
-      expect(backlink?.textContent).toBe("返回正文");
+      expect(backlink?.querySelector("svg")).not.toBeNull();
+      expect(backlink?.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+      expect(backlink?.textContent).toBe("");
       expect(backlink?.getAttribute("aria-label")).toBe("返回正文");
+      expect(backlink?.getAttribute("title")).toBe("返回正文");
       expect(backlink?.getAttribute("href")).toBe(`#${references[0]?.referenceId}`);
     }
   });
