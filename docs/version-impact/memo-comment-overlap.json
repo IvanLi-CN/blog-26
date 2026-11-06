@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "7adc8d363e56ac9d0f32fd918f7a5a6eff913fd0",
+  "covered_files": {
+    "docs/specs/memo-admin-inline-view/assets/memo-long-code-desktop.png": "7477b14a1dd398f18b1309832b45074cafbf710a",
+    "docs/specs/memo-admin-inline-view/assets/memo-long-code-mobile.png": "35326f461613c795ccf92d3b097f37ed8655076a",
+    "site/styles/public-pages.css": "c43e1bbe28b916faae15ddf4f164938113989f40",
+    "src/lib/console-web-demo.ts": "d5219922ffea9f6229b47a4cd47b6b085724d269",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "a3ea83a8d8bad87803642489d196f1715099b816"
+  },
+  "change": {
+    "description": "Constrain the Console Memo reading column to its grid track, preserving internal code scrolling and the existing responsive comments layout. Compatible presentation defect repair; no API or persistence changes.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Constrain the Console Memo reading column to its grid track, preserving internal code scrolling and the existing responsive comments layout. Compatible presentation defect repair; no API or persistence changes.",
+      "assessed_at": "2026-11-06T05:59:31.362240+00:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "a3ea83a8d8bad87803642489d196f1715099b816",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38360 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts (13 passed; long-code geometry at 1362, 1280, 1279, 393px)"
+        },
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "c43e1bbe28b916faae15ddf4f164938113989f40",
+          "command": "bun run check; owner-confirmed desktop/mobile Web Demo evidence"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Constrain the Console Memo reading column to its grid track, preserving internal code scrolling and the existing responsive comments layout. Compatible presentation defect repair; no API or persistence changes.",
+      "assessed_at": "2026-11-06T05:59:31.362240+00:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "a3ea83a8d8bad87803642489d196f1715099b816",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38360 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts (13 passed; long-code geometry at 1362, 1280, 1279, 393px)"
+        },
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "c43e1bbe28b916faae15ddf4f164938113989f40",
+          "command": "bun run check; owner-confirmed desktop/mobile Web Demo evidence"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Limited to Memo column sizing, deterministic long-code fixture, regression coverage and approved screenshots."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Constrain the Console Memo reading column to its grid track, preserving internal code scrolling and the existing responsive comments layout. Compatible presentation defect repair; no API or persistence changes.",
+      "assessed_at": "2026-11-06T05:59:31.362240+00:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "a3ea83a8d8bad87803642489d196f1715099b816",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38360 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts (13 passed; long-code geometry at 1362, 1280, 1279, 393px)"
+        },
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "c43e1bbe28b916faae15ddf4f164938113989f40",
+          "command": "bun run check; owner-confirmed desktop/mobile Web Demo evidence"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": ["4.1.7"],
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "a3ea83a8d8bad87803642489d196f1715099b816",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38360 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts (13 passed; long-code geometry at 1362, 1280, 1279, 393px)"
+        },
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "c43e1bbe28b916faae15ddf4f164938113989f40",
+          "command": "bun run check; owner-confirmed desktop/mobile Web Demo evidence"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No storage schemas, durable formats or production writes change.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "a3ea83a8d8bad87803642489d196f1715099b816",
+          "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38360 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts (13 passed; long-code geometry at 1362, 1280, 1279, 393px)"
+        },
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "c43e1bbe28b916faae15ddf4f164938113989f40",
+          "command": "bun run check; owner-confirmed desktop/mobile Web Demo evidence"
+        }
+      ]
+    }
+  }
+}
