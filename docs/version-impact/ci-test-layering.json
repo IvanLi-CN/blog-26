@@ -5,9 +5,9 @@
   "covered_files": {
     ".github/actions/setup-native-search/action.yml": "f9ae991e109cb2111039a7a89b4f5e6898be6938",
     ".github/workflows/ci.yml": "482582b7315338cfc9dbc41116cbb7f70105a5eb",
-    ".github/workflows/e2e.yml": "300cf78c6349bb77c49abf01dfd5905082e97be1",
+    ".github/workflows/e2e.yml": "204a973704ada7dd34163dda4963fcdc98ef5443",
     "apps/admin/src/demo/business-contracts.test.tsx": "a9b1a24ab12aaf56cec304dfedae4b52d021e5d4",
-    "docs/specs/README.md": "6bbe1709a5c2ca211e2f30bd1654b8c09f9bd841",
+    "docs/specs/README.md": "466ba8fddb7bc171203ec2c6763ab0683b403501",
     "docs/specs/ci-performance/HISTORY.md": "43f1b90dd6b48b5582bc8c0e864c34123874b55f",
     "docs/specs/ci-performance/IMPLEMENTATION.md": "dfbfe677da1f1460dc4e3f5818cfcd1432f3cd47",
     "docs/specs/ci-performance/SPEC.md": "4f73b158e91f006f997d8c10f23e4f6e8a059414",
@@ -45,7 +45,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "300cf78c6349bb77c49abf01dfd5905082e97be1",
+          "blob": "204a973704ada7dd34163dda4963fcdc98ef5443",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -55,7 +55,7 @@
         },
         {
           "path": "docs/specs/README.md",
-          "blob": "6bbe1709a5c2ca211e2f30bd1654b8c09f9bd841",
+          "blob": "466ba8fddb7bc171203ec2c6763ab0683b403501",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -127,8 +127,8 @@
     },
     "current": {
       "impact": "patch",
-      "reasoning": "测试意图由真实处理器、SQLite、正式 Demo 适配器和浏览器分层承接；MCP 保留生产网关 HTTP 链路，固定自身 viewport 的浏览器场景只执行一次。不改变产品 API、数据格式、required checks 或发版入口。",
-      "assessed_at": "2026-11-06T18:48:36+08:00",
+      "reasoning": "测试意图由真实处理器、SQLite、正式 Demo 适配器和浏览器分层承接；MCP 保留生产网关 HTTP 链路，固定自身 viewport 的浏览器场景只执行一次。不改变产品 API、数据格式、required checks 或发版入口。 当前 CI 测试分层仅调整验证归属，兼容性结论不变；重绑共享文件的当前 blob。",
+      "assessed_at": "2026-11-06T18:50:55+08:00",
       "evidence": [
         {
           "path": ".github/actions/setup-native-search/action.yml",
@@ -142,7 +142,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "300cf78c6349bb77c49abf01dfd5905082e97be1",
+          "blob": "204a973704ada7dd34163dda4963fcdc98ef5443",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -152,7 +152,7 @@
         },
         {
           "path": "docs/specs/README.md",
-          "blob": "6bbe1709a5c2ca211e2f30bd1654b8c09f9bd841",
+          "blob": "466ba8fddb7bc171203ec2c6763ab0683b403501",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -224,8 +224,8 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "测试意图由真实处理器、SQLite、正式 Demo 适配器和浏览器分层承接；MCP 保留生产网关 HTTP 链路，固定自身 viewport 的浏览器场景只执行一次。不改变产品 API、数据格式、required checks 或发版入口。",
-      "assessed_at": "2026-11-06T18:48:36+08:00",
+      "reasoning": "测试意图由真实处理器、SQLite、正式 Demo 适配器和浏览器分层承接；MCP 保留生产网关 HTTP 链路，固定自身 viewport 的浏览器场景只执行一次。不改变产品 API、数据格式、required checks 或发版入口。 当前 CI 测试分层仅调整验证归属，兼容性结论不变；重绑共享文件的当前 blob。",
+      "assessed_at": "2026-11-06T18:50:55+08:00",
       "evidence": [
         {
           "path": ".github/actions/setup-native-search/action.yml",
@@ -239,7 +239,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "300cf78c6349bb77c49abf01dfd5905082e97be1",
+          "blob": "204a973704ada7dd34163dda4963fcdc98ef5443",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -249,7 +249,7 @@
         },
         {
           "path": "docs/specs/README.md",
-          "blob": "6bbe1709a5c2ca211e2f30bd1654b8c09f9bd841",
+          "blob": "466ba8fddb7bc171203ec2c6763ab0683b403501",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -386,7 +386,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "300cf78c6349bb77c49abf01dfd5905082e97be1",
+          "blob": "204a973704ada7dd34163dda4963fcdc98ef5443",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -396,7 +396,7 @@
         },
         {
           "path": "docs/specs/README.md",
-          "blob": "6bbe1709a5c2ca211e2f30bd1654b8c09f9bd841",
+          "blob": "466ba8fddb7bc171203ec2c6763ab0683b403501",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -485,7 +485,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "300cf78c6349bb77c49abf01dfd5905082e97be1",
+          "blob": "204a973704ada7dd34163dda4963fcdc98ef5443",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -495,7 +495,7 @@
         },
         {
           "path": "docs/specs/README.md",
-          "blob": "6bbe1709a5c2ca211e2f30bd1654b8c09f9bd841",
+          "blob": "466ba8fddb7bc171203ec2c6763ab0683b403501",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
