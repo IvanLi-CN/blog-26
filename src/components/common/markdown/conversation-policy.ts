@@ -1,4 +1,5 @@
 import type { Element, Root, RootContent } from "hast";
+import rehypeKatex from "rehype-katex";
 import { defaultSchema } from "rehype-sanitize";
 import { visit } from "unist-util-visit";
 
@@ -21,15 +22,74 @@ export function remarkHtmlAsText() {
 export function remarkPreventPartialLinkAutolink() {
   return (tree: unknown, file: { toString: () => string }) => {
     const source = file.toString();
+    const codeSpans: Array<{ start: number; end: number }> = [];
+    visit(tree as never, "inlineCode", (node: any) => {
+      if (node.position)
+        codeSpans.push({ start: node.position.start.offset, end: node.position.end.offset });
+    });
+    const escaped = (offset: number) => {
+      let count = 0;
+      while (offset > 0 && source[--offset] === "\\") count++;
+      return count % 2 === 1;
+    };
     visit(tree as never, "link", (node: any, index, parent: any) => {
       const offset = node.position?.start?.offset;
       if (!parent || typeof index !== "number" || typeof offset !== "number") return;
-      if (!/\[[^\]\n]*\]\(\s*$/u.test(source.slice(0, offset))) return;
+      const prefix = source.slice(0, offset);
+      const suffix = /\]\(\s*<?$/u.exec(prefix);
+      if (!suffix || escaped(suffix.index) || escaped(suffix.index + 1)) return;
+      let depth = 1;
+      let opener = -1;
+      for (
+        let cursor = suffix.index - 1;
+        cursor >= (parent.position?.start?.offset ?? 0);
+        cursor--
+      ) {
+        const codeSpan = codeSpans.find((span) => cursor >= span.start && cursor < span.end);
+        if (codeSpan) {
+          cursor = codeSpan.start;
+          continue;
+        }
+        if (escaped(cursor)) continue;
+        if (source[cursor] === "]") depth++;
+        if (source[cursor] === "[" && --depth === 0) {
+          opener = cursor;
+          break;
+        }
+      }
+      if (opener < 0) return;
       const value = Array.isArray(node.children)
         ? node.children.map((child: { value?: unknown }) => String(child.value ?? "")).join("")
         : String(node.url ?? "");
       parent.children[index] = { type: "text", value };
     });
+  };
+}
+
+/** Only remark-math nodes are formulas; an ordinary `math` fence remains copyable code. */
+export function rehypeConversationMath() {
+  const options = { throwOnError: false, trust: false };
+  const renderMath = rehypeKatex(options);
+  return (tree: Root, file: Parameters<typeof renderMath>[1]) => {
+    const protectedCode: Array<{ node: Element; classes: Array<string | number> }> = [];
+    visit(tree, "element", (node: Element) => {
+      const classes = node.properties.className;
+      if (
+        node.tagName !== "code" ||
+        !Array.isArray(classes) ||
+        !classes.includes("language-math") ||
+        classes.includes("math-inline") ||
+        classes.includes("math-display")
+      )
+        return;
+      protectedCode.push({ node, classes });
+      node.properties.className = classes.filter((value) => value !== "language-math");
+    });
+    try {
+      renderMath(tree, file);
+    } finally {
+      for (const { node, classes } of protectedCode) node.properties.className = classes;
+    }
   };
 }
 

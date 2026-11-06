@@ -6,7 +6,6 @@ import type { JSX } from "react";
 import { createContext, useContext, useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
-import rehypeKatex from "rehype-katex";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -17,6 +16,7 @@ import {
   conversationSanitizeSchema,
   conversationUrlTransform,
   isConversationExternalHref,
+  rehypeConversationMath,
   rehypeNamespaceConversationFootnotes,
   remarkHtmlAsText,
   remarkPreventPartialLinkAutolink,
@@ -103,7 +103,7 @@ export function ConversationMarkdown({
       [
         [rehypeSanitize, conversationSanitizeSchema],
         [rehypeResponsiveTables, { wrapCells: true }],
-        [rehypeKatex, { throwOnError: false, trust: false }],
+        rehypeConversationMath,
         () => rehypeNamespaceConversationFootnotes(messageId, presentationId),
       ] as any,
     [messageId, presentationId]

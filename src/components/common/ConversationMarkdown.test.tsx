@@ -32,6 +32,36 @@ function renderMessage(message = completeMarkdown.message) {
 }
 
 describe("ConversationMarkdown", () => {
+  test("keeps math-language fences copyable while dollar math still renders", () => {
+    const source = "x + y\n\n";
+    const view = renderMessage({
+      ...completeMarkdown.message,
+      content: `\`\`\`math\n${source}\n\`\`\`\n\n$x+y$`,
+    });
+    expect(view.container.querySelector("pre > code")?.textContent).toBe(source);
+    expect(view.container.querySelector("pre > code")?.className).toContain("language-math");
+    expect(view.getByRole("button", { name: "复制代码" })).not.toBeNull();
+    expect(view.container.querySelector(".katex")).not.toBeNull();
+  });
+
+  test("keeps complex-label incomplete destinations literal until completion", () => {
+    for (const label of ["[[x]]", "[x\\]]", "[a [b]]", "[a\\]b]", "[a `]` b]"]) {
+      const view = renderMessage({ ...completeMarkdown.message, content: `${label}(https://exa` });
+      expect(view.container.querySelector("a")).toBeNull();
+      expect(view.container.textContent).toContain("https://exa");
+      view.rerender(
+        <ConversationMarkdown
+          {...completeMarkdown.message}
+          content={`${label}(https://example.invalid)`}
+        />
+      );
+      expect(view.container.querySelector("a")?.getAttribute("href")).toBe(
+        "https://example.invalid"
+      );
+      view.unmount();
+    }
+  });
+
   test("composes with AssistantMessageContent without duplicating the message boundary", () => {
     const message = { ...completeMarkdown.message, status: "completed" as const };
     const view = render(
