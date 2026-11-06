@@ -19,6 +19,7 @@
     "src/lib/release/completion.ts": "469464dbec3c74725ac5382c8144c80df5d1a306",
     "src/lib/release/products.ts": "b7b1556603e93622d2db90d76c861967fcf2cb4c",
     "src/lib/release/publication.ts": "c08b9d368dec6e4c2222d4dc6ee6c0211e863918",
+    "tests/e2e/web-demo/search-modes.spec.ts": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
     "tests/lib/manual-release-publication.test.ts": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
     "tests/lib/manual-release-recovery.test.ts": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
     "tests/lib/playbook-contract.test.ts": "88f2f469498b7b62670816e828e7746d92394980",
@@ -50,6 +51,11 @@
           "path": "tests/lib/manual-release-publication.test.ts",
           "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/e2e/web-demo/search-modes.spec.ts",
+          "blob": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
+          "command": "GitHub Actions E2E run 42153849189 job 127683204640: Web Demo official routes passed"
         }
       ]
     },
@@ -72,6 +78,11 @@
           "path": "tests/lib/manual-release-publication.test.ts",
           "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/e2e/web-demo/search-modes.spec.ts",
+          "blob": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
+          "command": "GitHub Actions E2E run 42153849189 job 127683204640: Web Demo official routes passed"
         }
       ],
       "scope_drift": {
@@ -98,6 +109,11 @@
           "path": "tests/lib/manual-release-publication.test.ts",
           "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/e2e/web-demo/search-modes.spec.ts",
+          "blob": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
+          "command": "GitHub Actions E2E run 42153849189 job 127683204640: Web Demo official routes passed"
         }
       ]
     }
