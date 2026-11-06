@@ -3,6 +3,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { withoutDeploymentCredentials } from "../playbook/child-env";
+import { edgeOneCliSummary } from "./edgeone-cli";
 import type { ReleaseEntry } from "./ledger";
 import { shaSchema, versionSchema } from "./policy";
 import { type ProductManifest, verifyProducts } from "./products";
@@ -128,9 +129,17 @@ export async function deployStatic(
     }
   );
   // Keep signed preview URLs and the CLI credential out of logs, including failures.
-  await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text()]);
-  if ((await child.exited) !== 0)
-    throw new Error("EdgeOne deployment failed; retry the original frozen product");
+  const output = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
+  const exitCode = await child.exited;
+  const summary = edgeOneCliSummary(output.join("\n"), exitCode);
+  console.log(`EdgeOne CLI: ${JSON.stringify(summary)}`);
+  if (exitCode !== 0)
+    throw new Error(
+      `EdgeOne deployment failed (exit ${exitCode}); retry the original frozen product`
+    );
   const url = process.env.PUBLIC_SITE_URL || "https://ivanli.cc/";
   await verifyProduction(entry, manifest, url);
   return {

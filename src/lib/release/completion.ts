@@ -126,6 +126,26 @@ export type EvaluationChecksResult = {
   failedRun?: WorkflowRun;
 };
 
+export function releaseExecutionCheckout(
+  entry: ReleaseEntry,
+  toolingSha: string,
+  evaluateTooling: (sha: string) => EvaluationChecksResult
+): string {
+  const source = shaSchema.parse(entry.mergeSha);
+  // Frozen products may need repaired tooling even before publication completes.
+  // Recorded products cannot be rebuilt: artifact restoration fails closed on loss.
+  if (
+    !entry.products ||
+    (entry.stage !== "frozen" &&
+      (!entry.publication || !["published", "deployed"].includes(entry.stage)))
+  )
+    return source;
+  const tooling = shaSchema.parse(toolingSha);
+  if (tooling !== source && evaluateTooling(tooling).state !== "passed")
+    throw new Error("Current publication tooling has not passed main quality gates");
+  return tooling;
+}
+
 export function mainEvaluationResult(
   github: GitHubRelease,
   sourceSha: string,

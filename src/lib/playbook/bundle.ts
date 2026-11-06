@@ -312,7 +312,12 @@ export function createPlaybookEdition(
         legacyCatalog: true,
         legacyRawFiles: encodePlaybookRawFiles(files),
       }
-    : { edition, catalog, search };
+    : {
+        edition,
+        catalog,
+        search,
+        ...(preserveDeployedBytes ? { rawFiles: encodePlaybookRawFiles(files) } : {}),
+      };
 }
 
 export async function readPlaybookEdition(

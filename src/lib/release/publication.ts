@@ -271,8 +271,34 @@ export async function publishProducts(
   if (!existingTag)
     github.api(`${github.root}/git/refs`, "POST", { ref: `refs/tags/${tag}`, sha: entry.mergeSha });
   const marker = `Release-Identity: ${entry.id}\nSource-SHA: ${entry.mergeSha}\nProducts-Manifest: ${entry.products?.manifestDigest}`;
+  let existingRelease = github.optional(`${github.root}/releases/tags/${tag}`);
+  // The by-tag endpoint omits drafts. A partial publication must resume its
+  // original draft, not create another release and re-upload existing assets.
+  if (!existingRelease) {
+    const drafts = github
+      .pages(`${github.root}/releases?per_page=100`)
+      .map((raw) => releaseSchema.parse(raw))
+      .filter((item) => item.tag_name === tag);
+    for (const draft of drafts) {
+      if (
+        !draft.draft ||
+        draft.target_commitish !== entry.mergeSha ||
+        !draft.body?.includes(marker) ||
+        draft.prerelease !== prerelease ||
+        draft.author.login !== `${github.botSlug}[bot]`
+      )
+        throw new Error("Release draft belongs to a different identity");
+    }
+    const populated = drafts.filter(
+      (draft) => github.pages(`${github.root}/releases/${draft.id}/assets?per_page=100`).length > 0
+    );
+    if (populated.length > 1) throw new Error("Multiple release drafts contain immutable assets");
+    // Retain empty duplicates from older recovery attempts without deleting
+    // anything. Exactly one populated draft is authoritative for recovery.
+    existingRelease = populated[0] || drafts.sort((a, b) => a.id - b.id)[0];
+  }
   let release = releaseSchema.parse(
-    github.optional(`${github.root}/releases/tags/${tag}`) ||
+    existingRelease ||
       github.api(`${github.root}/releases`, "POST", {
         tag_name: tag,
         target_commitish: entry.mergeSha,
@@ -344,8 +370,16 @@ export async function publishProducts(
   if (previous && previous !== manifest.imageDigest)
     throw new Error("Version image already has different immutable bytes");
   if (!previous) copyImage(`oci-archive:${join(root, "image.oci.tar")}`, `docker://${image}`);
-  if (registryDigest(image) !== manifest.imageDigest)
-    throw new Error("Uploaded image digest differs from the frozen OCI product");
+  for (let attempt = 0; ; attempt++) {
+    const uploaded = registryDigest(image);
+    if (uploaded === manifest.imageDigest) break;
+    if (uploaded)
+      throw new Error(
+        `Uploaded image digest differs from the frozen OCI product: expected ${manifest.imageDigest}, observed ${uploaded}`
+      );
+    if (attempt >= 4) throw new Error("Uploaded image is not yet visible in the registry");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
   if (release.draft)
     release = releaseSchema.parse(
       github.api(`${github.root}/releases/${release.id}`, "PATCH", {

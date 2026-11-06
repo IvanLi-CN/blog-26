@@ -106,6 +106,7 @@ export async function prepareWebDemoInputs() {
   await run("generate public assets", ["run", "generate:public-pwa"], env);
   await run("generate project posters", ["run", "generate:project-posters"], env);
   await run("generate project social previews", ["run", "generate:project-social-previews"], env);
+  await run("generate version metadata", ["scripts/generate-version.ts"], env);
   return env;
 }
 

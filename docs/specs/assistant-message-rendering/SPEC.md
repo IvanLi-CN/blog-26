@@ -174,3 +174,11 @@
 ![统一正文样式：深色](./assets/conversation-formats-dark.png)
 
 来源：`public-conversation-markdown--style-consistency` 与 `public-conversation-markdown--style-consistency-dark`；使用 1440×1000 CSS px 组件画布，展示正文、链接、行内代码、嵌套引用、表格、代码操作、外图待加载与脚注回跳。图片占位不发起外图请求，操作保持透明，内容边界统一直角。两张完整总览已由主人确认；同一内容另以 `style-consistency-mobile` 在 393×852 验证。独立代码、图片及消息状态 Story 展示的是各自功能状态，聊天入口内的最终组合样式以本组总览为准。
+
+### 聊天页面集成
+
+![桌面浅色聊天页面](./assets/assistant-chat-desktop-light.png)
+
+![移动端深色完整聊天页面](./assets/assistant-chat-mobile-dark.png)
+
+来源：构建时隔离的 Web Demo 正式 `/chat` 路由，`assistant-ready` 场景、普通用户 mock 身份；桌面视口为 1440×1000 CSS px，移动端视口为 393×852 CSS px，后者捕获完整纵向页面以展示输入框。用户消息中的星号保留为字面文本，助手粗体和列表正常解析，来源位于正文之外。两张截图包含响应式触控区域修正，已经主人确认准确并同意纳入本轮 PR；不包含真实模型回答或私人数据。页面证据不替代最终生成生命周期、受限媒体网络请求与 Console 入口回归。
