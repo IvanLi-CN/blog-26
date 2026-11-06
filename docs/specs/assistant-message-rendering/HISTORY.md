@@ -14,6 +14,10 @@
 
 聊天代码从超过阈值默认折叠改为默认展开、用户主动折叠。文章共享组件的原有默认值和作者 HTML/媒体能力继续由文章主题拥有；共享修复需要验证文章回归。
 
+公开站与旧剪藏对话统一使用聊天专用入口，系统来源继续独立显示。旧剪藏的临时正文与保存后的终态共用同一行列表及稳定消息身份；只保持 DOM 属性相同而重新挂载组件，会丢失用户主动折叠状态。去重只检查当前用户轮次对应的终态回答，不以历史回答的共同前缀隐藏新正文。
+
+本轮交付父 PR 为 [#431](https://github.com/IvanLi-CN/blog-26/pull/431)，仅到待审停靠点；子 PR 经验证后只合入 `th/assistant-message-rendering`。当前没有 `main` 合并、release 或部署授权，也没有相应完成结论。
+
 ## Architectural References
 
 - [ADR 0036](../../adr/0036-assistant-generation-independent-of-ui-lifecycle.md) 约束关闭、切换及刷新时生成持续与可恢复。
