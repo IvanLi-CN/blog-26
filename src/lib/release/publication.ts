@@ -189,7 +189,9 @@ export async function assertProductionOwner(
       throw new Error("Production pointer belongs to a newer or unknown source; do not replace it");
   }
   const image = `${github.contract.products.image.repository}:latest`;
-  if (registryDigest(image)) {
+  const imageDigest = registryDigest(image);
+  let imageOwner: { version: string; sha: string } | undefined;
+  if (imageDigest) {
     let labels: Record<string, string>;
     try {
       labels = z
@@ -204,7 +206,7 @@ export async function assertProductionOwner(
                 registryAuth(),
                 "--format",
                 "{{json .Labels}}",
-                `docker://${image}`,
+                `docker://${github.contract.products.image.repository}@${imageDigest}`,
               ],
               { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
             )
@@ -217,6 +219,10 @@ export async function assertProductionOwner(
       labels["org.opencontainers.image.version"] || "",
       labels["org.opencontainers.image.revision"] || ""
     );
+    imageOwner = {
+      version: labels["org.opencontainers.image.version"] || "",
+      sha: labels["org.opencontainers.image.revision"] || "",
+    };
   }
   const site = new URL(process.env.PUBLIC_SITE_URL || "https://ivanli.cc/");
   const response = await fetch(new URL("version.json", site), {
@@ -225,8 +231,38 @@ export async function assertProductionOwner(
     signal: AbortSignal.timeout(30_000),
   });
   if (response.ok) {
-    const metadata = publicVersionSchema.parse(await response.json());
-    accept(metadata.productVersion, metadata.sourceSha);
+    const body = await response.text();
+    if (body.length > 0) {
+      const metadata = publicVersionSchema.parse(JSON.parse(body));
+      accept(metadata.productVersion, metadata.sourceSha);
+    } else {
+      if (response.status !== 200)
+        throw new Error("Empty static metadata recovery requires HTTP 200");
+      const prior = ledger.entries.find(
+        (item) =>
+          item.stage === "complete" &&
+          !isPrerelease(item.version) &&
+          item.latestVerified === true &&
+          item.version === imageOwner?.version &&
+          item.mergeSha === imageOwner?.sha &&
+          item.products?.imageDigest === imageDigest
+      );
+      if (!imageOwner || !prior)
+        throw new Error("Empty static metadata requires a verified completed production image");
+      const pointer = await fetch(new URL("_content/playbook/manifest.json", site), {
+        redirect: "error",
+        cache: "no-store",
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!pointer.ok)
+        throw new Error("Empty static metadata requires an observable production renderer");
+      const observed = z
+        .object(productionPointersSchema.shape.playbookPointer.shape)
+        .parse(await pointer.json());
+      if (observed.rendererCommit !== imageOwner.sha)
+        throw new Error("Empty static metadata renderer does not match the completed image");
+      accept(prior.version, observed.rendererCommit);
+    }
   } else if (response.status === 404) {
     const pointer = await fetch(new URL("_content/playbook/manifest.json", site), {
       redirect: "error",
