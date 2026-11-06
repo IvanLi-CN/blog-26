@@ -40,7 +40,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
+          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -137,7 +137,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
+          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -238,7 +238,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
+          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {

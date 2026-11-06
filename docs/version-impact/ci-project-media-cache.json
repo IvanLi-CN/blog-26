@@ -40,7 +40,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
+          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -55,7 +55,7 @@
         },
         {
           "path": "Dockerfile",
-          "blob": "bc3079db7be8dd828cc79e86b8903f2f28fc07d8",
+          "blob": "c5dad9292748fdce8f11887caaef83b9fb347c9c",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -137,7 +137,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
+          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -152,7 +152,7 @@
         },
         {
           "path": "Dockerfile",
-          "blob": "bc3079db7be8dd828cc79e86b8903f2f28fc07d8",
+          "blob": "c5dad9292748fdce8f11887caaef83b9fb347c9c",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -238,7 +238,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
+          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -253,7 +253,7 @@
         },
         {
           "path": "Dockerfile",
-          "blob": "bc3079db7be8dd828cc79e86b8903f2f28fc07d8",
+          "blob": "c5dad9292748fdce8f11887caaef83b9fb347c9c",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
