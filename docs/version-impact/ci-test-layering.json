@@ -20,7 +20,8 @@
     "tests/e2e/mcp/memo-create.spec.ts": "b52e1bc829887cc73f78613948433860e2022446",
     "tests/e2e/web-demo/ai-usage.spec.ts": "ffb7302eacf774c35224c8e45204c404f071a510",
     "tests/e2e/web-demo/content-sync.spec.ts": "96d11eb432fa5e1e717ac28085a2819b14c9c2f3",
-    "tests/server/run-e2e.test.ts": "b4e10b890ace225afbbf9d48b5b9b8070b8f6086"
+    "tests/server/run-e2e.test.ts": "b4e10b890ace225afbbf9d48b5b9b8070b8f6086",
+    ".github/workflows/product-release.yml": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9"
   },
   "change": {
     "description": "按测试意图下移 API 与 Demo 业务断言，精简 MCP 后端准备，并保留已合并的原生复用与隔离分片。",
