@@ -106,6 +106,7 @@
 }
 
 .memo-authoring-detail-main {
+  width: 100%;
   min-width: 0;
   max-width: 920px;
   margin-inline: auto;
