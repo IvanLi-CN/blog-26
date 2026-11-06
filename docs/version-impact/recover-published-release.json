@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "b2b56b65519081dce20ff475f44645d746f0b938",
+  "base_sha": "aba866f31d3d789ee7e614a92ecad4eb317177f5",
   "covered_files": {
     ".github/workflows/enable-recovery-auto-merge.yml": "9bceaeafdbac4718809aedcf4fe5f9f50c488ed3",
     ".github/workflows/recover-published-release.yml": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
