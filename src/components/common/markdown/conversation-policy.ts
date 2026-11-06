@@ -75,28 +75,6 @@ export function rehypeNamespaceConversationFootnotes(messageId: string, presenta
   };
 }
 
-/** Keep wide tables and display equations inside their own scroll containers. */
-export function rehypeConversationOverflow() {
-  return (tree: Root) => {
-    visit(tree, "element", (node: Element) => {
-      const classes = Array.isArray(node.properties?.className)
-        ? node.properties.className.map(String)
-        : typeof node.properties?.className === "string"
-          ? [node.properties.className]
-          : [];
-      if (!classes.includes("katex-display") && !classes.includes("table-responsive")) return;
-      node.properties = {
-        ...node.properties,
-        style: [
-          typeof node.properties.style === "string" ? node.properties.style : "",
-          "max-width:100%;overflow-x:auto;overflow-y:hidden;",
-          classes.includes("table-responsive") ? "border-radius:0;" : "",
-        ].join(""),
-      };
-    });
-  };
-}
-
 function safeHref(value: string): boolean {
   // biome-ignore lint/suspicious/noControlCharactersInRegex: Reject browser URL normalization before navigation.
   if (!value || value !== value.trim() || /[\u0000-\u0020\u007f\\]/u.test(value)) return false;

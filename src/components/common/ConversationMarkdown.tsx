@@ -17,7 +17,6 @@ import {
   conversationSanitizeSchema,
   conversationUrlTransform,
   isConversationExternalHref,
-  rehypeConversationOverflow,
   rehypeNamespaceConversationFootnotes,
   remarkHtmlAsText,
   remarkPreventPartialLinkAutolink,
@@ -25,6 +24,7 @@ import {
 import { rehypeResponsiveTables } from "./markdown/plugins/rehype-responsive-tables";
 import "katex/dist/katex.min.css";
 import "@/styles/markdown-code.css";
+import "./ConversationMarkdown.css";
 
 const BlockCodeContext = createContext(false);
 
@@ -104,155 +104,12 @@ export function ConversationMarkdown({
         [rehypeSanitize, conversationSanitizeSchema],
         [rehypeResponsiveTables, { wrapCells: true }],
         [rehypeKatex, { throwOnError: false, trust: false }],
-        rehypeConversationOverflow,
         () => rehypeNamespaceConversationFootnotes(messageId, presentationId),
       ] as any,
     [messageId, presentationId]
   );
   const components = useMemo<Components>(
     () => ({
-      h1({ children, className: inheritedClassName, node: _node, ...props }) {
-        return (
-          <h1
-            className={classNames(
-              "mt-5 mb-3 font-heading text-xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)] first:mt-0 md:text-2xl",
-              inheritedClassName
-            )}
-            {...props}
-          >
-            {children}
-          </h1>
-        );
-      },
-      h2({ children, className: inheritedClassName, node: _node, ...props }) {
-        return (
-          <h2
-            className={classNames(
-              "mt-5 mb-3 font-heading text-lg font-semibold tracking-[-0.02em] text-[color:var(--nature-text)] first:mt-0 md:text-xl",
-              inheritedClassName
-            )}
-            {...props}
-          >
-            {children}
-          </h2>
-        );
-      },
-      h3({ children, className: inheritedClassName, node: _node, ...props }) {
-        return (
-          <h3
-            className={classNames(
-              "mt-4 mb-2 font-heading text-base font-semibold text-[color:var(--nature-text)] first:mt-0 md:text-lg",
-              inheritedClassName
-            )}
-            {...props}
-          >
-            {children}
-          </h3>
-        );
-      },
-      h4({ children, className: inheritedClassName, node: _node, ...props }) {
-        return (
-          <h4
-            className={classNames(
-              "mt-4 mb-2 text-base font-semibold text-[color:var(--nature-text)] first:mt-0",
-              inheritedClassName
-            )}
-            {...props}
-          >
-            {children}
-          </h4>
-        );
-      },
-      h5({ children, className: inheritedClassName, node: _node, ...props }) {
-        return (
-          <h5
-            className={classNames(
-              "mt-3 mb-2 text-sm font-semibold text-[color:var(--nature-text)] first:mt-0",
-              inheritedClassName
-            )}
-            {...props}
-          >
-            {children}
-          </h5>
-        );
-      },
-      h6({ children, className: inheritedClassName, node: _node, ...props }) {
-        return (
-          <h6
-            className={classNames(
-              "mt-3 mb-2 text-xs font-semibold text-[color:var(--nature-text-soft)] first:mt-0",
-              inheritedClassName
-            )}
-            {...props}
-          >
-            {children}
-          </h6>
-        );
-      },
-      p({ children, className: inheritedClassName, node: _node, ...props }) {
-        return (
-          <p
-            className={classNames(
-              "mb-3 leading-7 text-[color:var(--nature-text)]",
-              inheritedClassName
-            )}
-            {...props}
-          >
-            {children}
-          </p>
-        );
-      },
-      ul({ children, className: inheritedClassName, node: _node, ...props }) {
-        return (
-          <ul
-            className={classNames(
-              "my-4 list-outside list-disc space-y-1 pl-6 text-[color:var(--nature-text)]",
-              inheritedClassName
-            )}
-            {...props}
-          >
-            {children}
-          </ul>
-        );
-      },
-      ol({ children, start, className: inheritedClassName, node: _node, ...props }) {
-        return (
-          <ol
-            start={start}
-            className={classNames(
-              "my-4 list-outside list-decimal space-y-1 pl-6 text-[color:var(--nature-text)]",
-              inheritedClassName
-            )}
-            {...props}
-          >
-            {children}
-          </ol>
-        );
-      },
-      li({ children, node: _node, ...props }) {
-        return <li {...props}>{children}</li>;
-      },
-      blockquote({ children, className: inheritedClassName, node: _node, ...props }) {
-        return (
-          <blockquote
-            className={classNames(
-              "my-3 rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-accent-rgb),0.22)] bg-[rgba(var(--nature-highlight-rgb),0.26)] px-3 py-2 italic text-[color:var(--nature-text-soft)] sm:px-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-              inheritedClassName
-            )}
-            {...props}
-          >
-            {children}
-          </blockquote>
-        );
-      },
-      hr({ className: inheritedClassName, node: _node, ...props }) {
-        return (
-          <hr
-            className={classNames("my-8 border-none nature-divider", inheritedClassName)}
-            {...props}
-          />
-        );
-      },
       pre({ children }) {
         return <BlockCodeContext.Provider value>{children}</BlockCodeContext.Provider>;
       },
@@ -267,18 +124,7 @@ export function ConversationMarkdown({
               {...props}
               aria-label="返回正文"
               title="返回正文"
-              style={{
-                background: "transparent",
-                border: 0,
-                borderRadius: 0,
-                boxShadow: "none",
-                padding: 0,
-                textDecorationLine: "none",
-              }}
-              className={classNames(
-                "inline-flex h-11 w-11 shrink-0 items-center justify-center align-middle text-[color:var(--nature-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)] [@media(min-width:1024px)_and_(pointer:fine)]:h-8 [@media(min-width:1024px)_and_(pointer:fine)]:w-8",
-                inheritedClassName
-              )}
+              className={classNames("conversation-footnote-backref", inheritedClassName)}
             >
               <CornerUpLeft size={16} aria-hidden="true" focusable="false" />
             </a>
@@ -290,11 +136,7 @@ export function ConversationMarkdown({
             title={title}
             {...linkProps(href)}
             {...props}
-            style={{ textDecorationLine: "underline" }}
-            className={classNames(
-              "nature-link-inline break-words underline decoration-[rgba(var(--nature-accent-rgb),0.35)] underline-offset-4",
-              inheritedClassName
-            )}
+            className={classNames("conversation-link", inheritedClassName)}
           >
             {children}
           </a>
@@ -323,11 +165,7 @@ export function ConversationMarkdown({
   );
 
   return (
-    <div
-      className={["conversation-markdown min-w-0 max-w-full break-words", className]
-        .filter(Boolean)
-        .join(" ")}
-    >
+    <div className={["conversation-markdown", className].filter(Boolean).join(" ")}>
       <ReactMarkdown
         remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePlugins}
