@@ -25,7 +25,7 @@
     "docs/specs/assistant-message-rendering/assets/message-states.png": "d101f65efc8203b50546f8f7d1b62340f9c7306a",
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "f793524f909dfb5cfd1490412936661f1d90cb58",
     "docs/specs/manual-version-release/SPEC.md": "e81820f5aa512495241caa4a30c85c1f7e814880",
-    "docs/specs/site-knowledge-assistant/SPEC.md": "7f435b2c86fb354a80a5c111acb34c7f5d65a84d",
+    "docs/specs/site-knowledge-assistant/SPEC.md": "6bd7a51dd593cbdcc8c8989024e0a385010b5325",
     "site/components/AssistantMessageContent.test.tsx": "a4d739acc6f6f85ff3ade07dffcd538c647c409b",
     "site/components/AssistantMessageContent.tsx": "6f466f7bdf175407f20772e645caeb8b05360816",
     "site/components/ClippingWebDemo.tsx": "80c51114ec826d0340cba8d93f59e503fd8746c0",
