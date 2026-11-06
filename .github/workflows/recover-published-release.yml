@@ -11,6 +11,11 @@ on:
         description: GitHub Release tag containing the published static archive
         required: true
         type: string
+      deploy:
+        description: Upload the static archive before verifying and promoting the published identity
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -50,6 +55,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Deploy the immutable published static product
+        if: inputs.deploy
         run: |
           set -euo pipefail
           npx edgeone@1.6.34 makers deploy "$RUNNER_TEMP/recovery/site" \

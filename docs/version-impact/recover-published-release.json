@@ -4,7 +4,7 @@
   "base_sha": "aba866f31d3d789ee7e614a92ecad4eb317177f5",
   "covered_files": {
     ".github/workflows/enable-recovery-auto-merge.yml": "9bceaeafdbac4718809aedcf4fe5f9f50c488ed3",
-    ".github/workflows/recover-published-release.yml": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
+    ".github/workflows/recover-published-release.yml": "4de28250552a239a6ddff00cfa7da93893fb5471",
     "scripts/recover-published-release.ts": "33007d14c6602fcca26b3ff12e63e65899c8eeac"
   },
   "change": {
@@ -20,7 +20,7 @@
       "evidence": [
         {
           "path": ".github/workflows/recover-published-release.yml",
-          "blob": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
+          "blob": "4de28250552a239a6ddff00cfa7da93893fb5471",
           "command": "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/recover-published-release.yml\")'"
         },
         {
@@ -37,7 +37,7 @@
       "evidence": [
         {
           "path": ".github/workflows/recover-published-release.yml",
-          "blob": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
+          "blob": "4de28250552a239a6ddff00cfa7da93893fb5471",
           "command": "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/recover-published-release.yml\")'"
         },
         {
@@ -58,7 +58,7 @@
       "evidence": [
         {
           "path": ".github/workflows/recover-published-release.yml",
-          "blob": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
+          "blob": "4de28250552a239a6ddff00cfa7da93893fb5471",
           "command": "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/recover-published-release.yml\")'"
         },
         {
@@ -97,7 +97,7 @@
       "evidence": [
         {
           "path": ".github/workflows/recover-published-release.yml",
-          "blob": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
+          "blob": "4de28250552a239a6ddff00cfa7da93893fb5471",
           "command": "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/recover-published-release.yml\")'"
         },
         {
@@ -116,7 +116,7 @@
       "evidence": [
         {
           "path": ".github/workflows/recover-published-release.yml",
-          "blob": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
+          "blob": "4de28250552a239a6ddff00cfa7da93893fb5471",
           "command": "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/recover-published-release.yml\")'"
         },
         {
