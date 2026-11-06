@@ -57,3 +57,11 @@ VER-SKA-001–008 均有对应确定性测试和正式路由 Web Demo 场景；�
 - [需求契约](./SPEC.md)
 - [兼容背景](./HISTORY.md)
 - [剪藏讨论迁移运行手册](../../runbooks/site-assistant-discussion-migration.md)
+
+## Pi 执行与联网搜索
+
+一般助手与剪藏对话通过 `src/server/assistant/pi-answer.ts` 复用 `src/server/clipping/agent-runtime.ts` 的 Pi Harness adapter，原生 fetch/SSE 模型循环已移除。应用 generation worker 保留任务生命周期，Pi 内存会话按轮恢复应用历史；重启沿用中断任务失败语义，不自动重放搜索或模型请求。一般助手注册 `site_search` 和 `web_search`，剪藏对话不注册通用搜索工具。
+
+`src/server/assistant/web-search.ts` 使用 Tavily Hikari HTTP Search，默认基础地址 `https://tavily.ivanli.cc/api/tavily`。`TAVILY_API_KEY` 是服务端 Hikari Token；未配置时工具明确报告不可用。`ASSISTANT_MAX_WEB_SEARCHES` 默认 12，`TAVILY_TIMEOUT_MS` 默认 20000；整体生成期限十分钟。管理员外部查询只使用当前用户问题，避免导出非公开检索与历史。引用类型新增 `web`；SQLite 字段本身是无枚举 CHECK 的 text，无需数据迁移。
+
+`src/server/assistant/pi-answer.test.ts` 使用真实 Pi Harness 与可控 HTTP provider，覆盖超过两次联网、真实 HTTP Search 协议、逐次模型与搜索计量、web 引用落库、多轮角色、无强制检索、站内无结果、搜索失败、缺失凭据、搜索预算、管理员私有内容边界、剪藏工具隔离、取消与截断流。fixture 验证不代替真实模型回答质量与生产部署验收。

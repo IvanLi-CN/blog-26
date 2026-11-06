@@ -126,3 +126,18 @@ Page-level evidence uses the official Web Demo routes. Storybook is reserved for
 ## License
 
 [MIT License](./LICENSE)
+
+### Assistant web search
+
+Assistant conversations use Pi Harness with the site's configured chat model. General conversations can answer general knowledge, retrieve authorized site content, and search the web through Tavily Hikari; article conversations keep their article-only scope. Application SQLite remains the source of truth for private conversations and generation jobs.
+
+Set these server-only environment variables on the Console runtime (and pass them through the deployment environment):
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `TAVILY_BASE_URL` | `https://tavily.ivanli.cc/api/tavily` | Hikari HTTP API base, without `/search` |
+| `TAVILY_API_KEY` | unset | Hikari bearer token (`th-…`); never expose through public build variables |
+| `ASSISTANT_MAX_WEB_SEARCHES` | `12` | Search calls per turn; increase for deeper research |
+| `TAVILY_TIMEOUT_MS` | `20000` | Timeout per search request |
+
+Without a search token, general answers remain available and the assistant is told that web search is unavailable. Search failures are returned to the model so it can explain limitations and answer reliable parts. The overall generation deadline is ten minutes; users can stop generation. Model calls and web searches are metered separately. Admin web searches use only the current user question to keep private site retrieval and conversation history out of external queries.

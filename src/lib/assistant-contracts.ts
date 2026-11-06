@@ -94,7 +94,7 @@ export type AssistantMessage = {
 export type AssistantCitation = {
   id: string;
   messageId: string;
-  source: "blog" | "playbook";
+  source: "blog" | "playbook" | "web";
   sourceId: string | null;
   sourceType: string | null;
   slug: string | null;

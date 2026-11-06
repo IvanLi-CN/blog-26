@@ -274,7 +274,7 @@ export const assistantMessageCitations = sqliteTable(
     messageId: text("message_id")
       .notNull()
       .references(() => assistantMessages.id, { onDelete: "cascade" }),
-    source: text("source", { enum: ["blog", "playbook"] }).notNull(),
+    source: text("source", { enum: ["blog", "playbook", "web"] }).notNull(),
     sourceId: text("source_id"),
     sourceType: text("source_type"),
     slug: text("slug"),

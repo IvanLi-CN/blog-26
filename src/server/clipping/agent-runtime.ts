@@ -395,6 +395,9 @@ export class AgentRuntimeFacade {
     strictConfiguration?: boolean;
     resume?: boolean;
     onOwnershipLost?: () => void;
+    tools?: readonly ToolRegistration[];
+    maxProviderRequests?: number;
+    retryLimit?: number;
   }) {
     const models = createModels();
     const registry = createRegistry();
@@ -407,6 +410,7 @@ export class AgentRuntimeFacade {
     const compactionContextsBySession = new Map<string, PendingCompaction[]>();
     const compactionContextsByMessage = new Map<string, PendingCompaction[]>();
     let meteringHarness: Harness | undefined;
+    let providerRequests = 0;
     const forgetCompaction = (compaction: PendingCompaction) => {
       for (const [key, candidate] of compactionContexts) {
         if (candidate === compaction) compactionContexts.delete(key);
@@ -492,6 +496,13 @@ export class AgentRuntimeFacade {
         hooks: [
           hook(GenerationTask, {
             beforeRequest: async ({ messages }, api, hookContext) => {
+              if (options.maxProviderRequests && ++providerRequests > options.maxProviderRequests)
+                return {
+                  messages: markBlockedRequest(
+                    messages,
+                    new Error("assistant-request-budget-exceeded")
+                  ),
+                };
               const conversationId = String(api.conversationId);
               const taskId = String(api.taskId);
               const live = await api.snapshot(LiveDoc, api.conversationId, hookContext);
@@ -647,8 +658,12 @@ export class AgentRuntimeFacade {
           }),
         ]
       : [];
+    const tools = [...articleTools, ...(options.tools ?? [])];
+    // Preserve the extension identity used by persisted clipping conversations.
     if (articleTools.length)
       registry.install(defineExtension({ name: "clipping-article", tools: articleTools }));
+    if (options.tools?.length)
+      registry.install(defineExtension({ name: "assistant-tools", tools: options.tools }));
     const refresh = async () => {
       const config = await options.resolveModel();
       const model = modelFromConfig(config);
@@ -795,7 +810,7 @@ export class AgentRuntimeFacade {
           models,
           registry,
           settings: {
-            retry: { maxRetries: 3, baseDelayMs: 250, maxAgentDelayMs: 2000 },
+            retry: { maxRetries: options.retryLimit ?? 3, baseDelayMs: 250, maxAgentDelayMs: 2000 },
             stream: { timeoutMs: 120_000 },
             compaction: { enabled: true, reserveTokens: 8192, keepRecentTokens: 8000 },
           },
@@ -859,7 +874,7 @@ export class AgentRuntimeFacade {
       return new AgentRuntimeFacade(
         harness,
         refresh,
-        articleTools,
+        tools,
         database,
         Boolean(model),
         meteringContexts,
@@ -884,7 +899,8 @@ export class AgentRuntimeFacade {
   async createConversation(
     instructions: string,
     allowArticleTools = false,
-    metering?: AiUsageContext
+    metering?: AiUsageContext,
+    history: readonly Message[] = []
   ) {
     const model = await this.refresh();
     const conversation = await this.harness.createConversation(
@@ -898,6 +914,18 @@ export class AgentRuntimeFacade {
       },
       BACKGROUND_CONTEXT
     );
+    for (const message of history) {
+      await conversation.submit(
+        {
+          type: "write",
+          entry: {
+            kind: message.role === "assistant" ? AssistantEntry.kind : UserEntry.kind,
+            model: [message],
+          },
+        },
+        BACKGROUND_CONTEXT
+      );
+    }
     const id = String(conversation.id);
     this.meteringContexts.set(id, {
       feature: "clipping",

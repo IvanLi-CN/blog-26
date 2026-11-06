@@ -7,11 +7,7 @@ import type { FrontendPrincipal } from "@/lib/assistant-contracts";
 import { createAssistantStorage } from "@/lib/assistant-storage";
 import * as schema from "@/lib/schema";
 import { frontendUsers } from "@/lib/schema";
-import {
-  buildAssistantRetrievalContext,
-  createAssistantRuntimeForTest,
-  readAssistantProviderResponse,
-} from "./runtime";
+import { buildAssistantRetrievalContext, createAssistantRuntimeForTest } from "./runtime";
 import { createAssistantServiceForTest } from "./service";
 
 const sqlite = new Database(":memory:");
@@ -470,52 +466,5 @@ describe("assistant runtime", () => {
       publishedOnly: false,
       metering: { isAdmin: true },
     });
-  });
-
-  it("requires a complete provider SSE stream before committing success", async () => {
-    const headers = { "content-type": "text/event-stream" };
-    const incomplete = new Response('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n', {
-      headers,
-    });
-    await expect(
-      readAssistantProviderResponse(incomplete, new AbortController().signal, async () => true)
-    ).rejects.toThrow("assistant-provider-stream-incomplete");
-
-    const providerError = new Response(
-      'event: error\ndata: {"error":{"message":"upstream failed"}}\n\n',
-      { headers }
-    );
-    await expect(
-      readAssistantProviderResponse(providerError, new AbortController().signal, async () => true)
-    ).rejects.toThrow("assistant-provider-stream-error:upstream failed");
-
-    const complete = new Response(
-      'data: {"choices":[{"delta":{"content":"complete"}}]}\n\ndata: [DONE]\n\n',
-      { headers }
-    );
-    await expect(
-      readAssistantProviderResponse(complete, new AbortController().signal, async () => true)
-    ).resolves.toMatchObject({ content: "complete" });
-
-    const openBody = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(
-          new TextEncoder().encode(
-            'data: {"choices":[{"delta":{"content":"complete"}}]}\n\ndata: [DONE]\n\n'
-          )
-        );
-      },
-    });
-    const openResult = await Promise.race([
-      readAssistantProviderResponse(
-        new Response(openBody, { headers }),
-        new AbortController().signal,
-        async () => true
-      ),
-      Bun.sleep(100).then(() => "timeout" as const),
-    ]);
-    expect(openResult).not.toBe("timeout");
-    if (openResult === "timeout") throw new Error("provider did not stop at [DONE]");
-    expect(openResult).toMatchObject({ content: "complete" });
   });
 });

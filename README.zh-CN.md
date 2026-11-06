@@ -126,3 +126,18 @@ bun run test:storybook-boundary
 ## 许可证
 
 [MIT License](./LICENSE)
+
+### 助手互联网搜索
+
+一般助手和剪藏对话统一通过 Pi Harness 执行，私人历史、任务、权限和配额仍归应用 SQLite 管理。一般助手支持通用问答，站内事实优先查证站内资料，最新或不确定事实按需使用 Tavily Hikari；剪藏对话继续只阅读当前文章。
+
+在运行 Console 的服务端配置以下环境变量，部署时需要传入同一运行环境：
+
+| 配置 | 默认值 | 作用 |
+| --- | --- | --- |
+| `TAVILY_BASE_URL` | `https://tavily.ivanli.cc/api/tavily` | Hikari HTTP API 基础地址，不含 `/search` |
+| `TAVILY_API_KEY` | 未配置 | Hikari 的 `th-…` Bearer Token，只允许服务端读取 |
+| `ASSISTANT_MAX_WEB_SEARCHES` | `12` | 每轮搜索次数，可调高 |
+| `TAVILY_TIMEOUT_MS` | `20000` | 单次搜索超时，单位毫秒 |
+
+未配置搜索密钥时通用回答仍然可用，模型会明确获知联网工具不可用。搜索失败时允许解释限制并回答可靠部分；每轮整体执行期限为十分钟，用户可以主动停止。模型请求与搜索分别计量，同一轮问题次数不会因多次调用而增加。管理员联网仅发送当前用户问题，避免非公开站内材料或历史进入外部查询。
