@@ -1247,6 +1247,29 @@ describe("playbook-dispatch-and-reconcile", () => {
 });
 
 describe("playbook-build-deploy-adapter", () => {
+  test("diagnoses the current edition without publishing or verifying production", async () => {
+    const bundle = makePublicBundle();
+    let builds = 0;
+    const forbidden = async () => {
+      throw new Error("Diagnostic must not publish");
+    };
+    expect(
+      await deployContent(
+        {
+          current: async () => bundle.edition.edition,
+          build: async () => {
+            builds++;
+            return bundle.edition.edition;
+          },
+          deploy: forbidden,
+          verify: forbidden,
+        },
+        bundle.manifest,
+        { automaticUpdatesEnabled: true, diagnosticOnly: true }
+      )
+    ).toBe("prepared");
+    expect(builds).toBe(1);
+  });
   test("rebuilds after a renderer changes and only deploys the current input", async () => {
     let current = makePublicBundle("v3.0.0", "100").edition.edition;
     const next = makePublicBundle("v3.1.0", "101");

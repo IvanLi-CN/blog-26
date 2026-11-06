@@ -485,12 +485,20 @@ function assertOlderRollbackTarget(target: PlaybookManifest, current: PlaybookEd
 export async function deployContent(
   adapter: DeploymentAdapter,
   manifest: PlaybookManifest,
-  options: { rollback?: boolean; automaticUpdatesEnabled: boolean }
+  options: { rollback?: boolean; automaticUpdatesEnabled: boolean; diagnosticOnly?: boolean }
 ) {
   if (options.rollback && options.automaticUpdatesEnabled)
     throw new Error("Pause automatic updates before rollback");
   if (!options.rollback && !options.automaticUpdatesEnabled) return "paused";
   let current = await adapter.current();
+  if (options.diagnosticOnly) {
+    if (options.rollback) throw new Error("Diagnostic build cannot roll back production");
+    if (!current) throw new Error("Diagnostic build requires a deployed renderer");
+    const edition = await adapter.build(manifest, current.rendererCommit, current);
+    if (!matchesBuildIdentity(edition, manifest, current.rendererCommit, current))
+      throw new Error("Build identity does not match the fixed inputs");
+    return "prepared";
+  }
   if (!options.rollback) {
     const decision = adoptionDecision(manifest, current);
     if (decision !== "update") return decision;
