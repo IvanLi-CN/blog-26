@@ -136,6 +136,8 @@ test("mobile mode controls remain keyboard accessible without horizontal overflo
 }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/search/?q=SQLite&mode=keyword&d_theme=dark&d_delay=normal");
+  // Wait for the initial autofocus before testing a deliberate keyboard focus change.
+  await expect(page.getByRole("textbox", { name: "搜索关键词", exact: true })).toBeFocused();
   await hideInspector(page);
   await expect(page.locator("astro-island[data-search-ready='true']")).toHaveCount(1);
   const button = page.getByRole("button", { name: "RAG", exact: true });
