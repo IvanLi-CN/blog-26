@@ -111,6 +111,16 @@ const verifySurface: Story["play"] = async ({ args, canvasElement }) => {
     await expect(backlink.querySelector("svg[aria-hidden='true']")).not.toBeNull();
     await expect(backlink.textContent).toBe("");
     await expect(getComputedStyle(backlink).textDecorationLine).toBe("none");
+    const backlinkStyle = getComputedStyle(backlink);
+    await expect(backlinkStyle.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    for (const borderWidth of [
+      backlinkStyle.borderTopWidth,
+      backlinkStyle.borderRightWidth,
+      backlinkStyle.borderBottomWidth,
+      backlinkStyle.borderLeftWidth,
+    ]) {
+      await expect(borderWidth).toBe("0px");
+    }
     const minimumTarget = matchMedia("(min-width: 1024px) and (pointer: fine)").matches ? 32 : 44;
     await expect(backlink.getBoundingClientRect().width).toBeGreaterThanOrEqual(minimumTarget);
     await expect(backlink.getBoundingClientRect().height).toBeGreaterThanOrEqual(minimumTarget);

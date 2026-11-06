@@ -267,8 +267,16 @@ export function ConversationMarkdown({
               {...props}
               aria-label="返回正文"
               title="返回正文"
+              style={{
+                background: "transparent",
+                border: 0,
+                borderRadius: 0,
+                boxShadow: "none",
+                padding: 0,
+                textDecorationLine: "none",
+              }}
               className={classNames(
-                "nature-icon-button inline-flex shrink-0 align-middle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)]",
+                "inline-flex h-11 w-11 shrink-0 items-center justify-center align-middle text-[color:var(--nature-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--nature-accent-strong)] [@media(min-width:1024px)_and_(pointer:fine)]:h-8 [@media(min-width:1024px)_and_(pointer:fine)]:w-8",
                 inheritedClassName
               )}
             >
