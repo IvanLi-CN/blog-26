@@ -13,6 +13,7 @@ import { E2E_PROJECTS, type E2EProjectName, getProjectReportDir } from "../tests
 
 type ProjectRuntime = {
   project: E2EProjectName;
+  shard?: { index: number; total: number };
   dbPath: string;
   localContentPath: string;
   port: number;
@@ -87,6 +88,7 @@ function usage() {
   console.log(`Usage:
   bun ./scripts/run-e2e.ts full [-- <extra playwright args>]
   bun ./scripts/run-e2e.ts project <guest|admin|user|mcp> [-- <extra playwright args>]
+  bun ./scripts/run-e2e.ts ci-project <guest|admin|user|mcp> [-- <extra playwright args>]
 `);
 }
 
@@ -114,11 +116,11 @@ function splitArgs(argv: string[]) {
 
 function parseMode(argv: string[]) {
   const [mode, project] = argv;
-  if (mode !== "full" && mode !== "project") {
+  if (mode !== "full" && mode !== "project" && mode !== "ci-project") {
     usage();
     process.exit(1);
   }
-  if (mode === "project") {
+  if (mode === "project" || mode === "ci-project") {
     if (!project || !E2E_PROJECTS.includes(project as E2EProjectName)) {
       usage();
       process.exit(1);
@@ -167,13 +169,19 @@ async function ensurePathExists(target: string) {
   await stat(target);
 }
 
-async function prepareProjectRuntime(rootDir: string, project: E2EProjectName, index: number) {
+export async function prepareProjectRuntime(
+  rootDir: string,
+  project: E2EProjectName,
+  index: number,
+  shard?: { index: number; total: number },
+  source = { dbPath: E2E_DEFAULT_DB_PATH, localContentPath: E2E_DEFAULT_LOCAL_CONTENT_PATH }
+) {
   const basePort = Number(process.env.E2E_BASE_PORT || E2E_DEFAULT_WEB_PORT + 100);
   const basePublicMediaPort = readPublicMediaPort(
     process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL,
     E2E_DEFAULT_WEB_PORT + 900
   );
-  const projectDir = path.join(rootDir, project);
+  const projectDir = path.join(rootDir, shard ? `${project}-${shard.index}` : project);
   const dbPath = path.join(projectDir, "sqlite.db");
   const localContentPath = path.join(projectDir, "local");
   const { port, sitePort, adminPort } = pickPortTriplet(basePort + index * 10, allocatedPorts);
@@ -181,11 +189,12 @@ async function prepareProjectRuntime(rootDir: string, project: E2EProjectName, i
 
   await rm(projectDir, { recursive: true, force: true });
   await mkdir(projectDir, { recursive: true });
-  await cp(E2E_DEFAULT_DB_PATH, dbPath);
-  await cp(E2E_DEFAULT_LOCAL_CONTENT_PATH, localContentPath, { recursive: true });
+  await cp(source.dbPath, dbPath);
+  await cp(source.localContentPath, localContentPath, { recursive: true });
 
   return {
     project,
+    shard,
     dbPath,
     localContentPath,
     port,
@@ -208,7 +217,9 @@ async function prepareIsolatedRuntimes(projects: E2EProjectName[]) {
 
 function runProject(projectRuntime: ProjectRuntime, extraArgs: string[]) {
   return new Promise<{ project: E2EProjectName; code: number }>((resolve) => {
-    const reportDir = getProjectReportDir(projectRuntime.project);
+    const reportDir = projectRuntime.shard
+      ? `${getProjectReportDir(projectRuntime.project)}/shard-${projectRuntime.shard.index}`
+      : getProjectReportDir(projectRuntime.project);
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       DB_PATH: projectRuntime.dbPath,
@@ -240,20 +251,34 @@ function runProject(projectRuntime: ProjectRuntime, extraArgs: string[]) {
 
     const child = spawn(
       "bun",
-      ["x", "playwright", "test", "--project", projectRuntime.project, ...extraArgs],
+      [
+        "x",
+        "playwright",
+        "test",
+        "--project",
+        projectRuntime.project,
+        ...(projectRuntime.shard
+          ? [
+              "--fully-parallel",
+              `--shard=${projectRuntime.shard.index}/${projectRuntime.shard.total}`,
+            ]
+          : []),
+        ...extraArgs,
+      ],
       {
         env,
         stdio: "inherit",
       }
     );
 
+    child.on("error", () => resolve({ project: projectRuntime.project, code: 1 }));
     child.on("exit", (code) => {
       resolve({ project: projectRuntime.project, code: code ?? 1 });
     });
   });
 }
 
-async function runFull(extraArgs: string[]) {
+async function runFull(extraArgs: string[], ciProject?: E2EProjectName) {
   const sharedEnv: NodeJS.ProcessEnv = {
     DB_PATH: E2E_DEFAULT_DB_PATH,
     LOCAL_CONTENT_BASE_PATH: E2E_DEFAULT_LOCAL_CONTENT_PATH,
@@ -262,11 +287,12 @@ async function runFull(extraArgs: string[]) {
     PUBLIC_CONSOLE_URL: `http://localhost:${E2E_DEFAULT_WEB_PORT}`,
     PUBLIC_API_BASE_URL: `http://localhost:${E2E_DEFAULT_WEB_PORT}`,
     LLM_MODEL_CATALOG_SKIP_REFRESH: "1",
+    ...(ciProject ? { VITE_WEB_DEMO_BUILD: "true", VITE_WEB_DEMO_E2E_FIXTURE: "true" } : {}),
   };
 
+  await runStep("Reset test environment", ["bun", "run", "test-env:reset-fs-only"], sharedEnv);
   await ensurePathExists(E2E_DEFAULT_DB_PATH);
   await ensurePathExists(E2E_DEFAULT_LOCAL_CONTENT_PATH);
-  await runStep("Reset test environment", ["bun", "run", "test-env:reset-fs-only"], sharedEnv);
   await runStep("Prebuild metadata", ["bun", "run", "prebuild"], sharedEnv);
   await rm(path.resolve(process.cwd(), "site-dist"), { recursive: true, force: true });
   await rm(path.resolve(process.cwd(), "console-dist"), { recursive: true, force: true });
@@ -274,7 +300,17 @@ async function runFull(extraArgs: string[]) {
   await rm(path.resolve(process.cwd(), "backend-dist"), { recursive: true, force: true });
   await runStep("Build compiled artifacts", ["bun", "run", "build:compiled"], sharedEnv);
 
-  const runtimes = await prepareIsolatedRuntimes([...E2E_PROJECTS]);
+  const shardCount = ciProject === "guest" || ciProject === "admin" ? 2 : 1;
+  const runtimes = ciProject
+    ? await Promise.all(
+        Array.from({ length: shardCount }, (_, index) =>
+          prepareProjectRuntime(path.resolve("tmp/e2e-projects"), ciProject, index, {
+            index: index + 1,
+            total: shardCount,
+          })
+        )
+      )
+    : await prepareIsolatedRuntimes([...E2E_PROJECTS]);
   const results = await Promise.all(runtimes.map((runtime) => runProject(runtime, extraArgs)));
   const failed = results.filter((result) => result.code !== 0);
 
@@ -301,8 +337,8 @@ async function main() {
   const { main: rawArgs, passthrough } = splitArgs(process.argv.slice(2));
   const parsed = parseMode(rawArgs);
 
-  if (parsed.mode === "full") {
-    await runFull(passthrough);
+  if (parsed.mode === "full" || parsed.mode === "ci-project") {
+    await runFull(passthrough, parsed.project ?? undefined);
     return;
   }
 

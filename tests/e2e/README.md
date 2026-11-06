@@ -73,3 +73,7 @@ Prefer tagging at the smallest scope that matches the intent. If an entire file 
 - `guest` runs without injected identity
 - Manual verification should continue to use `/api/dev/login` or a real auth path; the header
   injection is an E2E-only test fixture
+
+## CI 执行
+
+`bun scripts/run-e2e.ts ci-project guest` 为 guest/admin 各创建两个测试分片，user/mcp 保持一个进程。每个 CI job 先 reset 和构建一次，再为每个分片复制独立数据库与内容目录，分配应用/媒体端口和报告路径；每个分片单 worker。分片使用 Playwright 的测试级分配，全部退出结果共同决定 required check，不减少 canonical full 覆盖。性能与失败传播合同见 [CI 执行效率](../../docs/specs/ci-performance/SPEC.md)。

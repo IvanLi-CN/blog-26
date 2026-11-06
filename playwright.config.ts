@@ -72,10 +72,10 @@ const shouldStartPublicMediaSidecar =
   Boolean(publicMediaInternalSourceBaseUrl);
 const publicMediaImagorPort = readUrlPort(publicMediaImagorBaseUrl);
 const jsonResultFile = testProject
-  ? `${getProjectReportDir(testProject as (typeof E2E_PROJECTS)[number])}/results.json`
+  ? `${process.env.PLAYWRIGHT_REPORT_ROOT || getProjectReportDir(testProject as (typeof E2E_PROJECTS)[number])}/results.json`
   : `${REPORT_ROOT}/results.json`;
 const htmlReportDir = testProject
-  ? `${getProjectReportDir(testProject as (typeof E2E_PROJECTS)[number])}/html-report`
+  ? `${process.env.PLAYWRIGHT_REPORT_ROOT || getProjectReportDir(testProject as (typeof E2E_PROJECTS)[number])}/html-report`
   : `${REPORT_ROOT}/html-report`;
 
 const shouldManageServer = process.env.PLAYWRIGHT_DISABLE_WEBSERVER !== "1";
@@ -121,7 +121,7 @@ export default defineConfig({
     ["line"],
   ],
   outputDir: testProject
-    ? `${getProjectReportDir(testProject as (typeof E2E_PROJECTS)[number])}/artifacts`
+    ? `${process.env.PLAYWRIGHT_REPORT_ROOT || getProjectReportDir(testProject as (typeof E2E_PROJECTS)[number])}/artifacts`
     : "test-results/artifacts/",
   use: {
     baseURL: BASE_URL,
