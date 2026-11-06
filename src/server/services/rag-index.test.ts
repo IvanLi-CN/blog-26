@@ -828,9 +828,22 @@ test("unavailable admin coverage keeps totals but nulls every target classificat
   delete process.env.OPENAI_API_KEY;
   try {
     const status = await contentSyncStatus({ source: "blog" });
-    expect(status.rag.contents.total).toBe(0);
-    expect(status.rag.contents.unindexed).toBeNull();
-    expect(status.rag.details).toEqual([]);
+    expect(status.rag.reason).toBe("embedding-unconfigured");
+    expect(status.rag.contents.total).toBe(1);
+    expect(status.rag.chunks.total).toBeGreaterThan(0);
+    for (const counts of [status.rag.contents, status.rag.chunks]) {
+      expect(counts.indexed).toBeNull();
+      expect(counts.unindexed).toBeNull();
+      expect(counts.outdated).toBeNull();
+      expect(counts.failed).toBeNull();
+      expect(counts.coverage).toBeNull();
+    }
+    expect(status.rag.details.length).toBe(status.rag.chunks.total);
+    for (const row of status.rag.details) {
+      expect(row.parentId).toBe("unknown-details");
+      expect(row.state).toBeNull();
+      expect(row.reason).toBe("embedding-unconfigured");
+    }
   } finally {
     process.env.OPENAI_API_KEY = key;
   }

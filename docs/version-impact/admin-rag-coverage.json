@@ -17,7 +17,8 @@
     "tests/lib/rag-index-restart-fixture.ts": "c301949f703d70fab67a2f74b6c5e4420b68ffc0",
     "tests/lib/rag-index-restart.test.ts": "8118c0381e7dda297d2f3f3ab07a9c9179515061",
     "docs/specs/style-playbook-integration/assets/content-sync-rag-unavailable-desktop.png": "a21b8778b8fba34e8cdf920d5654581051d6c315",
-    "docs/specs/style-playbook-integration/assets/content-sync-rag-unavailable-mobile.png": "cc8f0745310100e53fea573d683cdcb4f306518a"
+    "docs/specs/style-playbook-integration/assets/content-sync-rag-unavailable-mobile.png": "cc8f0745310100e53fea573d683cdcb4f306518a",
+    "src/server/services/rag-index.test.ts": "573fe89a8e91fd9a33c90d15eddaa397e29368a5"
   },
   "change": {
     "description": "Restore persisted RAG coverage in the admin status response and distinguish missing snapshots from temporarily unavailable statistics. Preserve response shape and read-only behavior. Carry forward the already merged compatible Memo layout repair since published 4.1.9 without modifying its implementation.",
