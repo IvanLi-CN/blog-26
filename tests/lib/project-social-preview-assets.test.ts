@@ -33,6 +33,7 @@ test("project social preview generator emits responsive assets and intrinsic dim
       sourceDir,
       outputDir,
       manifestPath,
+      cacheDir: join(root, "cache"),
     });
     const [files, manifest] = await Promise.all([
       readdir(outputDir),

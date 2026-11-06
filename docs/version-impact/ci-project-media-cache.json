@@ -20,7 +20,7 @@
     "scripts/verify-project-media-docker-cache.ts": "3e30db77a2363609262f59cbccf43dd413f0801c",
     "tests/lib/project-media-cache.test.ts": "53778a0f328efb1af2244905ceb1dca40d52ee3e",
     "tests/lib/project-poster-assets.test.ts": "ef6e56704f0a9aae2f37d9db5a2ef0a6428542c6",
-    "tests/lib/project-social-preview-assets.test.ts": "6cacc1ffab8d05800964c53023469488540e7acb"
+    "tests/lib/project-social-preview-assets.test.ts": "8003d2d32080f0185258f52e32068801b77b48f9"
   },
   "change": {
     "description": "按源图内容复用经过校验的编码产物，Actions 聚合缓存与 Docker 图片独立层减少重复生成。",
@@ -120,7 +120,7 @@
         },
         {
           "path": "tests/lib/project-social-preview-assets.test.ts",
-          "blob": "6cacc1ffab8d05800964c53023469488540e7acb",
+          "blob": "8003d2d32080f0185258f52e32068801b77b48f9",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         }
       ]
@@ -217,7 +217,7 @@
         },
         {
           "path": "tests/lib/project-social-preview-assets.test.ts",
-          "blob": "6cacc1ffab8d05800964c53023469488540e7acb",
+          "blob": "8003d2d32080f0185258f52e32068801b77b48f9",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         }
       ],
@@ -318,7 +318,7 @@
         },
         {
           "path": "tests/lib/project-social-preview-assets.test.ts",
-          "blob": "6cacc1ffab8d05800964c53023469488540e7acb",
+          "blob": "8003d2d32080f0185258f52e32068801b77b48f9",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         }
       ]
@@ -465,7 +465,7 @@
         },
         {
           "path": "tests/lib/project-social-preview-assets.test.ts",
-          "blob": "6cacc1ffab8d05800964c53023469488540e7acb",
+          "blob": "8003d2d32080f0185258f52e32068801b77b48f9",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         }
       ]
@@ -564,7 +564,7 @@
         },
         {
           "path": "tests/lib/project-social-preview-assets.test.ts",
-          "blob": "6cacc1ffab8d05800964c53023469488540e7acb",
+          "blob": "8003d2d32080f0185258f52e32068801b77b48f9",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         }
       ]
