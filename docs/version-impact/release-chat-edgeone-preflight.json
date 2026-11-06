@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e06c2b64bc50c65fb4afadde5f7c21eff32dba0e",
   "covered_files": {
-    ".github/workflows/product-release.yml": "279bc4835f68e92f2ac651c389b79867de6ad16f",
+    ".github/workflows/product-release.yml": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
     "scripts/prepare-edgeone-pwa-config.test.ts": "e5f4a812074eb85906b328193b29f70052f91660",
     "scripts/prepare-edgeone-pwa-config.ts": "a0f6e0d2577f5c5f00608dc310a60a06bf882e38"
   },

@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "5d76c64154ab20dc90dca31987b6474eec44790c",
   "covered_files": {
-    ".github/workflows/product-release.yml": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
+    ".github/workflows/product-release.yml": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
     "tests/ci/product-prerelease-workflow.test.ts": "9b378b7bf4f602da1c3bbc358c9e2cccae798f15"
   },
   "change": {

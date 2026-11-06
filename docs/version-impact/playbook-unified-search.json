@@ -61,7 +61,7 @@
     "tests/e2e/web-demo/search-modes.spec.ts": "efa94452dfc0162ed5aa1966102972a77d8cdeb4",
     "tests/lib/public-csr-route.test.ts": "3b37883bed30e54f2afd3d5dd212b951ea2930ac",
     "tests/lib/playbook-contract.test.ts": "0b66684c10afbc0bdf0fe524d32f9a5ef1f9794f",
-    "tests/lib/playbook-workflows.test.ts": "4827ff3dfe84984bc42e9d2ef48d3ccb7d088361"
+    "tests/lib/playbook-workflows.test.ts": "5e5a784a47d6a4b2277b3b19ffab4d0c30a6fc3c"
   },
   "change": {
     "description": "Unify public Playbook topics, project practices, Policy instructions and public resources with blog keyword search and modern RAG, while adding edition-bound semantic projections, recoverable content sync, versioned reading routes and the corresponding admin status surface.",

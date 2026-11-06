@@ -17,7 +17,7 @@
     "src/lib/playbook/release.ts": "1bd6cd4f269ac5151d70bbf9b2f2aed64eda8037",
     "src/lib/release/artifact-budget.ts": "f62e60264958aab87eb7efddd4330834ea6edab2",
     "src/lib/release/completion.ts": "469464dbec3c74725ac5382c8144c80df5d1a306",
-    "src/lib/release/products.ts": "b7b1556603e93622d2db90d76c861967fcf2cb4c",
+    "src/lib/release/products.ts": "2354ab0e9526178bb9329bd26ae519e62b2738f1",
     "src/lib/release/publication.ts": "582eec5435f13ce7b47d1e115e096dc6215b1dc9",
     "tests/e2e/web-demo/search-modes.spec.ts": "cf421454c8e2e8b8849fd67dd26826b403984aba",
     "tests/lib/manual-release-publication.test.ts": "b38c70f7e341e22e0435c1da3637973ac7bf4327",

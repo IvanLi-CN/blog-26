@@ -8,7 +8,7 @@
     "site/lib/public-site.ts": "b4812446c80730bb98a628c419f1f45763b6a908",
     "src/lib/__tests__/public-site-snapshot-compat.test.ts": "fe400ea514630fe980d4bdf0e4448074db7d3437",
     "src/lib/public-media.ts": "9194c2fe30e28951080d7812b3d6e55d1ef13845",
-    "src/lib/release/inputs.ts": "d0291f6ee1da7c5a2627ed14cdda1a99ddc39583"
+    "src/lib/release/inputs.ts": "cac8d41be61502bd325bee33cf308b68965c8a37"
   },
   "change": {
     "description": "Migrate legacy public-media v4 watermark references in published snapshots and static packaging to the compact v5 A/B renditions so existing posts no longer render the oversized v4 canvas.",

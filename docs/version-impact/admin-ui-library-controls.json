@@ -27,7 +27,7 @@
     "docs/specs/admin-soft-ui-redesign/assets/admin-ui-library-content-sync-mobile.png": "2a6a1b3f7657bfd6a1dd9829de02a1c9a571551b",
     "docs/specs/admin-soft-ui-redesign/assets/admin-ui-library-content-sync-select.png": "c755dde4727cb613d81fad3708aefed4ae78a3bc",
     "docs/specs/admin-soft-ui-redesign/assets/admin-ui-library-editor-tabs.png": "4a13f7cf2af33bb9726e64e5812f261c94744242",
-    "package.json": "8894796e5f45e5c9dbb3e57739bf10467d0cbe4a",
+    "package.json": "361c4aa76567a8fe6cdb2870088e50e98188f406",
     "scripts/check-admin-ui-controls.ts": "05ef54b5effc9989468231029f922c865a4c1df4",
     "tests/e2e/web-demo/content-sync.spec.ts": "6776a80becb216e1f29ce580f1c63d06214a11fb",
     "tests/lib/admin-ui-controls.test.ts": "2479a6354b9c7dfdee56a3bbb11f5c8543e7f361",

@@ -5,7 +5,7 @@
   "covered_files": {
     "README.md": "795b4dac947224bd929ba8be89dbd69491eedd7f",
     "astro.config.mjs": "98e54eb4b6d401c14a2fb448778926acc85a690e",
-    "bun.lock": "804bf1eca95f285aa47993613b05ddb7a4f10b63",
+    "bun.lock": "df9f7a07ba98e556db2513d96051fb3327c61282",
     "docs/adr/0010-self-contained-console-runtime.md": "e2a7335be1f3ee8473738bbd3a3b416f2df93416",
     "docs/adr/0019-shared-public-ssr-csr-renderer.md": "6043776178510d10cf91073a3d0725cc0c59a3b0",
     "docs/solutions/routing/astro-shared-react-mdx.md": "88c565a2622b14f1167b78effd7e9807c6a0bc89",
@@ -19,7 +19,7 @@
     "docs/specs/public-csr-navigation/assets/csr-playbook-mobile-dark.png": "8ec57709dc0a4d1bfe3833dfceac60447f2ecc6f",
     "docs/specs/public-csr-navigation/assets/csr-post-mobile-light.png": "da3270057b0eb60b2822f619e2fa87adcb187070",
     "docs/specs/public-csr-navigation/assets/csr-project-desktop-light.png": "5587edb53ebc22d4fc405db066faecea8214ef25",
-    "package.json": "e3d1aa1ea8cdecf9d3ae4d7fa8be5f98fa6d7320",
+    "package.json": "361c4aa76567a8fe6cdb2870088e50e98188f406",
     "scripts/preview-web-demo.ts": "6984b239be4515101940047ff142d7333d7c089b",
     "scripts/verify-pages-build.test.ts": "58366a234979064fca185740798413c8e11e30cc",
     "scripts/verify-pages-build.ts": "e7ee4aff704114f383f6cf849cacf39b5186383c",

@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
-    ".github/workflows/product-release.yml": "189103f4f41f6e94f8b6b599764c6254964d8794"
+    ".github/workflows/product-release.yml": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9"
   },
   "change": {
     "description": "Allow a recovery of an older registered release source to use the current Playbook compatibility tooling for frozen media preflight and product construction without changing the registered source or frozen inputs.",
