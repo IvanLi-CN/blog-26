@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import MarkdownRenderer from "@/components/common/MarkdownRenderer";
+import { createPortal } from "react-dom";
+import { ConversationMarkdown } from "@/components/common/ConversationMarkdown";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/Icon";
@@ -38,6 +39,7 @@ import {
   getBuildDefaultAssistantLauncherEnabled,
   readSiteFeatureConfig,
 } from "../lib/site-feature-config";
+import { AssistantMessageContent } from "./AssistantMessageContent";
 import "./KnowledgeAssistant.css";
 
 type Props = { fullPage?: boolean };
@@ -46,6 +48,7 @@ type AuthState = FrontendAuthState | null;
 const UI_STATE_KEY = "site-knowledge-assistant-ui";
 const UI_LOGIN_HANDOFF_KEY = "site-knowledge-assistant-login-handoff";
 const ASSISTANT_DISPLAY_NAME = "知识对话";
+const PANEL_EXIT_DURATION = 300;
 
 type AssistantContext = { slug: string; memoId: string | null };
 type PendingRequest = { content: string; requestId: string };
@@ -137,10 +140,17 @@ function formatConversationTitle(conversation: AssistantConversation) {
   return conversation.kind === "clipping" ? "文章对话" : "新对话";
 }
 
+function formatQuotaAmount(value: number | null | undefined) {
+  const amount = Math.max(0, value ?? 0);
+  if (amount < 1000) return String(amount);
+  const compact = amount / 1000;
+  return `${Number.isInteger(compact) ? compact : compact.toFixed(1)}k`;
+}
+
 function formatQuota(quota: AssistantQuota | null) {
   if (!quota) return "配额读取中";
   if (quota.unlimited) return "管理员配额不限";
-  return `问题 ${quota.questionHourlyRemaining ?? 0}/${quota.policy.questionHourlyLimit}（本周 ${quota.questionWeeklyRemaining ?? 0}/${quota.policy.questionWeeklyLimit}） · Token ${quota.tokenHourlyRemaining ?? 0}/${quota.policy.tokenHourlyLimit}（本周 ${quota.tokenWeeklyRemaining ?? 0}/${quota.policy.tokenWeeklyLimit}） · 对话 ${quota.activeConversationCount}/${quota.policy.maxConversations}`;
+  return `Token ${formatQuotaAmount(quota.tokenHourlyRemaining)}/${formatQuotaAmount(quota.policy.tokenHourlyLimit)}`;
 }
 
 function formatConversationExpiry(snapshot: AssistantSnapshot | null) {
@@ -266,6 +276,76 @@ function AssistantErrorAlert({
   );
 }
 
+function AssistantHelpPanel({
+  helpId,
+  quota,
+  snapshot,
+  onClose,
+}: {
+  helpId: string;
+  quota: AssistantQuota | null;
+  snapshot: AssistantSnapshot | null;
+  onClose: () => void;
+}) {
+  const retentionDays = quota ? Math.round(quota.policy.retentionMs / 86_400_000) : null;
+  const expiry = formatConversationExpiry(snapshot);
+
+  return (
+    <section
+      id={helpId}
+      className="knowledge-assistant-help-popover"
+      data-testid="assistant-help-panel"
+      aria-labelledby={`${helpId}-title`}
+    >
+      <div className="knowledge-assistant-help-header">
+        <div className="min-w-0">
+          <h2 id={`${helpId}-title`}>帮助</h2>
+          <p>快速了解知识对话的使用范围和保存规则。</p>
+        </div>
+        <button
+          type="button"
+          className="knowledge-assistant-icon-button knowledge-assistant-help-close"
+          aria-label="关闭帮助"
+          title="关闭帮助"
+          onClick={onClose}
+        >
+          <Icon name="tabler:x" className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="knowledge-assistant-help-topics">
+        <article>
+          <h3>可以问什么</h3>
+          <p>本站公开文章、项目经验和工作方法。</p>
+        </article>
+        <article>
+          <h3>回答如何来</h3>
+          <p>优先检索站内公开内容；有可定位来源时，会附在回答下方。</p>
+        </article>
+        <article>
+          <h3>对话与草稿</h3>
+          <p>草稿只保留在当前浏览器，登录后也不会自动发送。</p>
+        </article>
+        <article>
+          <h3>额度与保留</h3>
+          <p>
+            {quota?.unlimited
+              ? "当前账号不受普通配额限制。"
+              : retentionDays
+                ? "对话临时保留 " +
+                  retentionDays +
+                  " 天，最多保留 " +
+                  quota.policy.maxConversations +
+                  " 段。"
+                : "对话保留规则读取中。"}{" "}
+            额度按小时和周窗口恢复。
+            {expiry ? ` 当前对话将于 ${expiry} 到期。` : ""}
+          </p>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function GuestAssistantPreview({
   draft,
   error,
@@ -290,64 +370,62 @@ function GuestAssistantPreview({
       className="knowledge-assistant-body knowledge-assistant-guest-preview"
       data-testid="assistant-guest-preview"
     >
-      <div className="knowledge-assistant-list" data-testid="assistant-conversation-list">
+      <div
+        className="knowledge-assistant-list knowledge-assistant-guest-list"
+        data-testid="assistant-conversation-list"
+      >
         <div className="knowledge-assistant-guest-list-heading">
-          <p className="text-sm font-semibold">对话列表</p>
-          <p className="mt-1 text-xs text-[color:var(--nature-text-faint)]">登录后创建并保存</p>
-        </div>
-        <div className="knowledge-assistant-guest-empty-list">
-          <Icon name="tabler:lock" className="h-5 w-5 shrink-0" />
-          <div>
-            <p className="text-sm font-semibold">还没有对话</p>
-            <p className="mt-1 text-xs leading-5 text-[color:var(--nature-text-soft)]">
-              登录后可以创建最多 3 段临时对话。
-            </p>
+          <span className="knowledge-assistant-lock-mark" aria-hidden="true">
+            <Icon name="tabler:lock" className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">对话列表</p>
+            <p className="mt-1 text-xs text-[color:var(--nature-text-faint)]">登录后创建并保存</p>
           </div>
         </div>
       </div>
       <div className="knowledge-assistant-content">
         <div className="knowledge-assistant-toolbar">
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold">新对话</h2>
-            <p className="knowledge-assistant-status">尚未创建对话 · 登录后可用</p>
+            <h2 className="truncate text-sm font-semibold">登录后开始对话</h2>
+            <p className="knowledge-assistant-status">未登录 · 对话功能已锁定</p>
           </div>
-          <span className="knowledge-assistant-guest-badge">登录后可用</span>
+          <span className="knowledge-assistant-guest-badge">
+            <Icon name="tabler:lock" className="h-3.5 w-3.5" />
+            需要登录
+          </span>
         </div>
         {error ? <AssistantErrorAlert message={error} offline={offline} onRetry={onRetry} /> : null}
-        <p className="knowledge-assistant-notice mx-3 mt-3">
-          登录后可以询问本站公开文章、项目经验和工作方法。回答会优先检索站内内容，并尽量附上可定位的来源。
-        </p>
         <div className="knowledge-assistant-messages" data-testid="assistant-messages">
           <div
             className="knowledge-assistant-guest-empty-state"
             data-testid="assistant-guest-empty-state"
           >
-            <Icon name="tabler:sparkles" className="h-7 w-7" />
-            <div>
-              <p className="font-medium">准备开始你的第一个问题</p>
+            <span className="knowledge-assistant-guest-empty-icon" aria-hidden="true">
+              <Icon name="tabler:lock" className="h-6 w-6" />
+            </span>
+            <div className="knowledge-assistant-guest-empty-copy">
+              <h2 className="font-medium">登录后使用{ASSISTANT_DISPLAY_NAME}</h2>
               <p className="mt-1 text-sm leading-6 text-[color:var(--nature-text-soft)]">
-                登录后，这里会显示你自己的问答记录和来源引用。
+                登录后可以询问本站公开文章、项目经验和工作方法。回答会附上可定位的来源。
               </p>
             </div>
-            <ul>
-              <li>检索本站公开内容</li>
-              <li>围绕文章和项目多轮追问</li>
-              <li>保留可继续的临时对话</li>
-            </ul>
           </div>
         </div>
         <div className="knowledge-assistant-compose knowledge-assistant-compose--locked">
-          <div className="knowledge-assistant-login-rail">
-            <Icon name="tabler:lock" className="h-5 w-5 shrink-0" />
+          <div className="knowledge-assistant-guest-compose-heading">
             <div>
-              <h2 className="text-sm font-semibold">登录后使用{ASSISTANT_DISPLAY_NAME}</h2>
+              <p className="text-sm font-semibold">先写下问题，登录后继续</p>
               <p className="mt-1 text-xs leading-5 text-[color:var(--nature-text-soft)]">
-                登录后才能发送问题并保存对话；回到页面后不会自动发送。
+                草稿会保留在当前浏览器，登录后不会自动发送。
               </p>
             </div>
+            <span aria-hidden="true">
+              <Icon name="tabler:lock" className="h-5 w-5 shrink-0" />
+            </span>
           </div>
           <textarea
-            className="nature-input-shell rounded-lg border border-[color:var(--nature-line)] bg-transparent p-3 text-sm leading-6 outline-none focus:border-[color:var(--nature-accent-strong)]"
+            className="knowledge-assistant-guest-draft knowledge-assistant-compose-input text-sm leading-6 outline-none"
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             placeholder="先写下想问的问题……"
@@ -355,7 +433,7 @@ function GuestAssistantPreview({
             aria-describedby="assistant-login-hint"
             maxLength={4000}
           />
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <div className="knowledge-assistant-compose-footer">
             <span id="assistant-login-hint" className="knowledge-assistant-status">
               草稿会保留在当前浏览器
             </span>
@@ -389,43 +467,62 @@ function ConversationList({
   hasNewDraft,
   listId,
   expanded,
+  sheet = false,
   onSelect,
   onDelete,
   onCreate,
+  onClose,
 }: {
   conversations: AssistantConversation[];
   selectedId: string | null;
   hasNewDraft: boolean;
   listId: string;
   expanded: boolean;
+  sheet?: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onCreate: () => void;
+  onClose: () => void;
 }) {
+  const titleId = `${listId}-title`;
   return (
     <div
       id={listId}
-      className="knowledge-assistant-list"
+      className={`knowledge-assistant-list${sheet ? " knowledge-assistant-list--sheet" : ""}`}
       data-expanded={expanded}
+      data-mobile-sheet={sheet ? "true" : undefined}
       data-testid="assistant-conversation-list"
     >
       <div className="knowledge-assistant-list-heading">
         <div className="min-w-0">
-          <p className="text-sm font-semibold">对话</p>
+          <p id={titleId} className="text-sm font-semibold">
+            对话
+          </p>
           <p className="mt-0.5 text-xs text-[color:var(--nature-text-faint)]">
             {conversations.length ? `${conversations.length} 段已保存` : "从这里开始"}
           </p>
         </div>
-        <button
-          type="button"
-          className="knowledge-assistant-list-new"
-          onClick={onCreate}
-          aria-label="新建对话"
-          title="新建对话"
-        >
-          <Icon name="tabler:plus" className="h-4 w-4" />
-          <span>新建</span>
-        </button>
+        <div className="knowledge-assistant-list-actions">
+          <button
+            type="button"
+            className="knowledge-assistant-list-new"
+            onClick={onCreate}
+            aria-label="新建对话"
+            title="新建对话"
+          >
+            <Icon name="tabler:plus" className="h-4 w-4" />
+            <span>新建</span>
+          </button>
+          <button
+            type="button"
+            className="knowledge-assistant-list-close"
+            onClick={onClose}
+            aria-label="关闭对话列表"
+            title="关闭对话列表"
+          >
+            <Icon name="tabler:x" className="h-5 w-5" />
+          </button>
+        </div>
       </div>
       {selectedId === "new" || hasNewDraft ? (
         <div
@@ -481,6 +578,29 @@ function ConversationList({
           </div>
         ))
       )}
+      {sheet ? (
+        <button
+          type="button"
+          className="knowledge-assistant-list-create-card"
+          data-testid="assistant-create-conversation-card"
+          onClick={onCreate}
+        >
+          <span className="knowledge-assistant-list-create-icon" aria-hidden="true">
+            <Icon name="tabler:plus" className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 text-left">
+            <span className="block text-sm font-semibold">新建对话</span>
+            <span className="mt-0.5 block text-xs text-[color:var(--nature-text-soft)]">
+              从一个新的问题开始
+            </span>
+          </span>
+          <Icon
+            name="tabler:arrow-up-right"
+            className="ml-auto h-4 w-4 shrink-0"
+            aria-hidden="true"
+          />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -494,6 +614,7 @@ function MessageStream({
 }) {
   const container = useRef<HTMLDivElement>(null);
   const followTail = useRef(true);
+  const presentationId = useId().replace(/:/g, "");
   useEffect(() => {
     const element = container.current;
     if (!element) return;
@@ -531,20 +652,25 @@ function MessageStream({
           .map((message) => (
             <div
               className={`knowledge-assistant-message knowledge-assistant-message--${message.role}`}
+              data-message-id={message.id}
+              data-message-role={message.role}
+              data-presentation-id={presentationId}
               data-testid={`assistant-message-${message.role}`}
               key={message.id}
             >
-              {message.content ? (
-                <MarkdownRenderer
-                  content={message.content}
-                  variant="memo"
-                  surface="public"
-                  enableMath
-                  enableMermaid={false}
-                  nofollowExternalLinks
-                />
-              ) : message.status === "streaming" ? (
-                "正在生成……"
+              <AssistantMessageContent
+                className="knowledge-assistant-message-content"
+                messageId={message.id}
+                presentationId={presentationId}
+                role={message.role as "user" | "assistant"}
+                content={message.content}
+                status={message.status}
+                renderMarkdown={ConversationMarkdown}
+              />
+              {!message.content && message.status === "streaming" ? (
+                <p className="knowledge-assistant-streaming-placeholder" role="status">
+                  正在生成……
+                </p>
               ) : null}
               {message.status === "failed" && onRetry ? (
                 <button
@@ -582,38 +708,98 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     return new URL(window.location.href).searchParams.get("conversation");
   }, []);
   const [open, setOpen] = useState(fullPage);
+  const [isRendered, setIsRendered] = useState(fullPage);
   const [launcherEnabled, setLauncherEnabled] = useState<boolean | null>(fullPage ? true : null);
   const [listExpanded, setListExpanded] = useState(false);
+  const [helpExpanded, setHelpExpanded] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const openRef = useRef(open);
+  openRef.current = open;
   const listId = useId();
+  const helpId = useId();
   const listToggleRef = useRef<HTMLButtonElement>(null);
+  const helpToggleRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
-    if (!listExpanded) return;
+    const mediaQuery = window.matchMedia("(max-width: 639px)");
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!listExpanded && !helpExpanded) return;
+    const list = () => document.getElementById(listId);
+    const previousFocus =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    const mobileSheet = isMobileViewport && listExpanded;
+    const focusable = () =>
+      Array.from(
+        list()?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], textarea:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ) || []
+      );
+    const focusFrame = mobileSheet
+      ? window.requestAnimationFrame(() => focusable()[0]?.focus())
+      : null;
+
+    if (mobileSheet) document.body.style.overflow = "hidden";
+
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
       if (
-        document.getElementById(listId)?.contains(target) ||
-        target.closest(".knowledge-assistant-list-toggle")
+        list()?.contains(target) ||
+        document.getElementById(helpId)?.contains(target) ||
+        target.closest(
+          ".knowledge-assistant-list-toggle, .knowledge-assistant-header-conversation-toggle, .knowledge-assistant-help-toggle"
+        )
       )
         return;
       setListExpanded(false);
+      setHelpExpanded(false);
     };
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (document.getElementById(listId)?.contains(document.activeElement)) {
+      if (list()?.contains(document.activeElement)) {
         listToggleRef.current?.focus();
       }
+      if (document.getElementById(helpId)?.contains(document.activeElement)) {
+        helpToggleRef.current?.focus();
+      }
       setListExpanded(false);
+      setHelpExpanded(false);
+    };
+    const handleTab = (event: KeyboardEvent) => {
+      if (!mobileSheet || event.key !== "Tab") return;
+      const items = focusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleEscape, true);
+    document.addEventListener("keydown", handleTab);
     return () => {
+      if (focusFrame !== null) window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleEscape, true);
+      document.removeEventListener("keydown", handleTab);
+      document.body.style.overflow = previousOverflow;
+      if (mobileSheet) previousFocus?.focus();
     };
-  }, [listExpanded, listId]);
+  }, [helpExpanded, helpId, isMobileViewport, listExpanded, listId]);
   const [auth, setAuth] = useState<AuthState>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [conversations, setConversations] = useState<AssistantConversation[]>([]);
@@ -651,9 +837,28 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   const snapshotRequestRef = useRef(0);
   const panelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
+  const composerResizeStartRef = useRef<{ height: number; y: number } | null>(null);
   const principalIdRef = useRef<string | null>(null);
   principalIdRef.current = auth?.principal?.id ?? null;
 
+  useEffect(() => {
+    if (fullPage) {
+      setIsRendered(true);
+      return;
+    }
+    if (open) {
+      setIsRendered(true);
+      return;
+    }
+    const timer = window.setTimeout(() => setIsRendered(false), PANEL_EXIT_DURATION);
+    return () => window.clearTimeout(timer);
+  }, [fullPage, open]);
+  useEffect(() => {
+    if (open) return;
+    setListExpanded(false);
+    setHelpExpanded(false);
+  }, [open]);
   useEffect(() => {
     if (fullPage) return;
     let cancelled = false;
@@ -1036,8 +1241,25 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   );
 
   useEffect(() => {
-    if (!auth?.authenticated || !selectedId || selectedId === "new") {
-      setSnapshot(null);
+    if (
+      fullPage ||
+      openRef.current ||
+      !auth?.authenticated ||
+      !selectedId ||
+      selectedId === "new"
+    ) {
+      return;
+    }
+    void loadSnapshot(selectedId);
+  }, [auth?.authenticated, fullPage, loadSnapshot, selectedId]);
+
+  useEffect(() => {
+    if (pollTimer.current !== null) {
+      window.clearTimeout(pollTimer.current);
+      pollTimer.current = null;
+    }
+    if (!auth?.authenticated || !selectedId || selectedId === "new" || (!fullPage && !open)) {
+      if (!selectedId || selectedId === "new") setSnapshot(null);
       return;
     }
     let cancelled = false;
@@ -1049,9 +1271,12 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     void poll();
     return () => {
       cancelled = true;
-      if (pollTimer.current !== null) window.clearTimeout(pollTimer.current);
+      if (pollTimer.current !== null) {
+        window.clearTimeout(pollTimer.current);
+        pollTimer.current = null;
+      }
     };
-  }, [auth?.authenticated, selectedId, loadSnapshot]);
+  }, [auth?.authenticated, fullPage, open, selectedId, loadSnapshot]);
 
   useEffect(() => {
     if (fullPage || !open) return;
@@ -1378,11 +1603,129 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   };
 
   const currentDraft = drafts[draftKey(selectedId, newConversationContextRef.current)] || "";
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draft changes trigger the DOM measurement.
+  useEffect(() => {
+    const input = composerInputRef.current;
+    if (!input) return;
+
+    input.style.height = "auto";
+    const minHeight = Number.parseFloat(window.getComputedStyle(input).minHeight);
+    const maxHeight = window.innerHeight * 0.5;
+    input.style.height = `${Math.min(maxHeight, Math.max(minHeight, input.scrollHeight))}px`;
+  }, [currentDraft]);
+
+  const resizeComposerInput = (height: number) => {
+    const input = composerInputRef.current;
+    if (!input) return;
+
+    const minHeight = Number.parseFloat(window.getComputedStyle(input).minHeight);
+    const maxHeight = window.innerHeight * 0.5;
+    input.style.height = `${Math.min(maxHeight, Math.max(minHeight, height))}px`;
+  };
+
+  const handleComposerResizeStart = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const input = composerInputRef.current;
+    if (!input) return;
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    composerResizeStartRef.current = {
+      height: input.getBoundingClientRect().height,
+      y: event.clientY,
+    };
+  };
+
+  const handleComposerResizeMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const start = composerResizeStartRef.current;
+    if (!start || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+
+    resizeComposerInput(start.height + start.y - event.clientY);
+  };
+
+  const handleComposerResizeEnd = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    composerResizeStartRef.current = null;
+  };
+
+  const handleComposerResizeKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const input = composerInputRef.current;
+    if (!input) return;
+
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      resizeComposerInput(
+        input.getBoundingClientRect().height + (event.key === "ArrowUp" ? 24 : -24)
+      );
+    }
+  };
   const title = snapshot
     ? formatConversationTitle(snapshot.conversation)
     : selectedId === "new"
       ? "新对话"
       : ASSISTANT_DISPLAY_NAME;
+  const renderConversationList = (sheet = false) => (
+    <ConversationList
+      conversations={conversations}
+      selectedId={selectedId}
+      hasNewDraft={Boolean(drafts[draftKey("new", getClippingContext())]?.trim())}
+      listId={listId}
+      expanded={listExpanded}
+      sheet={sheet}
+      onSelect={(id) => {
+        selectConversation(id);
+        if (listExpanded) listToggleRef.current?.focus();
+        setListExpanded(false);
+      }}
+      onDelete={remove}
+      onCreate={() => {
+        createConversation();
+        if (listExpanded) listToggleRef.current?.focus();
+        setListExpanded(false);
+      }}
+      onClose={() => setListExpanded(false)}
+    />
+  );
+  const conversationList = renderConversationList();
+  const helpPopover = (
+    <AssistantHelpPanel
+      helpId={helpId}
+      quota={quota}
+      snapshot={snapshot}
+      onClose={() => {
+        setHelpExpanded(false);
+        helpToggleRef.current?.focus();
+      }}
+    />
+  );
+  const conversationListView =
+    isMobileViewport && listExpanded && typeof document !== "undefined"
+      ? createPortal(
+          <>
+            <button
+              type="button"
+              className="knowledge-assistant-list-backdrop"
+              data-testid="assistant-conversation-sheet-backdrop"
+              aria-label="关闭对话列表"
+              onClick={() => setListExpanded(false)}
+            />
+            <div
+              className="knowledge-assistant-list-dialog"
+              data-testid="assistant-conversation-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`${listId}-title`}
+            >
+              {renderConversationList(true)}
+            </div>
+          </>,
+          document.body
+        )
+      : fullPage
+        ? conversationList
+        : null;
   const body = (
     <>
       {authLoading ? (
@@ -1402,68 +1745,61 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         />
       ) : (
         <div className="knowledge-assistant-body">
-          <ConversationList
-            conversations={conversations}
-            selectedId={selectedId}
-            hasNewDraft={Boolean(drafts[draftKey("new", getClippingContext())]?.trim())}
-            listId={listId}
-            expanded={listExpanded}
-            onSelect={(id) => {
-              selectConversation(id);
-              if (listExpanded) listToggleRef.current?.focus();
-              setListExpanded(false);
-            }}
-            onDelete={remove}
-            onCreate={() => {
-              createConversation();
-              if (listExpanded) listToggleRef.current?.focus();
-              setListExpanded(false);
-            }}
-          />
+          {conversationListView}
           <div className="knowledge-assistant-content">
-            <div className="knowledge-assistant-toolbar">
-              <div className="min-w-0">
-                {fullPage ? (
+            {fullPage ? (
+              <div className="knowledge-assistant-toolbar">
+                <div className="min-w-0">
                   <h1 className="truncate text-sm font-semibold">{title}</h1>
-                ) : (
-                  <h2 className="truncate text-sm font-semibold">{title}</h2>
-                )}
-                <p className="knowledge-assistant-status" data-testid="assistant-quota">
-                  {formatQuota(quota)}
-                </p>
+                  <p className="knowledge-assistant-status" data-testid="assistant-quota">
+                    {formatQuota(quota)}
+                  </p>
+                </div>
+                <div className="knowledge-assistant-toolbar-actions">
+                  <div className="knowledge-assistant-help-anchor">
+                    <button
+                      type="button"
+                      className="knowledge-assistant-icon-button knowledge-assistant-help-toggle"
+                      ref={helpToggleRef}
+                      aria-expanded={helpExpanded}
+                      aria-controls={helpId}
+                      aria-label="帮助"
+                      title="帮助"
+                      onClick={() => {
+                        setHelpExpanded((value) => !value);
+                        setListExpanded(false);
+                      }}
+                    >
+                      <Icon name="tabler:help-circle" className="h-4 w-4" />
+                    </button>
+                    {helpExpanded ? helpPopover : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="knowledge-assistant-list-toggle"
+                    ref={listToggleRef}
+                    aria-expanded={listExpanded}
+                    aria-controls={listId}
+                    onClick={() => {
+                      setListExpanded((value) => !value);
+                      setHelpExpanded(false);
+                    }}
+                  >
+                    <Icon name="tabler:messages" className="h-4 w-4" />
+                    <span>切换对话</span>
+                  </button>
+                  {isGenerating(snapshot) ? (
+                    <button
+                      type="button"
+                      className="nature-button nature-button-ghost min-h-11 px-3 text-sm"
+                      onClick={() => void stop()}
+                    >
+                      <Icon name="tabler:square" className="h-4 w-4" />
+                      停止
+                    </button>
+                  ) : null}
+                </div>
               </div>
-              {fullPage ? (
-                <button
-                  type="button"
-                  className="knowledge-assistant-list-toggle"
-                  ref={listToggleRef}
-                  aria-expanded={listExpanded}
-                  aria-controls={listId}
-                  onClick={() => setListExpanded((value) => !value)}
-                >
-                  <Icon name="tabler:messages" className="h-4 w-4" />
-                  <span>切换对话</span>
-                </button>
-              ) : null}
-              {isGenerating(snapshot) ? (
-                <button
-                  type="button"
-                  className="nature-button nature-button-ghost min-h-11 px-3 text-sm"
-                  onClick={() => void stop()}
-                >
-                  <Icon name="tabler:square" className="h-4 w-4" />
-                  停止
-                </button>
-              ) : null}
-            </div>
-            {quota ? (
-              <p className="knowledge-assistant-notice mx-3 mt-3">
-                对话临时保留 {Math.round(quota.policy.retentionMs / 86_400_000)} 天，最多保留{" "}
-                {quota.policy.maxConversations} 段。仅检索公开内容。
-                {formatConversationExpiry(snapshot)
-                  ? ` 当前对话将于 ${formatConversationExpiry(snapshot)} 到期。`
-                  : " 额度按小时和周窗口恢复。"}
-              </p>
             ) : null}
             {requestError ? (
               <AssistantErrorAlert
@@ -1478,8 +1814,22 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
             ) : null}
             <MessageStream snapshot={snapshot} onRetry={(message) => void retry(message)} />
             <div className="knowledge-assistant-compose">
+              <button
+                type="button"
+                className="knowledge-assistant-compose-resize-handle"
+                aria-label="调整输入框高度"
+                title="拖动调整输入框高度"
+                onPointerDown={handleComposerResizeStart}
+                onPointerMove={handleComposerResizeMove}
+                onPointerUp={handleComposerResizeEnd}
+                onPointerCancel={handleComposerResizeEnd}
+                onKeyDown={handleComposerResizeKeyDown}
+              >
+                <span aria-hidden="true" />
+              </button>
               <textarea
-                className="nature-input-shell rounded-lg border border-[color:var(--nature-line)] bg-transparent p-3 text-sm leading-6 outline-none focus:border-[color:var(--nature-accent-strong)]"
+                className="knowledge-assistant-compose-input text-sm leading-6 outline-none"
+                ref={composerInputRef}
                 value={currentDraft}
                 onChange={(event) => updateDraft(event.target.value)}
                 placeholder="询问公开文章或项目经验……"
@@ -1527,7 +1877,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                   </span>
                   <button
                     type="button"
-                    className="nature-button nature-button-primary min-h-11 px-3 text-sm"
+                    className="knowledge-assistant-send-button nature-button nature-button-primary text-sm"
                     onClick={() => void send()}
                     disabled={!currentDraft.trim() || isGenerating(snapshot) || isSubmitting}
                   >
@@ -1560,51 +1910,102 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         className="knowledge-assistant-fab"
         data-testid="assistant-fab"
         ref={triggerRef}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setIsRendered(true);
+          setOpen(true);
+        }}
         aria-expanded={open}
       >
         <Icon name="tabler:sparkles" className="h-5 w-5" />
         {ASSISTANT_DISPLAY_NAME}
       </button>
-      {open ? (
+      {isRendered ? (
         <>
-          <button
-            type="button"
+          <div
             className="knowledge-assistant-overlay"
-            aria-label={`关闭${ASSISTANT_DISPLAY_NAME}`}
+            data-state={open ? "open" : "closed"}
+            aria-hidden="true"
             onClick={() => setOpen(false)}
           />
           <section
             className="knowledge-assistant-panel"
+            data-state={open ? "open" : "closed"}
+            data-list-expanded={listExpanded ? "true" : "false"}
             data-testid="assistant-panel"
             ref={panelRef}
             role="dialog"
             aria-modal="true"
+            aria-hidden={!open}
+            inert={!open}
             aria-label={ASSISTANT_DISPLAY_NAME}
           >
             <header className="knowledge-assistant-header">
               {auth?.authenticated ? (
-                <button
-                  type="button"
-                  className="knowledge-assistant-list-toggle knowledge-assistant-header-toggle"
-                  ref={listToggleRef}
-                  aria-label="切换对话"
-                  aria-expanded={listExpanded}
-                  aria-controls={listId}
-                  onClick={() => setListExpanded((value) => !value)}
-                >
-                  <span className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</span>
-                  <Icon
-                    name={listExpanded ? "tabler:chevron-up" : "tabler:chevron-down"}
-                    className="h-4 w-4"
-                  />
-                </button>
+                <div className="knowledge-assistant-header-conversation">
+                  <div className="knowledge-assistant-header-conversation-title-row">
+                    <h2 className="knowledge-assistant-header-conversation-title">
+                      <button
+                        type="button"
+                        className="knowledge-assistant-icon-button knowledge-assistant-header-conversation-toggle"
+                        ref={listToggleRef}
+                        aria-label={`切换对话，当前为${title}`}
+                        aria-expanded={listExpanded}
+                        aria-controls={listId}
+                        title="切换对话"
+                        onClick={() => setListExpanded((value) => !value)}
+                      >
+                        <span className="knowledge-assistant-header-conversation-title-text">
+                          {title}
+                        </span>
+                        <Icon
+                          name={listExpanded ? "tabler:chevron-up" : "tabler:chevron-down"}
+                          className="h-4 w-4"
+                        />
+                      </button>
+                    </h2>
+                    {!fullPage && !isMobileViewport ? conversationList : null}
+                  </div>
+                  <p className="knowledge-assistant-status" data-testid="assistant-quota">
+                    {formatQuota(quota)}
+                  </p>
+                </div>
               ) : (
                 <div>
                   <p className="text-sm font-semibold">{ASSISTANT_DISPLAY_NAME}</p>
                 </div>
               )}
-              <div className="flex items-center gap-1">
+              <div className="knowledge-assistant-header-actions">
+                {auth?.authenticated && isGenerating(snapshot) ? (
+                  <button
+                    type="button"
+                    className="knowledge-assistant-icon-button"
+                    onClick={() => void stop()}
+                    aria-label="停止生成"
+                    title="停止生成"
+                  >
+                    <Icon name="tabler:square" className="h-4 w-4" />
+                  </button>
+                ) : null}
+                {auth?.authenticated ? (
+                  <div className="knowledge-assistant-help-anchor">
+                    <button
+                      type="button"
+                      className="knowledge-assistant-icon-button knowledge-assistant-help-toggle"
+                      ref={helpToggleRef}
+                      aria-expanded={helpExpanded}
+                      aria-controls={helpId}
+                      aria-label="帮助"
+                      title="帮助"
+                      onClick={() => {
+                        setHelpExpanded((value) => !value);
+                        setListExpanded(false);
+                      }}
+                    >
+                      <Icon name="tabler:help-circle" className="h-4 w-4" />
+                    </button>
+                    {helpExpanded ? helpPopover : null}
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   className="knowledge-assistant-icon-button"

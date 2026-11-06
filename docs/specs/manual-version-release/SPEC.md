@@ -22,6 +22,7 @@
 - Ledger CAS：登记写入使用 GitHub GraphQL `expectedHeadOid` 做原子比较交换；返回提交的单父、Verified 机器人签名和预期父 SHA 校验成功即证明该写入已持久化，随后其他 writer 推进 branch head 不得把已成功的写入误报为失败。
 - 构建身份：`productVersion`、`buildVersion`、`sourceSha`；静态 `/version.json` 和只读 `GET /api/version` 暴露相同产品版本及来源。
 - Product Release recovery：通过 `.github/workflows/retry-product-release.yml` 以 `release_id` 指向原 Product Release run，并在原 run 上执行 GitHub rerun；它不创建 successor release identity。
+- Published recovery tooling：已有完整 products 证明的 frozen 恢复，以及已有 products 和 publication 证明的 published 或 deployed 恢复可以使用通过 main CI/E2E 门禁的当前发布工具，避免冻结来源 checkout 覆盖工具修复；产品来源、版本、原 run 和冻结产物 digest 不变，产物丢失或不匹配时仍失败关闭。尚未冻结完整 products 的构建阶段继续使用登记的 merge SHA，参见 [ADR 0040](../../adr/0040-published-product-recovery-tooling.md)。
 - Preparation gate recovery：准备 PR 已合并但确切 main CI/E2E 门禁在 Product Release 绑定前失败时，通过专用 workflow 以 `release_id` 和 incident reason 废弃未绑定身份；它不重跑或接管 Product Release。
 - Failure phase：`resolve`、`restore`、`freeze_inputs`、`retain_inputs`、`record_inputs`、`preflight_media`、`build_products`、`verify_products`、`retain_products`、`record_products`、`publish_prerelease`、`publish_stable` 或 `unknown`；历史 ledger 的旧字符串 phase 必须继续可读。
 
@@ -213,6 +214,7 @@ Product Release run 本身只有两类 abandon：没有任何 frozen artifact �
 - [ADR 0025](../../adr/0025-release-pr-check-attestation.md)
 - [ADR 0029](../../adr/0029-release-recovery-and-frozen-media-preflight.md)
 - [ADR 0033](../../adr/0033-release-preparation-gate-recovery.md)
+- [ADR 0040](../../adr/0040-published-product-recovery-tooling.md)
 
 ## References
 

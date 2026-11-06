@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { downloadRetainedEdition, writePublicEdition } from "../../src/lib/playbook/artifacts";
 import { createPlaybookEdition } from "../../src/lib/playbook/bundle";
+import { validatePlaybookEdition } from "../../src/lib/playbook/cache";
 import { publicFixtureCatalog, publicFixtureSearch } from "../../src/lib/playbook/fixture";
 import { encodeJson, fileRecord, sha256 } from "../../src/lib/playbook/manifest";
 import { normalizePlaybookSearch } from "../../src/lib/playbook/navigation";
@@ -76,6 +77,21 @@ describe("deployed Playbook compatibility", () => {
       undefined,
       { stripInternalMetadata: true }
     );
+    // The generated seed crosses a JSON boundary before the static build reads it.
+    const seed = JSON.parse(JSON.stringify(source));
+    expect(
+      validatePlaybookEdition(seed, undefined, { stripInternalMetadata: true }).edition
+    ).toEqual(source.edition);
+    const damagedBytes = structuredClone(seed);
+    damagedBytes.rawFiles.search = Buffer.from("{}").toString("base64");
+    expect(() =>
+      validatePlaybookEdition(damagedBytes, undefined, { stripInternalMetadata: true })
+    ).toThrow("integrity mismatch");
+    const damagedProjection = structuredClone(seed);
+    damagedProjection.search.documents[0].body += " injected";
+    expect(() =>
+      validatePlaybookEdition(damagedProjection, undefined, { stripInternalMetadata: true })
+    ).toThrow("projection mismatch");
     const fetcher = async (url: string) => {
       const pathname = new URL(url).pathname;
       if (pathname.endsWith("catalog.json")) return new Response(catalogBytes);

@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import ThemeToggle from "@/components/common/ThemeToggle";
 import Icon from "@/components/ui/Icon";
 import { headerData } from "@/config/navigation";
@@ -6,20 +7,42 @@ import { cssStyle } from "../lib/react-template";
 import { toPublicSitePath } from "../lib/runtime-urls";
 
 interface Props {
+  className?: string;
+  enableScrollBehavior?: boolean;
   pathname?: string;
+  contextLabel?: string;
+  showRss?: boolean;
+  showSearch?: boolean;
+  testId?: string;
 }
 export default function SiteHeader(props: Props) {
-  const { pathname = "/" } = props;
+  const {
+    className,
+    contextLabel,
+    enableScrollBehavior = false,
+    pathname = "/",
+    showRss = true,
+    showSearch = true,
+    testId,
+  } = props;
   const isSearchPage = pathname === "/search";
+  useLayoutEffect(() => {
+    if (!enableScrollBehavior) return;
+    void import("@/lib/public-header-scroll").then(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+  }, [enableScrollBehavior]);
+
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
     return pathname === href || pathname.startsWith(`${href}/`);
   }
   return (
     <header
-      className="nature-site-header sticky z-40 w-full flex-none pt-3"
+      className={`nature-site-header sticky z-40 w-full flex-none pt-3${className ? ` ${className}` : ""}`}
       data-public-header=""
       data-public-header-state="expanded"
+      data-testid={testId}
     >
       <div className="nature-container nature-site-header-frame">
         <div className="nature-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:flex sm:flex-wrap sm:gap-3 sm:px-5">
@@ -35,6 +58,12 @@ export default function SiteHeader(props: Props) {
               )}
             ></span>
             <span className="nature-brand-name">{SITE.name}</span>
+            {contextLabel ? (
+              <span className="inline-flex min-w-0 items-baseline gap-1 truncate text-sm text-[color:var(--nature-text-soft)] sm:text-base">
+                <span aria-hidden="true">/</span>
+                <span>{contextLabel}</span>
+              </span>
+            ) : null}
           </a>
 
           <nav
@@ -62,7 +91,7 @@ export default function SiteHeader(props: Props) {
           </nav>
 
           <div className="nature-header-tools order-2 ml-0 flex items-center gap-1 sm:ml-auto sm:gap-3 md:order-3">
-            {!isSearchPage && (
+            {showSearch && !isSearchPage && (
               <>
                 <form
                   action={toPublicSitePath("/search")}
@@ -92,14 +121,16 @@ export default function SiteHeader(props: Props) {
               </>
             )}
             <ThemeToggle compactOnMobile iconClass="h-4 w-4" />
-            <a
-              className="nature-header-rss-button nature-icon-button inline-flex"
-              aria-label="RSS Feed"
-              title="RSS Feed"
-              href={toPublicSitePath("/feed.xml")}
-            >
-              <Icon name="tabler:rss" className="nature-header-tool-icon h-5 w-5" />
-            </a>
+            {showRss ? (
+              <a
+                className="nature-header-rss-button nature-icon-button inline-flex"
+                aria-label="RSS Feed"
+                title="RSS Feed"
+                href={toPublicSitePath("/feed.xml")}
+              >
+                <Icon name="tabler:rss" className="nature-header-tool-icon h-5 w-5" />
+              </a>
+            ) : null}
           </div>
         </div>
         <div

@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "39186b612228d554a672e210097060d8d0de1d7b",
+  "covered_files": {
+    "src/lib/playbook/github-source.ts": "67cba7bec15f645bd75c7a4d2cac97b3dc57f832",
+    "src/lib/playbook/github-source.test.ts": "441526ee3a00bb6605c5d4ed79b5cdaaf674be14"
+  },
+  "change": {
+    "description": "Adapt the published Playbook Release JSON and search projection contract while validating file digests, public coverage, and pinned source identity.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Adapt the published Playbook Release JSON and search projection contract while validating file digests, public coverage, and pinned source identity.",
+      "assessed_at": "2026-11-05T14:30:45.252978+00:00",
+      "evidence": [
+        {
+          "path": "src/lib/playbook/github-source.test.ts",
+          "blob": "441526ee3a00bb6605c5d4ed79b5cdaaf674be14",
+          "command": "bun test src/lib/playbook/github-source.test.ts: 34 pass; real v2.4.7 assets: ready, 69 topics, 918 documents"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Adapt the published Playbook Release JSON and search projection contract while validating file digests, public coverage, and pinned source identity.",
+      "assessed_at": "2026-11-05T14:30:45.263701+00:00",
+      "evidence": [
+        {
+          "path": "src/lib/playbook/github-source.test.ts",
+          "blob": "441526ee3a00bb6605c5d4ed79b5cdaaf674be14",
+          "command": "bun test src/lib/playbook/github-source.test.ts: 34 pass; real v2.4.7 assets: ready, 69 topics, 918 documents"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Only Playbook Release ingestion and its regression tests change."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Adapt the published Playbook Release JSON and search projection contract while validating file digests, public coverage, and pinned source identity.",
+      "assessed_at": "2026-11-05T14:30:45.272163+00:00",
+      "evidence": [
+        {
+          "path": "src/lib/playbook/github-source.test.ts",
+          "blob": "441526ee3a00bb6605c5d4ed79b5cdaaf674be14",
+          "command": "bun test src/lib/playbook/github-source.test.ts: 34 pass; real v2.4.7 assets: ready, 69 topics, 918 documents"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/playbook/github-source.ts",
+          "blob": "67cba7bec15f645bd75c7a4d2cac97b3dc57f832",
+          "command": "Public search request/response interfaces remain unchanged; ingestion canonicalizes verified public content."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "Existing snapshot adoption persists the canonical projection and pinned GitHub source revision without schema changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/server/services/playbook-snapshot-runtime.test.ts",
+          "blob": "8a7d942a9121ba9ad1440dbf0d3f850cb84580ba",
+          "command": "Snapshot adoption regression suite passes; no schema migration or direct SQLite mutation."
+        }
+      ]
+    }
+  }
+}

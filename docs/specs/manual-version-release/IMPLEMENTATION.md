@@ -34,6 +34,10 @@
 
 ## References
 
+- 已发布恢复通过 `releaseExecutionCheckout` 选择通过 main 门禁的发布工具，构建阶段保持冻结来源；EdgeOne 子进程输出仅投影为固定阶段、失败类别和退出码。单测覆盖恢复来源不变、工具门禁失败关闭和诊断脱敏；真实原 run 恢复仍须单独验收。
+
 - [SPEC.md](./SPEC.md)
 - [HISTORY.md](./HISTORY.md)
 - [运行手册](../../runbooks/manual-version-release.md)
+
+- 发布适配器在 by-tag 404 后枚举并校验同身份 draft，复用唯一含产物的 draft，保留空重复 draft，并拒绝冲突身份或多个含产物的 draft；镜像上传后仅对暂不可见进行有界重读，真实 digest 冲突立即失败。已有完整冻结 products 的恢复使用通过 main 门禁的修复工具，仍从原 run 恢复并校验所有冻结字节。

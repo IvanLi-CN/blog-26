@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "39285cf98bbc02b03115615fb63f772272b97651",
+  "covered_files": {
+    "docs/adr/0040-published-product-recovery-tooling.md": "61a6fa787754d399fd335fc097404fc3bea90b81",
+    "docs/specs/manual-version-release/HISTORY.md": "696fcf676914d829505090459c4e7497d9261c26",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "f8ee9350e6df6787a089b34c0c452369cbc89249",
+    "docs/specs/manual-version-release/SPEC.md": "0b298c0e3f4b1ca13d5ecf5fdd46f9eb2a5869a4",
+    "scripts/product-release.ts": "b8d040de54d903c35b027eee66fef4cc4012c731",
+    "src/lib/release/completion.ts": "469464dbec3c74725ac5382c8144c80df5d1a306",
+    "src/lib/release/deployment.ts": "1ade845ef0da89f2ec79e17bddd98bff0e1dcbc7",
+    "src/lib/release/edgeone-cli.ts": "a1a0531f3acf2b45633f8d081be793fe671f625d",
+    "tests/lib/edgeone-cli.test.ts": "2e229a8fec32648497b9130132409d8a1123e167",
+    "tests/lib/manual-release-recovery.test.ts": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6"
+  },
+  "change": {
+    "description": "Repair original-run published-product recovery so gated main tooling can diagnose and fix deployment failures without rebuilding or changing frozen products.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Repair original-run published-product recovery so gated main tooling can diagnose and fix deployment failures without rebuilding or changing frozen products.",
+      "assessed_at": "2026-11-05T17:16:38.938888+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        },
+        {
+          "path": "tests/lib/edgeone-cli.test.ts",
+          "blob": "2e229a8fec32648497b9130132409d8a1123e167",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Repair original-run published-product recovery so gated main tooling can diagnose and fix deployment failures without rebuilding or changing frozen products.",
+      "assessed_at": "2026-11-05T17:16:38.938888+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        },
+        {
+          "path": "tests/lib/edgeone-cli.test.ts",
+          "blob": "2e229a8fec32648497b9130132409d8a1123e167",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Published recovery execution checkout and credential-safe EdgeOne diagnostics only."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Repair original-run published-product recovery so gated main tooling can diagnose and fix deployment failures without rebuilding or changing frozen products.",
+      "assessed_at": "2026-11-05T17:16:38.938888+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        },
+        {
+          "path": "tests/lib/edgeone-cli.test.ts",
+          "blob": "2e229a8fec32648497b9130132409d8a1123e167",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6"
+      ],
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        },
+        {
+          "path": "tests/lib/edgeone-cli.test.ts",
+          "blob": "2e229a8fec32648497b9130132409d8a1123e167",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No ledger schema, durable identity or product digest changes; original-run artifact restoration remains mandatory.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/manual-release-recovery.test.ts",
+          "blob": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        },
+        {
+          "path": "tests/lib/edgeone-cli.test.ts",
+          "blob": "2e229a8fec32648497b9130132409d8a1123e167",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/edgeone-cli.test.ts tests/ci/product-prerelease-workflow.test.ts: 99 pass"
+        }
+      ]
+    }
+  }
+}

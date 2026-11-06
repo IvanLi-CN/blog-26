@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register({ url: "http://localhost/" });
@@ -154,7 +154,9 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     const fab = await waitFor(() => view.getByTestId("assistant-fab"));
     fireEvent.click(fab);
     await waitFor(() => view.getAllByRole("button", { name: /general-conversation/ })[0]);
-    fireEvent.click(view.getAllByRole("button", { name: "关闭知识对话" })[1]);
+    fireEvent.click(
+      within(view.getByTestId("assistant-panel")).getByRole("button", { name: "关闭知识对话" })
+    );
     document.dispatchEvent(new Event("astro:page-load"));
     await waitFor(() => expect(listCalls).toBe(2));
     fireEvent.click(fab);
@@ -380,7 +382,9 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     await waitFor(() => expect(view.getByTestId("assistant-fab")).toBeTruthy());
     fireEvent.click(view.getByTestId("assistant-fab"));
     await waitFor(() => expect(view.getByRole("heading", { name: "新对话" })).toBeTruthy());
-    fireEvent.click(view.getAllByRole("button", { name: "关闭知识对话" })[1]);
+    fireEvent.click(
+      within(view.getByTestId("assistant-panel")).getByRole("button", { name: "关闭知识对话" })
+    );
 
     window.history.replaceState({}, "", "/posts/b/?clipping=clip-b");
     clippingMarker.dataset.assistantClippingSlug = "clip-b";
@@ -739,5 +743,78 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     expect(state.newConversationContextFrozen).toBe(true);
     expect(assignedUrl).toContain("/chat");
     expect(assignedUrl).not.toContain("clipping=");
+  });
+
+  test("renders user text literally and assistant markdown inside isolated message bodies", async () => {
+    const selected = conversation("rendered-conversation", "general", null);
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation")) {
+        return json({
+          conversation: selected,
+          messages: [
+            {
+              id: "user-message",
+              conversationId: selected.id,
+              sequence: 1,
+              role: "user",
+              content: "**same**\nline two",
+              status: "completed",
+              clientRequestId: null,
+              createdAt: 1,
+              updatedAt: 1,
+              completedAt: 1,
+              citations: [],
+            },
+            {
+              id: "assistant-message",
+              conversationId: selected.id,
+              sequence: 2,
+              role: "assistant",
+              content: "**same**\n\n> quoted",
+              status: "completed",
+              clientRequestId: null,
+              createdAt: 2,
+              updatedAt: 2,
+              completedAt: 2,
+              citations: [
+                {
+                  id: "citation-1",
+                  messageId: "assistant-message",
+                  source: "blog",
+                  sourceId: null,
+                  sourceType: "post",
+                  slug: "post",
+                  title: "来源标题",
+                  href: "https://example.com/post",
+                  location: null,
+                  snippet: null,
+                  createdAt: 2,
+                },
+              ],
+            },
+          ],
+          generationJobs: [],
+          activeGenerationJob: null,
+        });
+      }
+      if (url.pathname === "/api/public/chat") return json({ conversations: [selected], quota });
+      throw new Error(`Unexpected request: ${url.pathname} ${init?.method ?? "GET"}`);
+    }) as typeof fetch;
+
+    window.history.replaceState({}, "", "/chat?conversation=rendered-conversation");
+    const view = render(<KnowledgeAssistant fullPage />);
+    const userMessage = await waitFor(() => view.getByTestId("assistant-message-user"));
+    const assistantMessage = await waitFor(() => view.getByTestId("assistant-message-assistant"));
+
+    expect(userMessage.querySelector("[data-message-body]")?.textContent).toContain("**same**");
+    expect(userMessage.querySelector("strong")).toBeNull();
+    expect(assistantMessage.querySelector("[data-message-body]")?.textContent).toContain("same");
+    expect(assistantMessage.querySelector("strong")?.textContent).toBe("same");
+    expect(assistantMessage.querySelector("blockquote")).toBeTruthy();
+    expect(assistantMessage.querySelectorAll("[data-message-body]")).toHaveLength(1);
+    expect(within(assistantMessage).getByRole("list", { name: "回答来源" })).toBeTruthy();
   });
 });

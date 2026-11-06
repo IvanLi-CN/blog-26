@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { gzipSync } from "node:zlib";
 import { publicFixtureCatalog, publicFixtureSearch } from "./fixture";
 import {
   comparePlaybookSnapshots,
@@ -8,6 +9,7 @@ import {
   normalizePlaybookSnapshot,
   PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST,
   type PlaybookGitHubSourceConfig,
+  PlaybookGitHubSourceInvalidError,
   type PlaybookGitHubSourceTransport,
   readPlaybookGitHubSnapshot,
   readPlaybookGitHubSourceConfig,
@@ -116,6 +118,19 @@ function makeFixtureFiles(catalog = publicFixtureCatalog, search = completeFixtu
   ]);
 }
 
+function makeTarGz(files: ReadonlyMap<string, Uint8Array>) {
+  const blocks: Uint8Array[] = [];
+  for (const [name, bytes] of files) {
+    const header = Buffer.alloc(512);
+    header.write(name, 0, 100, "utf8");
+    header.write(bytes.byteLength.toString(8).padStart(11, "0") + "\0", 124, 12, "ascii");
+    header[156] = 48;
+    blocks.push(header, bytes, Buffer.alloc((512 - (bytes.byteLength % 512)) % 512));
+  }
+  blocks.push(Buffer.alloc(1024));
+  return gzipSync(Buffer.concat(blocks));
+}
+
 function makeTransport(
   files: ReadonlyMap<string, Uint8Array>,
   resolvedCommit = commit,
@@ -163,6 +178,70 @@ test("reconstructs one complete snapshot from one fixed commit and never calls t
     ...PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST.map((path) => `read:${commit}:${path}`),
   ]);
   expect(calls.some((call) => call.includes("ivanli.cc") || call.includes("static"))).toBe(false);
+});
+
+test("loads and validates the GitHub release bundle and separate manifest asset", async () => {
+  const files = makeFixtureFiles();
+  const bundleFiles = new Map([
+    ["catalog.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[1])!],
+    ["search-documents.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[2])!],
+  ]);
+  const manifest = Buffer.from(
+    encodeJson({
+      schemaVersion: 1,
+      files: [
+        fileRecord("catalog.json", bundleFiles.get("catalog.json")!),
+        fileRecord("search-documents.json", bundleFiles.get("search-documents.json")!),
+      ],
+    })
+  );
+  const transport: PlaybookGitHubSourceTransport = {
+    resolveRef: async () => commit,
+    readFile: async () => {
+      throw new PlaybookGitHubSourceInvalidError("GitHub public export path is unavailable: 404");
+    },
+    readReleaseBundle: async () => makeTarGz(bundleFiles),
+    readReleaseManifest: async () => manifest,
+  };
+  const result = await loadPlaybookGitHubSnapshot(transport, config);
+  expect(result.status).toBe("ready");
+  if (result.status === "ready")
+    expect(result.snapshot.contentHash).toBe(
+      computePlaybookContentHash(
+        normalizePlaybookSnapshot(publicFixtureCatalog, completeFixtureSearch)
+      )
+    );
+});
+
+test("rejects a release bundle whose manifest digest does not match", async () => {
+  const files = makeFixtureFiles();
+  const manifest = {
+    schemaVersion: 1,
+    contentHash: "0".repeat(64),
+    files: [
+      fileRecord("catalog.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[1])!),
+      fileRecord("search-documents.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[2])!),
+    ],
+  };
+  const transport: PlaybookGitHubSourceTransport = {
+    resolveRef: async () => commit,
+    readFile: async () => {
+      throw new PlaybookGitHubSourceInvalidError("GitHub public export path is unavailable: 404");
+    },
+    readReleaseBundle: async () =>
+      makeTarGz(
+        new Map([
+          ["catalog.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[1])!],
+          ["search-documents.json", files.get(PLAYBOOK_GITHUB_PUBLIC_ALLOWLIST[2])!],
+        ])
+      ),
+    readReleaseManifest: async () => Buffer.from(encodeJson(manifest)),
+  };
+  const result = await loadPlaybookGitHubSnapshot(transport, config);
+  expect(result).toMatchObject({
+    status: "invalid",
+    message: "GitHub Playbook public export content digest mismatch",
+  });
 });
 
 test("classifies commit and content identity changes without rebuilding unchanged projections", () => {
@@ -868,7 +947,7 @@ test("cancels response bodies before non-success status failures", async () => {
   }) as unknown as typeof fetch;
   const result = await loadPlaybookGitHubSnapshot(
     createPlaybookGitHubSourceTransport("fixture-token", fetchImpl),
-    config
+    { ...config, ref: "feature/ref" }
   );
   expect(result.status).toBe("invalid");
   expect(cancellations).toBe(1);
@@ -932,4 +1011,137 @@ test("rejects chunked raw responses that exceed the byte limit", async () => {
     })
   ).rejects.toThrow("exceeds byte limit");
   expect(chunks).toBeGreaterThan(32);
+});
+
+test("follows asset redirects without forwarding the repository token", async () => {
+  const calls: { url: string; headers: Headers }[] = [];
+  const transport = createPlaybookGitHubSourceTransport("fixture-token", (async (url, init) => {
+    calls.push({ url: String(url), headers: new Headers(init?.headers) });
+    if (String(url).endsWith("/releases/latest"))
+      return Response.json({ assets: [{ id: 123, name: "playbook-public.tar.gz" }] });
+    if (String(url).includes("/releases/assets/"))
+      return new Response(null, {
+        status: 302,
+        headers: { location: "https://release-assets.githubusercontent.com/asset" },
+      });
+    return new Response("bundle");
+  }) as typeof fetch);
+  expect(
+    Buffer.from(
+      await transport.readReleaseBundle!({ repository: config.repository, ref: "main" })
+    ).toString()
+  ).toBe("bundle");
+  expect(calls[1]?.headers.get("Authorization")).toBe("Bearer fixture-token");
+  expect(calls[2]?.headers.has("Authorization")).toBe(false);
+});
+
+test("rejects redirects to an untrusted asset host", async () => {
+  const transport = createPlaybookGitHubSourceTransport("fixture-token", (async (url) => {
+    if (String(url).endsWith("/releases/latest"))
+      return Response.json({ assets: [{ id: 123, name: "playbook-public.tar.gz" }] });
+    return new Response(null, { status: 302, headers: { location: "https://example.com/asset" } });
+  }) as typeof fetch);
+  await expect(
+    transport.readReleaseBundle!({ repository: config.repository, ref: "main" })
+  ).rejects.toThrow("redirect is invalid");
+});
+
+function releaseContractFixture(
+  options: {
+    omitSection?: boolean;
+    repository?: string;
+    resolvedCommit?: string;
+    corruptCatalog?: boolean;
+  } = {}
+) {
+  const upstream = {
+    ...completeFixtureSearch,
+    documents: completeFixtureSearch.documents
+      .filter(
+        (document) => !document.id.startsWith("policy:") && !document.id.startsWith("resource:")
+      )
+      .filter((document) => !options.omitSection || document.kind !== "section")
+      .map((document) => ({
+        ...document,
+        id: document.kind === "page" ? `page:${document.id}` : document.id,
+        subtitle: null,
+        title: `Upstream ${document.title}`,
+        body: "Upstream display text",
+        keywords: ["upstream"],
+      })),
+  };
+  const catalog = Buffer.from(JSON.stringify(publicFixtureCatalog, null, 2) + "\n");
+  const search = Buffer.from(JSON.stringify(upstream, null, 2) + "\n");
+  const bundle = makeTarGz(
+    new Map([
+      ["catalog.json", options.corruptCatalog ? Buffer.from("{}") : catalog],
+      ["search-documents.json", search],
+    ])
+  );
+  const manifest = {
+    schemaVersion: 1,
+    source: {
+      repository: options.repository ?? config.repository,
+      tag: "v2.4.7",
+      commit,
+      releaseId: "425087400",
+    },
+    bundle: fileRecord("playbook-public.tar.gz", bundle),
+    files: [fileRecord("catalog.json", catalog), fileRecord("search-documents.json", search)],
+  };
+  const transport: PlaybookGitHubSourceTransport = {
+    resolveRef: async () => options.resolvedCommit ?? commit,
+    readFile: async () => {
+      throw new PlaybookGitHubSourceInvalidError("GitHub public export path is unavailable: 404");
+    },
+    readReleaseBundle: async () => bundle,
+    readReleaseManifest: async () =>
+      Buffer.from(
+        JSON.stringify(
+          {
+            ...manifest,
+            bundle: {
+              name: "playbook-public.tar.gz",
+              sha256: manifest.bundle.sha256,
+              size: manifest.bundle.size,
+            },
+          },
+          null,
+          2
+        ) + "\n"
+      ),
+  };
+  return transport;
+}
+
+test("adapts the published Release JSON and page identities into complete public projections", async () => {
+  const result = await loadPlaybookGitHubSnapshot(releaseContractFixture(), config);
+  expect(result.status).toBe("ready");
+  if (result.status !== "ready") throw new Error(result.status);
+  expect(result.snapshot.sourceRevision).toEqual({
+    provider: "github",
+    repository: config.repository,
+    ref: "v2.4.7",
+    commit,
+  });
+  expect(result.snapshot.search).toEqual(
+    normalizePlaybookSnapshot(publicFixtureCatalog, completeFixtureSearch).search
+  );
+  expect(
+    result.snapshot.search.documents.some((document) =>
+      document.body.includes("Upstream display text")
+    )
+  ).toBe(false);
+});
+
+test("rejects incomplete Release coverage and mismatched repository, tag commit, or file digest", async () => {
+  for (const options of [
+    { omitSection: true },
+    { repository: "other/repo" },
+    { resolvedCommit: nextCommit },
+    { corruptCatalog: true },
+  ]) {
+    const result = await loadPlaybookGitHubSnapshot(releaseContractFixture(options), config);
+    expect(result.status).not.toBe("ready");
+  }
 });

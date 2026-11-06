@@ -8,11 +8,14 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import CommentSectionWithProvider from "@/components/comments/CommentSectionWithProvider";
+import { ConversationMarkdown } from "@/components/common/ConversationMarkdown";
+import type { ConversationImageResourceContext } from "@/components/common/conversation/types";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import "./clipping-admin.css";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -21,6 +24,8 @@ import { mapClippingResourceUrl } from "@/lib/clipping-resources";
 import type { ClippingReading } from "@/lib/memo-clipping";
 import type { PublicMediaContext } from "@/lib/public-media";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
+import { AssistantMessageContent } from "../../../site/components/AssistantMessageContent";
+import "./ClippingDetail.css";
 
 export type ClippingChat = {
   messages: Array<{ id: string; role: "user" | "assistant"; text: string; timestamp: number }>;
@@ -97,9 +102,8 @@ function ChatPanel({
   send,
   sending,
   error,
-  surface,
   scroll,
-  publicAssetVersion,
+  resourceContext,
 }: {
   snapshot: ClippingChat;
   draft: string;
@@ -107,12 +111,31 @@ function ChatPanel({
   send: () => void;
   sending: boolean;
   error: string | null;
-  surface: "public" | "admin";
   scroll: MutableRefObject<number>;
-  publicAssetVersion?: string | null;
+  resourceContext?: ConversationImageResourceContext;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const pinned = useRef(scroll.current === 0);
+  const presentationId = useId().replace(/:/g, "");
+  const messageIdentity = useRef(new Map<string, string>());
+  const stableMessageId = (role: "user" | "assistant", index: number, backendId?: string) => {
+    const conversationKey = snapshot.conversationId ?? "legacy-clipping";
+    const identityKey = `${conversationKey}:${role}:${index}`;
+    const existing = messageIdentity.current.get(identityKey);
+    if (existing) return existing;
+    const identity = backendId ?? `${conversationKey}:${role}:${index}:pending`;
+    messageIdentity.current.set(identityKey, identity);
+    return identity;
+  };
+  const terminalAssistant = [...snapshot.messages]
+    .reverse()
+    .find((message) => message.role === "assistant");
+  const partialIsTerminal = Boolean(
+    snapshot.partial &&
+      terminalAssistant &&
+      (terminalAssistant.text === snapshot.partial ||
+        terminalAssistant.text.startsWith(snapshot.partial))
+  );
   useLayoutEffect(() => {
     if (container.current) container.current.scrollTop = scroll.current;
   }, [scroll]);
@@ -141,38 +164,76 @@ function ChatPanel({
             围绕这篇文章提问。回答会引用原文段落，并说明哪些是推断。
           </p>
         ) : null}
-        {snapshot.messages.map((message) => (
-          <div key={`${message.id}-${message.role}`} className="clipping-chat-message">
-            <p className="nature-muted mb-2 text-xs">
-              {message.role === "user" ? "你" : "文章助手"}
-            </p>
-            <MarkdownRenderer
-              surface={surface}
-              content={message.text}
-              variant="memo"
-              nofollowExternalLinks
-              enableMermaid={false}
-              publicAssetVersion={publicAssetVersion}
-            />
-          </div>
-        ))}
-        {snapshot.partial ? (
-          <div>
+        {snapshot.messages.map((message) =>
+          // Keep the local identity keyed by position so a legacy partial and its terminal row
+          // retain the same renderer subtree when the backend ID first becomes available.
+          (() => {
+            const messageId = stableMessageId(
+              message.role,
+              snapshot.messages.indexOf(message),
+              message.id
+            );
+            return (
+              <div
+                key={messageId}
+                className="clipping-chat-message"
+                data-message-id={messageId}
+                data-presentation-id={presentationId}
+                data-message-role={message.role}
+              >
+                <p className="nature-muted mb-2 text-xs">
+                  {message.role === "user" ? "你" : "文章助手"}
+                </p>
+                <AssistantMessageContent
+                  messageId={messageId}
+                  presentationId={presentationId}
+                  role={message.role}
+                  content={message.text}
+                  status="completed"
+                  renderMarkdown={ConversationMarkdown}
+                  resourceContext={resourceContext}
+                />
+              </div>
+            );
+          })()
+        )}
+        {snapshot.partial && !partialIsTerminal ? (
+          <div
+            data-message-id={stableMessageId("assistant", snapshot.messages.length)}
+            data-presentation-id={presentationId}
+            data-message-role="assistant"
+          >
             <p className="nature-muted mb-2 text-xs">文章助手 · 正在回答</p>
-            <MarkdownRenderer
-              surface={surface}
+            <AssistantMessageContent
+              messageId={stableMessageId("assistant", snapshot.messages.length)}
+              presentationId={presentationId}
+              {...({ role: "assistant" } as const)}
               content={snapshot.partial}
-              variant="memo"
-              nofollowExternalLinks
-              enableMermaid={false}
-              publicAssetVersion={publicAssetVersion}
+              status={snapshot.error ? "failed" : snapshot.generating ? "streaming" : "completed"}
+              renderMarkdown={ConversationMarkdown}
+              resourceContext={resourceContext}
             />
           </div>
         ) : null}
         {snapshot.generating && !snapshot.partial ? (
-          <p className="nature-muted text-sm" role="status">
-            正在阅读相关段落…
-          </p>
+          <div
+            data-message-id={stableMessageId("assistant", snapshot.messages.length)}
+            data-presentation-id={presentationId}
+            data-message-role="assistant"
+          >
+            <AssistantMessageContent
+              messageId={stableMessageId("assistant", snapshot.messages.length)}
+              presentationId={presentationId}
+              {...({ role: "assistant" } as const)}
+              content=""
+              status="streaming"
+              renderMarkdown={ConversationMarkdown}
+              resourceContext={resourceContext}
+            />
+            <p className="nature-muted text-sm" role="status">
+              正在阅读相关段落…
+            </p>
+          </div>
         ) : null}
       </div>
       {error || snapshot.error ? (
@@ -287,6 +348,19 @@ export function ClippingDetail({
       const mapped = mapClippingResourceUrl(url, article.resourceBaseUrl);
       return mapped.startsWith("/api/") ? toPublicApiUrl(mapped) : mapped;
     },
+    [article.resourceBaseUrl]
+  );
+  const conversationResourceContext = useMemo<ConversationImageResourceContext | undefined>(
+    () =>
+      article.resourceBaseUrl
+        ? {
+            resolveAuthorizedImage: (src) => {
+              const mapped = mapClippingResourceUrl(src, article.resourceBaseUrl);
+              if (mapped === src) return null;
+              return { src: mapped.startsWith("/api/") ? toPublicApiUrl(mapped) : mapped };
+            },
+          }
+        : undefined,
     [article.resourceBaseUrl]
   );
   const desktop = useSyncExternalStore(subscribeDesktop, desktopSnapshot, serverSnapshot);
@@ -437,9 +511,8 @@ export function ClippingDetail({
       send={() => void send()}
       sending={sending}
       error={chatError}
-      surface={surface}
       scroll={scroll}
-      publicAssetVersion={publicAssetVersion}
+      resourceContext={conversationResourceContext}
     />
   );
   const managementActions =
