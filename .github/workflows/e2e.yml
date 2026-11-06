@@ -61,6 +61,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Prepare Ubuntu archive for browser dependencies
+        run: bash scripts/prepare-ci-apt-mirror.sh
+
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y lsof
 
@@ -110,6 +113,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Prepare Ubuntu archive for browser dependencies
+        run: bash scripts/prepare-ci-apt-mirror.sh
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
