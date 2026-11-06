@@ -10,8 +10,8 @@
     "docs/specs/assistant-message-rendering/CAPABILITY-MATRIX.md": "ece8feb45ded946aa251886b4d71b6bf07e4f09d",
     "docs/specs/assistant-message-rendering/DECISIONS.md": "0b34bde6cd51edca867d6a8bc485bc570382de4c",
     "docs/specs/assistant-message-rendering/DESIGN.md": "715fdbd52cee9aa18437e4b8616a549946226862",
-    "docs/specs/assistant-message-rendering/HISTORY.md": "1502e076049a0dfa04b89096695158a98a41b2c7",
-    "docs/specs/assistant-message-rendering/IMPLEMENTATION.md": "cf43edf9be6ab13feeaeadd5743462ac12d006b8",
+    "docs/specs/assistant-message-rendering/HISTORY.md": "2a92210bae46b9f68f4cac1c639e2273a2fce963",
+    "docs/specs/assistant-message-rendering/IMPLEMENTATION.md": "bfbd7c66d9776d187eaed21a092f5d3d73db42f8",
     "docs/specs/assistant-message-rendering/SPEC.md": "68ecb5b10c3dd45469fae4d04d8f9779db7b7520",
     "docs/specs/assistant-message-rendering/TECHNOLOGY.md": "2f286ec03572156a09c1d75a27c6197a3a2e8f67",
     "docs/specs/assistant-message-rendering/assets/assistant-chat-desktop-light.png": "f84cdc3a7bbdf4a0c92a26363610b3cb43252c97",
@@ -32,13 +32,14 @@
     "site/layouts/AssistantRouteLayout.astro": "2c606c83983bd656ba20949a7243e35e0736b2ef",
     "site/lib/assistant-render-state.test.ts": "6acd5de42b3de3a92e6c95fbcf7308495c7a6271",
     "site/lib/assistant-render-state.ts": "8d5c243cbd772bdbedec5d91c8d7752ab0a559d5",
+    "src/components/comments/hooks.ts": "5c69ea8b1b97dfea50d2645c99e90c007e007a21",
     "src/components/common/ConversationMarkdown.css": "dc7c6d0671255ec2b900db5cdf04ee1621b31fad",
     "src/components/common/ConversationMarkdown.stories.tsx": "fa5ef4f91cdb6b5453a89467ceed2895b72a4fff",
     "src/components/common/ConversationMarkdown.test.tsx": "8cc14b48b033ddb0a619dbf9cc28558137bd5db3",
     "src/components/common/ConversationMarkdown.tsx": "3225c4fe277a0dddeea8c6b0617e94b47b30e3a4",
     "src/components/common/ConversationMessageStates.stories.tsx": "7de3ba6709bbae63aaa29d275685bd299bbb8ab7",
     "src/components/common/conversation/presentation-state.test.ts": "10ca8db1befc6f8e1dfa9cc93031be4ca18a2fc5",
-    "src/components/common/conversation/presentation-state.ts": "0bc2a00850e97e05195ff851a122543637dbca38",
+    "src/components/common/conversation/presentation-state.ts": "61473038b10179a94e638b21b4f09aacd58d0c8c",
     "src/components/common/conversation/types.ts": "88df3fd36730cf622aaea2a6af4d33bb73c604f2",
     "src/components/common/markdown/components/CodeBlock.test.tsx": "0a411a70259027907d2c939e99088d931b0938b3",
     "src/components/common/markdown/components/ConversationCodeBlock.stories.tsx": "c538a4399d31484e2f1842ae6aac8717f802bc37",
@@ -60,8 +61,9 @@
     "src/lib/web-demo-scenes.ts": "258d3955eddc0d12864a0990f438769937f5a55c",
     "src/styles/markdown-code.css": "40a2a998a5d5e417800d9f4f49cdc0c29c2d235f",
     "tests/components/ClippingDetail.test.tsx": "1525ae447a0c81edc94d87afef8fa1ae7bcec92a",
+    "tests/components/CommentLogout.test.tsx": "01270fc8a679bd4495f7a71d219ee327002b83cc",
     "tests/components/KnowledgeAssistant.test.tsx": "777618eb2a3895588f6f53a07988467bfde4650b",
-    "tests/e2e/web-demo/assistant-markdown.spec.ts": "01ff72e04841c1ce86f490d93f4b22efdb52a222",
+    "tests/e2e/web-demo/assistant-markdown.spec.ts": "efdb6fb24e1d66d68c219ceaa7183cdcf5462472",
     "tests/e2e/web-demo/assistant.spec.ts": "d52a7d346db16d66934dd00e2b098b62428e4857",
     "tests/fixtures/assistant-markdown/README.md": "7024cec9ad3164fedc632a1960558d97d73778d5",
     "tests/fixtures/assistant-markdown/contract-helper.test.ts": "cc53ae25d071ffa121d7479aca631cc4a3bca21b",
@@ -81,7 +83,7 @@
     "planned": {
       "impact": "patch",
       "reasoning": "Repair assistant Markdown semantics, preserve literal user input, gate untrusted media, and retain reading/code choices across snapshots and existing UI lifecycle without changing server API or persisted message formats.",
-      "assessed_at": "2026-11-06T06:57:11.525668+00:00",
+      "assessed_at": "2026-11-06T07:33:45.173569+00:00",
       "evidence": [
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
@@ -107,13 +109,18 @@
           "path": "src/components/common/conversation/presentation-state.test.ts",
           "blob": "10ca8db1befc6f8e1dfa9cc93031be4ca18a2fc5",
           "command": "bun test --isolate tests/lib/web-demo-runtime.test.ts tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts tests/lib/clipping-web-demo.test.ts tests/components/KnowledgeAssistant.test.tsx tests/components/ClippingDetail.test.tsx site/components/AssistantMessageContent.test.tsx src/components/common/ConversationMarkdown.test.tsx src/components/common/markdown/components/ConversationCodeBlock.test.tsx src/components/common/markdown/components/ConversationImage.test.tsx src/components/common/markdown/image-policy.test.ts src/components/common/conversation/presentation-state.test.ts tests/storybook/story-boundary.test.ts tests/lib/manual-release-source.test.ts"
+        },
+        {
+          "path": "tests/components/CommentLogout.test.tsx",
+          "blob": "01270fc8a679bd4495f7a71d219ee327002b83cc",
+          "command": "bun test --isolate tests/components/CommentLogout.test.tsx src/components/common/conversation/presentation-state.test.ts"
         }
       ]
     },
     "current": {
       "impact": "patch",
       "reasoning": "Repair assistant Markdown semantics, preserve literal user input, gate untrusted media, and retain reading/code choices across snapshots and existing UI lifecycle without changing server API or persisted message formats.",
-      "assessed_at": "2026-11-06T06:57:11.525668+00:00",
+      "assessed_at": "2026-11-06T07:33:45.173569+00:00",
       "evidence": [
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
@@ -139,6 +146,11 @@
           "path": "src/components/common/conversation/presentation-state.test.ts",
           "blob": "10ca8db1befc6f8e1dfa9cc93031be4ca18a2fc5",
           "command": "bun test --isolate tests/lib/web-demo-runtime.test.ts tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts tests/lib/clipping-web-demo.test.ts tests/components/KnowledgeAssistant.test.tsx tests/components/ClippingDetail.test.tsx site/components/AssistantMessageContent.test.tsx src/components/common/ConversationMarkdown.test.tsx src/components/common/markdown/components/ConversationCodeBlock.test.tsx src/components/common/markdown/components/ConversationImage.test.tsx src/components/common/markdown/image-policy.test.ts src/components/common/conversation/presentation-state.test.ts tests/storybook/story-boundary.test.ts tests/lib/manual-release-source.test.ts"
+        },
+        {
+          "path": "tests/components/CommentLogout.test.tsx",
+          "blob": "01270fc8a679bd4495f7a71d219ee327002b83cc",
+          "command": "bun test --isolate tests/components/CommentLogout.test.tsx src/components/common/conversation/presentation-state.test.ts"
         }
       ],
       "scope_drift": {
@@ -149,7 +161,7 @@
     "verified": {
       "impact": "patch",
       "reasoning": "Repair assistant Markdown semantics, preserve literal user input, gate untrusted media, and retain reading/code choices across snapshots and existing UI lifecycle without changing server API or persisted message formats.",
-      "assessed_at": "2026-11-06T06:57:11.525668+00:00",
+      "assessed_at": "2026-11-06T07:33:45.173569+00:00",
       "evidence": [
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
@@ -175,6 +187,11 @@
           "path": "src/components/common/conversation/presentation-state.test.ts",
           "blob": "10ca8db1befc6f8e1dfa9cc93031be4ca18a2fc5",
           "command": "bun test --isolate tests/lib/web-demo-runtime.test.ts tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts tests/lib/clipping-web-demo.test.ts tests/components/KnowledgeAssistant.test.tsx tests/components/ClippingDetail.test.tsx site/components/AssistantMessageContent.test.tsx src/components/common/ConversationMarkdown.test.tsx src/components/common/markdown/components/ConversationCodeBlock.test.tsx src/components/common/markdown/components/ConversationImage.test.tsx src/components/common/markdown/image-policy.test.ts src/components/common/conversation/presentation-state.test.ts tests/storybook/story-boundary.test.ts tests/lib/manual-release-source.test.ts"
+        },
+        {
+          "path": "tests/components/CommentLogout.test.tsx",
+          "blob": "01270fc8a679bd4495f7a71d219ee327002b83cc",
+          "command": "bun test --isolate tests/components/CommentLogout.test.tsx src/components/common/conversation/presentation-state.test.ts"
         }
       ]
     }
@@ -219,6 +236,11 @@
           "path": "src/components/common/conversation/presentation-state.test.ts",
           "blob": "10ca8db1befc6f8e1dfa9cc93031be4ca18a2fc5",
           "command": "bun test --isolate tests/lib/web-demo-runtime.test.ts tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts tests/lib/clipping-web-demo.test.ts tests/components/KnowledgeAssistant.test.tsx tests/components/ClippingDetail.test.tsx site/components/AssistantMessageContent.test.tsx src/components/common/ConversationMarkdown.test.tsx src/components/common/markdown/components/ConversationCodeBlock.test.tsx src/components/common/markdown/components/ConversationImage.test.tsx src/components/common/markdown/image-policy.test.ts src/components/common/conversation/presentation-state.test.ts tests/storybook/story-boundary.test.ts tests/lib/manual-release-source.test.ts"
+        },
+        {
+          "path": "tests/components/CommentLogout.test.tsx",
+          "blob": "01270fc8a679bd4495f7a71d219ee327002b83cc",
+          "command": "bun test --isolate tests/components/CommentLogout.test.tsx src/components/common/conversation/presentation-state.test.ts"
         }
       ]
     },
@@ -253,6 +275,11 @@
           "path": "src/components/common/conversation/presentation-state.test.ts",
           "blob": "10ca8db1befc6f8e1dfa9cc93031be4ca18a2fc5",
           "command": "bun test --isolate tests/lib/web-demo-runtime.test.ts tests/lib/web-demo-fetch.test.ts tests/lib/web-demo-boundary.test.ts tests/lib/clipping-web-demo.test.ts tests/components/KnowledgeAssistant.test.tsx tests/components/ClippingDetail.test.tsx site/components/AssistantMessageContent.test.tsx src/components/common/ConversationMarkdown.test.tsx src/components/common/markdown/components/ConversationCodeBlock.test.tsx src/components/common/markdown/components/ConversationImage.test.tsx src/components/common/markdown/image-policy.test.ts src/components/common/conversation/presentation-state.test.ts tests/storybook/story-boundary.test.ts tests/lib/manual-release-source.test.ts"
+        },
+        {
+          "path": "tests/components/CommentLogout.test.tsx",
+          "blob": "01270fc8a679bd4495f7a71d219ee327002b83cc",
+          "command": "bun test --isolate tests/components/CommentLogout.test.tsx src/components/common/conversation/presentation-state.test.ts"
         }
       ]
     }

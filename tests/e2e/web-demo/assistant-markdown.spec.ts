@@ -129,6 +129,150 @@ async function footnotes(body: Locator) {
   ).toBe(true);
 }
 
+async function tabTo(page: Page, target: Locator) {
+  for (let step = 0; step < 160; step++) {
+    await page.keyboard.press("Tab");
+    if (await target.evaluate((node) => node === document.activeElement)) {
+      await expect(target).toBeFocused();
+      expect(
+        await target.evaluate((node) => {
+          const style = getComputedStyle(node);
+          return (
+            node.matches(":focus-visible") &&
+            style.outlineStyle === "solid" &&
+            Number.parseFloat(style.outlineWidth) >= 2 &&
+            style.outlineColor !== "transparent"
+          );
+        })
+      ).toBe(true);
+      return;
+    }
+  }
+  throw new Error(`Keyboard traversal did not reach ${await target.getAttribute("class")}`);
+}
+
+test("keyboard Tab Enter Space reaches code actions and real footnote backlinks with visible focus", async ({
+  page,
+}) => {
+  await open(page, "code");
+  const block = page.locator(assistantBody).locator(".conversation-code-block").first();
+  const fold = block.locator("button[aria-expanded]");
+  const source = await block.locator("code").textContent();
+  await tabTo(page, fold);
+  await page.keyboard.press("Enter");
+  await expect(fold).toHaveAttribute("aria-expanded", "false");
+  await expect(block.locator("pre")).toBeHidden();
+  await page.keyboard.press("Space");
+  await expect(fold).toHaveAttribute("aria-expanded", "true");
+  await expect(block.locator("pre")).toBeVisible();
+  await tabTo(page, block.getByRole("button", { name: "复制代码", exact: true }));
+  await page.keyboard.press("Enter");
+  await expect(block.getByRole("status")).toHaveText("代码已复制");
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { __amrClipboard: string[] }).__amrClipboard.at(-1)
+    )
+  ).toBe(source);
+  await open(page, "complete");
+  const body = page.locator(assistantBody).first();
+  const reference = body.locator("a[data-footnote-ref]");
+  await tabTo(page, reference);
+  const destination = await reference.getAttribute("href");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => new URL(page.url()).hash).toBe(destination);
+  const back = body.locator("a[data-footnote-backref]");
+  await tabTo(page, back);
+  const returnTo = await back.getAttribute("href");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => new URL(page.url()).hash).toBe(returnTo);
+  expect(await counts(page)).toEqual({ submits: 0, stops: 0 });
+});
+
+test("actual comment logout clears principal presentation through pagehide and reload while preserving other storage", async ({
+  page,
+}) => {
+  const prefix = "site-knowledge-assistant-ui:demo-admin:presentation:";
+  await page.addInitScript((scope) => {
+    Object.defineProperty(window, "__amrPresentationAtLoad", {
+      value: Object.keys(sessionStorage).filter((key) => key.startsWith(scope)),
+    });
+  }, prefix);
+  await page.goto(
+    "/posts/hello-world/?d_persona=admin&d_scene=assistant-markdown-code&d_delay=custom&d_delay_ms=2000"
+  );
+  const logout = page
+    .locator(".comment-section")
+    .getByRole("button", { name: "登出", exact: true });
+  await expect(logout).toBeVisible();
+  await page.getByTestId("assistant-fab").click();
+  const panel = page.getByTestId("assistant-panel");
+  const block = panel.locator(assistantBody).locator(".conversation-code-block").first();
+  await block.getByRole("button", { name: "折叠代码" }).click();
+  const messages = panel.getByTestId("assistant-messages");
+  await messages.evaluate((node) => {
+    node.scrollTop = 120;
+    node.dispatchEvent(new Event("scroll"));
+  });
+  expect(
+    await page.evaluate(
+      (scope) => Object.keys(sessionStorage).filter((key) => key.startsWith(scope)).length,
+      prefix
+    )
+  ).toBeGreaterThan(0);
+  await page.evaluate((scope) => {
+    sessionStorage.setItem(
+      "site-knowledge-assistant-ui:other-reader:presentation:c",
+      '{"scroll":240}'
+    );
+    sessionStorage.setItem("amr-unrelated", "keep");
+    window.addEventListener("pagehide", () => {
+      sessionStorage.setItem(
+        "amr-logout-pagehide",
+        JSON.stringify(Object.keys(sessionStorage).filter((key) => key.startsWith(scope)))
+      );
+    });
+  }, prefix);
+  // Closing hides the already-rendered panel; its MessageStream and CodeBlock stay mounted.
+  await panel.getByRole("button", { name: "关闭知识对话", exact: true }).click();
+  await logout.click();
+  expect(
+    await page.evaluate(
+      (scope) => Object.keys(sessionStorage).filter((key) => key.startsWith(scope)),
+      prefix
+    )
+  ).toEqual([]);
+  await page.waitForEvent("load");
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __amrPresentationAtLoad: string[] }).__amrPresentationAtLoad
+    )
+  ).toEqual([]);
+  expect(
+    await page.evaluate(() => JSON.parse(sessionStorage.getItem("amr-logout-pagehide") || "null"))
+  ).toEqual([]);
+  expect(
+    await page.evaluate(() =>
+      sessionStorage.getItem("site-knowledge-assistant-ui:other-reader:presentation:c")
+    )
+  ).toBe('{"scroll":240}');
+  expect(await page.evaluate(() => sessionStorage.getItem("amr-unrelated"))).toBe("keep");
+  // The mock persona reauthenticates on reload; the new document may persist presentation again.
+  await page.getByTestId("assistant-fab").click();
+  const reopened = page
+    .getByTestId("assistant-panel")
+    .locator(assistantBody)
+    .locator(".conversation-code-block")
+    .first();
+  await reopened.getByRole("button", { name: "折叠代码" }).click();
+  expect(
+    await page.evaluate(
+      (scope) => Object.keys(sessionStorage).some((key) => key.startsWith(scope)),
+      prefix
+    )
+  ).toBe(true);
+  expect(await counts(page)).toEqual({ submits: 0, stops: 0 });
+});
+
 test("official route preserves dual-role source and real footnote/ARIA isolation", async ({
   page,
 }) => {

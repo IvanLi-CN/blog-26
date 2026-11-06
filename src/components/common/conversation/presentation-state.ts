@@ -1,5 +1,29 @@
 import { createContext } from "react";
 
+const revokedPrefixes = new WeakMap<Document, Set<string>>();
+
+function isRevoked(key: string) {
+  if (typeof document === "undefined") return false;
+  return Array.from(revokedPrefixes.get(document) ?? []).some((prefix) => key.startsWith(prefix));
+}
+
+/** Revoke only this document's former principal, including still-mounted writers. */
+export function revokePrincipalPresentation(principalId: string) {
+  const prefix = `site-knowledge-assistant-ui:${principalId}:presentation:`;
+  if (typeof document !== "undefined") {
+    const prefixes = revokedPrefixes.get(document) ?? new Set<string>();
+    prefixes.add(prefix);
+    revokedPrefixes.set(document, prefixes);
+  }
+  try {
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith(prefix)) sessionStorage.removeItem(key);
+    }
+  } catch {
+    /* Revocation remains effective when storage is unavailable. */
+  }
+}
+
 export interface ConversationPresentationStore {
   read(field: string): number | boolean | undefined;
   write(field: string, value: number | boolean): void;
@@ -30,6 +54,7 @@ export function createMemoryPresentationStore(): ConversationPresentationStore {
 
 /** Bounded, principal-scoped presentation metadata only; never stores message text. */
 export function readConversationPresentation(key: string): Record<string, number | boolean> {
+  if (isRevoked(key)) return {};
   try {
     const parsed: unknown = JSON.parse(sessionStorage.getItem(key) || "{}");
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
@@ -50,6 +75,7 @@ export function readConversationPresentation(key: string): Record<string, number
   }
 }
 export function writeConversationPresentation(key: string, field: string, value: number | boolean) {
+  if (isRevoked(key)) return;
   try {
     const prefix = key.slice(0, key.lastIndexOf(":presentation:") + 14);
     const keys = Object.keys(sessionStorage).filter((candidate) => candidate.startsWith(prefix));

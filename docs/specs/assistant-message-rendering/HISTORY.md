@@ -22,6 +22,8 @@
 
 回归候选随后正常合并主线修复 `153087d422cfbbf0ba583b9ce79e5c86c484296c`，合并提交为 `f9fd1c399aa3da7397d62feab291f6ec24658ec9`。该导入修复已观察到的发布准备历史来源识别阻断，不改写本主题起始基线，也不授权发布操作。
 
+回归子 PR [#452](https://github.com/IvanLi-CN/blog-26/pull/452) 首轮审查发现真实退出路径未连接新增展示元数据清理。修复沿既定登出合同接入当前身份清理，并阻止同一旧文档的写入回填；键盘操作证据同时补齐。这是该子 PR 的首批审查修复，不新增认证、协议或服务端存储合同。
+
 ## Architectural References
 
 - [ADR 0036](../../adr/0036-assistant-generation-independent-of-ui-lifecycle.md) 约束关闭、切换及刷新时生成持续与可恢复。
