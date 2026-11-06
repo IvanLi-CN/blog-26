@@ -8,6 +8,20 @@ import type { PublicSnapshot } from "../../src/public-site/snapshot";
 import { makePublicBundle } from "./playbook-fixture";
 
 describe("public client routes", () => {
+  it("keeps verified raw bundle bytes out of every Playbook page payload", () => {
+    const { edition } = makePublicBundle();
+    const rawFiles = { catalog: "catalog-proof".repeat(1000), search: "search-proof".repeat(1000) };
+    for (const field of ["rawFiles", "legacyRawFiles"] as const) {
+      const source = { ...edition, [field]: rawFiles };
+      for (const path of ["", "topics/delivery", "projects/blog-26", "policies/safe-release"]) {
+        const payload = trimRouteEdition(source, path);
+        expect(payload).not.toHaveProperty(field);
+        expect(JSON.stringify(payload)).not.toContain("catalog-proof");
+        expect(payload?.edition).toEqual(source.edition);
+        expect(source[field]).toBe(rawFiles);
+      }
+    }
+  });
   it("keeps Playbook search bodies in the edition-bound search source, not page payloads", () => {
     const { edition } = makePublicBundle();
     expect(edition.search.documents.length).toBeGreaterThan(0);

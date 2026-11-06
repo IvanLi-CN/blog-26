@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
+import { verifyPublicArtifactBudget } from "./artifact-budget";
 import { fileDigest, sealDirectory, verifyDirectory } from "./artifacts";
 import { buildCommand, packageFrozenMedia, restoreInputs } from "./inputs";
 import type { ReleaseEntry } from "./ledger";
@@ -101,6 +102,7 @@ async function buildStaticProduct(
   )
     throw new Error("Static version endpoint differs from release identity");
   const archive = join(archiveRoot, "frontend.tar.gz");
+  await verifyPublicArtifactBudget("edgeone-dist");
   execFileSync("tar", ["-czf", resolve(archive), "-C", "edgeone-dist", "."], {
     stdio: "inherit",
   });
