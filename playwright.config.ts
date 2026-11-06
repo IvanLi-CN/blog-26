@@ -59,7 +59,8 @@ const REPORT_ROOT = process.env.PLAYWRIGHT_REPORT_ROOT || "test-results";
 const testProject = process.env.PLAYWRIGHT_TEST_PROJECT;
 const explicitTagFilter = readExplicitE2ETagFilter();
 const skipReset = process.env.PLAYWRIGHT_SKIP_RESET === "1";
-const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === "1";
+const backendOnly = testProject === "mcp";
+const skipBuild = backendOnly || process.env.PLAYWRIGHT_SKIP_BUILD === "1";
 const publicMediaImagorBaseUrl = (
   process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL || "http://127.0.0.1:18000"
 ).trim();
@@ -67,6 +68,7 @@ const publicMediaInternalSourceBaseUrl = (
   process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL || `http://host.docker.internal:${WEB_PORT}`
 ).trim();
 const shouldStartPublicMediaSidecar =
+  !backendOnly &&
   (process.env.PLAYWRIGHT_START_PUBLIC_MEDIA_SIDECAR || "1").trim() !== "0" &&
   Boolean(publicMediaImagorBaseUrl) &&
   Boolean(publicMediaInternalSourceBaseUrl);
@@ -81,7 +83,7 @@ const htmlReportDir = testProject
 const shouldManageServer = process.env.PLAYWRIGHT_DISABLE_WEBSERVER !== "1";
 const resetCommand = `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local bun run test-env:reset-fs-only`;
 const buildCommand = `VITE_WEB_DEMO_BUILD=true VITE_WEB_DEMO_E2E_FIXTURE=true DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local PUBLIC_SITE_URL=${BASE_URL} PUBLIC_API_BASE_URL=${BASE_URL} bun run build`;
-const startCommand = `NODE_ENV=production ENABLE_DEV_ENDPOINTS=true DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local PUBLIC_SITE_URL=${BASE_URL} PUBLIC_API_BASE_URL=${BASE_URL} PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET=playwright-media-source-secret PORT=${WEB_PORT} bun run console:start`;
+const startCommand = `NODE_ENV=production ENABLE_DEV_ENDPOINTS=true DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local PUBLIC_SITE_URL=${BASE_URL} PUBLIC_API_BASE_URL=${BASE_URL} PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET=playwright-media-source-secret PORT=${WEB_PORT} bun run ${backendOnly ? "gateway:start" : "console:start"}`;
 const webServerCommand = [
   skipReset ? null : resetCommand,
   skipBuild ? null : buildCommand,
@@ -159,7 +161,7 @@ export default defineConfig({
           : []),
         {
           command: webServerCommand,
-          url: BASE_URL,
+          url: backendOnly ? `${BASE_URL}/api/version` : BASE_URL,
           reuseExistingServer: process.env.PLAYWRIGHT_REUSE_EXTERNAL_SERVER === "1",
           timeout: 8 * 60 * 1000,
           env: {

@@ -316,12 +316,15 @@ async function runFull(extraArgs: string[], ciProject?: E2EProjectName) {
   await runStep("Reset test environment", ["bun", "run", "test-env:reset-fs-only"], sharedEnv);
   await ensurePathExists(E2E_DEFAULT_DB_PATH);
   await ensurePathExists(E2E_DEFAULT_LOCAL_CONTENT_PATH);
-  await runStep("Prebuild metadata", ["bun", "run", "prebuild"], sharedEnv);
-  await rm(path.resolve(process.cwd(), "site-dist"), { recursive: true, force: true });
-  await rm(path.resolve(process.cwd(), "console-dist"), { recursive: true, force: true });
-  await rm(path.resolve(process.cwd(), "admin-dist"), { recursive: true, force: true });
-  await rm(path.resolve(process.cwd(), "backend-dist"), { recursive: true, force: true });
-  await runStep("Build compiled artifacts", ["bun", "run", "build:compiled"], sharedEnv);
+  // MCP exercises the production HTTP gateway without frontend or media artifacts.
+  if (ciProject !== "mcp") {
+    await runStep("Prebuild metadata", ["bun", "run", "prebuild"], sharedEnv);
+    await rm(path.resolve(process.cwd(), "site-dist"), { recursive: true, force: true });
+    await rm(path.resolve(process.cwd(), "console-dist"), { recursive: true, force: true });
+    await rm(path.resolve(process.cwd(), "admin-dist"), { recursive: true, force: true });
+    await rm(path.resolve(process.cwd(), "backend-dist"), { recursive: true, force: true });
+    await runStep("Build compiled artifacts", ["bun", "run", "build:compiled"], sharedEnv);
+  }
 
   const shardCount = ciProject === "guest" || ciProject === "admin" ? 2 : 1;
   const runtimes = ciProject

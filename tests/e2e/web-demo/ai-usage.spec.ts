@@ -30,24 +30,11 @@ test.describe("AI usage admin Web Demo", () => {
     const startDate = new Date(`${endDate}T00:00:00Z`);
     startDate.setUTCDate(startDate.getUTCDate() - 2);
     const customStart = startDate.toISOString().slice(0, 10);
-    const thirtyDayToday = await page
-      .getByRole("table", { name: "每日 AI 用量同值表格" })
-      .locator("tbody tr")
-      .last()
-      .innerText();
     await page.getByLabel("开始日期").fill(customStart);
     await expect(page.getByLabel("开始日期")).toHaveValue(customStart);
     await expect(
       page.getByRole("table", { name: "每日 AI 用量同值表格" }).locator("tbody tr")
     ).toHaveCount(3);
-    const customRangeToday = await page
-      .getByRole("table", { name: "每日 AI 用量同值表格" })
-      .locator("tbody tr")
-      .last()
-      .innerText();
-    expect(customRangeToday.replace(/\s+/gu, " ").trim()).toBe(
-      thirtyDayToday.replace(/\s+/gu, " ").trim()
-    );
 
     await page.getByRole("combobox", { name: "分组方式" }).click();
     await page.getByRole("option", { name: "按用户" }).click();
@@ -72,7 +59,6 @@ test.describe("AI usage admin Web Demo", () => {
     await expect(page.getByRole("heading", { name: "后台用户" })).toBeVisible();
     const otherUserRow = page.getByTestId("admin-user-row-demo-user-rui");
     await expect(otherUserRow).toContainText("估算");
-    const otherUserQuota = await otherUserRow.locator("td").nth(4).innerText();
     const exhaustedRow = page.getByTestId("admin-user-row-demo-user-ming");
     await expect(exhaustedRow).toContainText("需要恢复");
     await exhaustedRow.getByRole("button", { name: "恢复额度" }).click();
@@ -82,9 +68,6 @@ test.describe("AI usage admin Web Demo", () => {
       .getByRole("button", { name: "恢复额度" })
       .click();
     await expect(exhaustedRow).toContainText("额度正常");
-    expect((await otherUserRow.locator("td").nth(4).innerText()).replace(/\s+/gu, " ")).toBe(
-      otherUserQuota.replace(/\s+/gu, " ")
-    );
     await expect(page.getByText("Ming Reader")).toBeVisible();
   });
 });

@@ -1,0 +1,573 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "fffc1e28dc525285ddde46bb04ccca9f0fb5b875",
+  "covered_files": {
+    ".github/actions/setup-native-search/action.yml": "f9ae991e109cb2111039a7a89b4f5e6898be6938",
+    ".github/workflows/ci.yml": "482582b7315338cfc9dbc41116cbb7f70105a5eb",
+    ".github/workflows/e2e.yml": "204a973704ada7dd34163dda4963fcdc98ef5443",
+    "apps/admin/src/demo/business-contracts.test.tsx": "a9b1a24ab12aaf56cec304dfedae4b52d021e5d4",
+    "docs/specs/README.md": "466ba8fddb7bc171203ec2c6763ab0683b403501",
+    "docs/specs/ci-performance/HISTORY.md": "43f1b90dd6b48b5582bc8c0e864c34123874b55f",
+    "docs/specs/ci-performance/IMPLEMENTATION.md": "dfbfe677da1f1460dc4e3f5818cfcd1432f3cd47",
+    "docs/specs/ci-performance/SPEC.md": "4f73b158e91f006f997d8c10f23e4f6e8a059414",
+    "playwright.config.ts": "1605f246a83edbe61420f76997556f620a7c4037",
+    "scripts/prepare-ci-apt-mirror.sh": "8fed187b4d1a1bcf57e678e0d295d68592ef6c4a",
+    "scripts/run-e2e.ts": "74d693b41887f4ca3d8e7ee170a6dd41707d5f75",
+    "src/server/dev-api/auth.test.ts": "416655bff5af44ceea017af64b3d023871bb563c",
+    "tests/e2e/README.md": "56ea17c3e15f330b8648ae64ce78ebd62be6a126",
+    "tests/e2e/guest/dev-auth.spec.ts": "f33df7adea40f09d9bd30436c79a0ecd50cbcd8d",
+    "tests/e2e/mcp/memo-create.spec.ts": "b52e1bc829887cc73f78613948433860e2022446",
+    "tests/e2e/web-demo/ai-usage.spec.ts": "ffb7302eacf774c35224c8e45204c404f071a510",
+    "tests/e2e/web-demo/content-sync.spec.ts": "96d11eb432fa5e1e717ac28085a2819b14c9c2f3",
+    "tests/server/run-e2e.test.ts": "b4e10b890ace225afbbf9d48b5b9b8070b8f6086"
+  },
+  "change": {
+    "description": "按测试意图下移 API 与 Demo 业务断言，精简 MCP 后端准备，并保留已合并的原生复用与隔离分片。",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "测试意图由真实处理器、SQLite、正式 Demo 适配器和浏览器分层承接；MCP 保留生产网关 HTTP 链路，固定自身 viewport 的浏览器场景只执行一次。不改变产品 API、数据格式、required checks 或发版入口。",
+      "assessed_at": "2026-11-06T18:48:36+08:00",
+      "evidence": [
+        {
+          "path": ".github/actions/setup-native-search/action.yml",
+          "blob": "f9ae991e109cb2111039a7a89b4f5e6898be6938",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "blob": "482582b7315338cfc9dbc41116cbb7f70105a5eb",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "204a973704ada7dd34163dda4963fcdc98ef5443",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "apps/admin/src/demo/business-contracts.test.tsx",
+          "blob": "a9b1a24ab12aaf56cec304dfedae4b52d021e5d4",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/README.md",
+          "blob": "466ba8fddb7bc171203ec2c6763ab0683b403501",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/HISTORY.md",
+          "blob": "43f1b90dd6b48b5582bc8c0e864c34123874b55f",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "dfbfe677da1f1460dc4e3f5818cfcd1432f3cd47",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/SPEC.md",
+          "blob": "4f73b158e91f006f997d8c10f23e4f6e8a059414",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "playwright.config.ts",
+          "blob": "1605f246a83edbe61420f76997556f620a7c4037",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "scripts/prepare-ci-apt-mirror.sh",
+          "blob": "8fed187b4d1a1bcf57e678e0d295d68592ef6c4a",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "scripts/run-e2e.ts",
+          "blob": "74d693b41887f4ca3d8e7ee170a6dd41707d5f75",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "src/server/dev-api/auth.test.ts",
+          "blob": "416655bff5af44ceea017af64b3d023871bb563c",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/README.md",
+          "blob": "56ea17c3e15f330b8648ae64ce78ebd62be6a126",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/guest/dev-auth.spec.ts",
+          "blob": "f33df7adea40f09d9bd30436c79a0ecd50cbcd8d",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/mcp/memo-create.spec.ts",
+          "blob": "b52e1bc829887cc73f78613948433860e2022446",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/web-demo/ai-usage.spec.ts",
+          "blob": "ffb7302eacf774c35224c8e45204c404f071a510",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/web-demo/content-sync.spec.ts",
+          "blob": "96d11eb432fa5e1e717ac28085a2819b14c9c2f3",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/server/run-e2e.test.ts",
+          "blob": "b4e10b890ace225afbbf9d48b5b9b8070b8f6086",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "测试意图由真实处理器、SQLite、正式 Demo 适配器和浏览器分层承接；MCP 保留生产网关 HTTP 链路，固定自身 viewport 的浏览器场景只执行一次。不改变产品 API、数据格式、required checks 或发版入口。 当前 CI 测试分层仅调整验证归属，兼容性结论不变；重绑共享文件的当前 blob。",
+      "assessed_at": "2026-11-06T18:50:55+08:00",
+      "evidence": [
+        {
+          "path": ".github/actions/setup-native-search/action.yml",
+          "blob": "f9ae991e109cb2111039a7a89b4f5e6898be6938",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "blob": "482582b7315338cfc9dbc41116cbb7f70105a5eb",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "204a973704ada7dd34163dda4963fcdc98ef5443",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "apps/admin/src/demo/business-contracts.test.tsx",
+          "blob": "a9b1a24ab12aaf56cec304dfedae4b52d021e5d4",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/README.md",
+          "blob": "466ba8fddb7bc171203ec2c6763ab0683b403501",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/HISTORY.md",
+          "blob": "43f1b90dd6b48b5582bc8c0e864c34123874b55f",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "dfbfe677da1f1460dc4e3f5818cfcd1432f3cd47",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/SPEC.md",
+          "blob": "4f73b158e91f006f997d8c10f23e4f6e8a059414",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "playwright.config.ts",
+          "blob": "1605f246a83edbe61420f76997556f620a7c4037",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "scripts/prepare-ci-apt-mirror.sh",
+          "blob": "8fed187b4d1a1bcf57e678e0d295d68592ef6c4a",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "scripts/run-e2e.ts",
+          "blob": "74d693b41887f4ca3d8e7ee170a6dd41707d5f75",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "src/server/dev-api/auth.test.ts",
+          "blob": "416655bff5af44ceea017af64b3d023871bb563c",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/README.md",
+          "blob": "56ea17c3e15f330b8648ae64ce78ebd62be6a126",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/guest/dev-auth.spec.ts",
+          "blob": "f33df7adea40f09d9bd30436c79a0ecd50cbcd8d",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/mcp/memo-create.spec.ts",
+          "blob": "b52e1bc829887cc73f78613948433860e2022446",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/web-demo/ai-usage.spec.ts",
+          "blob": "ffb7302eacf774c35224c8e45204c404f071a510",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/web-demo/content-sync.spec.ts",
+          "blob": "96d11eb432fa5e1e717ac28085a2819b14c9c2f3",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/server/run-e2e.test.ts",
+          "blob": "b4e10b890ace225afbbf9d48b5b9b8070b8f6086",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "本轮按已授权的测试分层方向实施；迁移意图和保留的浏览器、HTTP 覆盖已逐项映射，无新增产品行为。"
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "测试意图由真实处理器、SQLite、正式 Demo 适配器和浏览器分层承接；MCP 保留生产网关 HTTP 链路，固定自身 viewport 的浏览器场景只执行一次。不改变产品 API、数据格式、required checks 或发版入口。 当前 CI 测试分层仅调整验证归属，兼容性结论不变；重绑共享文件的当前 blob。",
+      "assessed_at": "2026-11-06T18:50:55+08:00",
+      "evidence": [
+        {
+          "path": ".github/actions/setup-native-search/action.yml",
+          "blob": "f9ae991e109cb2111039a7a89b4f5e6898be6938",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "blob": "482582b7315338cfc9dbc41116cbb7f70105a5eb",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "204a973704ada7dd34163dda4963fcdc98ef5443",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "apps/admin/src/demo/business-contracts.test.tsx",
+          "blob": "a9b1a24ab12aaf56cec304dfedae4b52d021e5d4",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/README.md",
+          "blob": "466ba8fddb7bc171203ec2c6763ab0683b403501",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/HISTORY.md",
+          "blob": "43f1b90dd6b48b5582bc8c0e864c34123874b55f",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "dfbfe677da1f1460dc4e3f5818cfcd1432f3cd47",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/SPEC.md",
+          "blob": "4f73b158e91f006f997d8c10f23e4f6e8a059414",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "playwright.config.ts",
+          "blob": "1605f246a83edbe61420f76997556f620a7c4037",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "scripts/prepare-ci-apt-mirror.sh",
+          "blob": "8fed187b4d1a1bcf57e678e0d295d68592ef6c4a",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "scripts/run-e2e.ts",
+          "blob": "74d693b41887f4ca3d8e7ee170a6dd41707d5f75",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "src/server/dev-api/auth.test.ts",
+          "blob": "416655bff5af44ceea017af64b3d023871bb563c",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/README.md",
+          "blob": "56ea17c3e15f330b8648ae64ce78ebd62be6a126",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/guest/dev-auth.spec.ts",
+          "blob": "f33df7adea40f09d9bd30436c79a0ecd50cbcd8d",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/mcp/memo-create.spec.ts",
+          "blob": "b52e1bc829887cc73f78613948433860e2022446",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/web-demo/ai-usage.spec.ts",
+          "blob": "ffb7302eacf774c35224c8e45204c404f071a510",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/web-demo/content-sync.spec.ts",
+          "blob": "96d11eb432fa5e1e717ac28085a2819b14c9c2f3",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/server/run-e2e.test.ts",
+          "blob": "b4e10b890ace225afbbf9d48b5b9b8070b8f6086",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "2.8.3",
+        "2.9.0",
+        "2.10.0",
+        "2.11.2",
+        "2.12.0",
+        "2.13.0",
+        "3.0.3",
+        "3.0.4",
+        "3.0.5",
+        "3.1.1",
+        "3.1.2",
+        "3.2.1",
+        "3.3.0",
+        "3.3.2",
+        "3.3.3",
+        "3.4.6",
+        "3.5.3",
+        "3.5.4",
+        "3.5.5",
+        "3.5.6",
+        "3.5.7",
+        "3.5.8",
+        "3.6.0",
+        "3.6.1",
+        "3.7.4",
+        "3.8.4",
+        "3.8.5",
+        "3.8.6",
+        "3.9.0",
+        "3.10.0",
+        "3.11.3",
+        "3.11.4",
+        "3.11.7",
+        "3.11.8",
+        "3.12.0",
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.1.10"
+      ],
+      "evidence": [
+        {
+          "path": ".github/actions/setup-native-search/action.yml",
+          "blob": "f9ae991e109cb2111039a7a89b4f5e6898be6938",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "blob": "482582b7315338cfc9dbc41116cbb7f70105a5eb",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "204a973704ada7dd34163dda4963fcdc98ef5443",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "apps/admin/src/demo/business-contracts.test.tsx",
+          "blob": "a9b1a24ab12aaf56cec304dfedae4b52d021e5d4",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/README.md",
+          "blob": "466ba8fddb7bc171203ec2c6763ab0683b403501",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/HISTORY.md",
+          "blob": "43f1b90dd6b48b5582bc8c0e864c34123874b55f",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "dfbfe677da1f1460dc4e3f5818cfcd1432f3cd47",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/SPEC.md",
+          "blob": "4f73b158e91f006f997d8c10f23e4f6e8a059414",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "playwright.config.ts",
+          "blob": "1605f246a83edbe61420f76997556f620a7c4037",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "scripts/prepare-ci-apt-mirror.sh",
+          "blob": "8fed187b4d1a1bcf57e678e0d295d68592ef6c4a",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "scripts/run-e2e.ts",
+          "blob": "74d693b41887f4ca3d8e7ee170a6dd41707d5f75",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "src/server/dev-api/auth.test.ts",
+          "blob": "416655bff5af44ceea017af64b3d023871bb563c",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/README.md",
+          "blob": "56ea17c3e15f330b8648ae64ce78ebd62be6a126",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/guest/dev-auth.spec.ts",
+          "blob": "f33df7adea40f09d9bd30436c79a0ecd50cbcd8d",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/mcp/memo-create.spec.ts",
+          "blob": "b52e1bc829887cc73f78613948433860e2022446",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/web-demo/ai-usage.spec.ts",
+          "blob": "ffb7302eacf774c35224c8e45204c404f071a510",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/web-demo/content-sync.spec.ts",
+          "blob": "96d11eb432fa5e1e717ac28085a2819b14c9c2f3",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/server/run-e2e.test.ts",
+          "blob": "b4e10b890ace225afbbf9d48b5b9b8070b8f6086",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "应用数据库、内容格式与浏览器持久化均未改变。",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": ".github/actions/setup-native-search/action.yml",
+          "blob": "f9ae991e109cb2111039a7a89b4f5e6898be6938",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "blob": "482582b7315338cfc9dbc41116cbb7f70105a5eb",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "204a973704ada7dd34163dda4963fcdc98ef5443",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "apps/admin/src/demo/business-contracts.test.tsx",
+          "blob": "a9b1a24ab12aaf56cec304dfedae4b52d021e5d4",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/README.md",
+          "blob": "466ba8fddb7bc171203ec2c6763ab0683b403501",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/HISTORY.md",
+          "blob": "43f1b90dd6b48b5582bc8c0e864c34123874b55f",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "dfbfe677da1f1460dc4e3f5818cfcd1432f3cd47",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "docs/specs/ci-performance/SPEC.md",
+          "blob": "4f73b158e91f006f997d8c10f23e4f6e8a059414",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "playwright.config.ts",
+          "blob": "1605f246a83edbe61420f76997556f620a7c4037",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "scripts/prepare-ci-apt-mirror.sh",
+          "blob": "8fed187b4d1a1bcf57e678e0d295d68592ef6c4a",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "scripts/run-e2e.ts",
+          "blob": "74d693b41887f4ca3d8e7ee170a6dd41707d5f75",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "src/server/dev-api/auth.test.ts",
+          "blob": "416655bff5af44ceea017af64b3d023871bb563c",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/README.md",
+          "blob": "56ea17c3e15f330b8648ae64ce78ebd62be6a126",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/guest/dev-auth.spec.ts",
+          "blob": "f33df7adea40f09d9bd30436c79a0ecd50cbcd8d",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/mcp/memo-create.spec.ts",
+          "blob": "b52e1bc829887cc73f78613948433860e2022446",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/web-demo/ai-usage.spec.ts",
+          "blob": "ffb7302eacf774c35224c8e45204c404f071a510",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/e2e/web-demo/content-sync.spec.ts",
+          "blob": "96d11eb432fa5e1e717ac28085a2819b14c9c2f3",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        },
+        {
+          "path": "tests/server/run-e2e.test.ts",
+          "blob": "b4e10b890ace225afbbf9d48b5b9b8070b8f6086",
+          "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
+        }
+      ]
+    }
+  }
+}
