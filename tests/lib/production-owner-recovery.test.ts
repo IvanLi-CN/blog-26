@@ -16,7 +16,8 @@ async function fixture(
     setVersion(body: string, status?: number): void;
     setPointer(body: string): void;
     removeImage(): Promise<void>;
-  }) => Promise<void>
+  }) => Promise<void>,
+  requirePinnedLabels = false
 ) {
   const contract = contractSchema.parse({
     ...contractJson,
@@ -55,7 +56,7 @@ async function fixture(
   const executable = join(root, "skopeo");
   await writeFile(
     executable,
-    `#!/usr/bin/env bun\nif(process.argv.includes("--raw"))process.stdout.write(${JSON.stringify(manifest)});else process.stdout.write(${JSON.stringify(JSON.stringify({ "org.opencontainers.image.version": prior.version, "org.opencontainers.image.revision": prior.mergeSha }))});\n`
+    `#!/usr/bin/env bun\nif(process.argv.includes("--raw"))process.stdout.write(${JSON.stringify(manifest)});else { if (${requirePinnedLabels} && process.argv.at(-1) !== ${JSON.stringify(`docker://${contract.products.image.repository}@${imageDigest}`)}) { process.stderr.write("Labels must describe the inspected immutable manifest"); process.exit(1); } process.stdout.write(${JSON.stringify(JSON.stringify({ "org.opencontainers.image.version": prior.version, "org.opencontainers.image.revision": prior.mergeSha }))}); }\n`
   );
   await chmod(executable, 0o755);
   const oldPath = process.env.PATH;
@@ -73,7 +74,9 @@ async function fixture(
   });
   globalThis.fetch = (async (url: string | URL | Request) =>
     String(url).endsWith("version.json")
-      ? new Response(versionBody, { status: versionStatus })
+      ? new Response([204, 205].includes(versionStatus) ? null : versionBody, {
+          status: versionStatus,
+        })
       : new Response(pointerBody)) as typeof fetch;
   try {
     await run({
@@ -107,6 +110,21 @@ test("empty version metadata recovers only with matching completed image and ren
     await expect(check()).resolves.toBeUndefined();
   });
 });
+
+test("ownership labels are read from the exact inspected manifest digest", async () => {
+  await fixture(async ({ check }) => {
+    await expect(check()).resolves.toBeUndefined();
+  }, true);
+});
+
+for (const status of [201, 204, 205, 206]) {
+  test(`empty HTTP ${status} metadata cannot enter HTTP 200 recovery`, async () => {
+    await fixture(async ({ check, setVersion }) => {
+      setVersion("", status);
+      await expect(check()).rejects.toThrow();
+    });
+  });
+}
 
 test("empty metadata cannot authorize an unknown renderer", async () => {
   await fixture(async ({ check, setPointer }) => {

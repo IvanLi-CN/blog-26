@@ -206,7 +206,7 @@ export async function assertProductionOwner(
                 registryAuth(),
                 "--format",
                 "{{json .Labels}}",
-                `docker://${image}`,
+                `docker://${github.contract.products.image.repository}@${imageDigest}`,
               ],
               { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
             )
@@ -236,6 +236,8 @@ export async function assertProductionOwner(
       const metadata = publicVersionSchema.parse(JSON.parse(body));
       accept(metadata.productVersion, metadata.sourceSha);
     } else {
+      if (response.status !== 200)
+        throw new Error("Empty static metadata recovery requires HTTP 200");
       const prior = ledger.entries.find(
         (item) =>
           item.stage === "complete" &&

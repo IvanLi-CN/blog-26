@@ -44,4 +44,4 @@
 
 ## 空静态版本元数据的归属恢复
 
-`assertProductionOwner()` 仅对 HTTP 200 的零字节版本正文启用恢复：核验镜像实际 digest 与标签、已完成且已验证 latest 的正式登记、同源 Playbook renderer，再复用版本单调性检查。`production-owner-recovery.test.ts` 覆盖成功路径与摘要、renderer、登记阶段、latest、缺失镜像、损坏 JSON、较新产品和 bootstrap 边界。生产部署和页面正文仍须独立验收。
+`assertProductionOwner()` 仅对 HTTP 200 的零字节版本正文启用恢复：核验镜像实际 digest 与从同一 digest 固定引用读取的标签、已完成且已验证 latest 的正式登记、同源 Playbook renderer，再复用版本单调性检查。`production-owner-recovery.test.ts` 覆盖成功路径与摘要、renderer、登记阶段、latest、缺失镜像、损坏 JSON、较新产品和 bootstrap 边界。标签固定引用和 HTTP 201/204/205/206 拒绝路径也有回归覆盖。生产部署和页面正文仍须独立验收。
