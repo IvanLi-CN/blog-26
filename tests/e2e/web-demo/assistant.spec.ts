@@ -264,8 +264,15 @@ test.describe("Knowledge Assistant Web Demo", () => {
       page.getByTestId("assistant-message-assistant").filter({ hasText: "根据公开知识库" })
     ).toBeVisible();
     const assistantMessage = page.getByTestId("assistant-message-assistant").last();
-    await expect(assistantMessage.locator("strong")).toContainText("文章");
-    await expect(assistantMessage.locator("ul")).toBeVisible();
+    const body = assistantMessage.locator("[data-message-body]");
+    await expect(body).toHaveCount(1);
+    await expect(body.locator("strong")).toHaveText(["文章", "项目", "方法"]);
+    await expect(body.locator("ul")).toHaveCount(1);
+    await expect(body.locator("ul > li")).toHaveText([
+      "文章：先确认相关原文和上下文。",
+      "项目：再核对实现边界与验证证据。",
+      "方法：最后沉淀为可复用的工作步骤。",
+    ]);
     await expect(page.getByRole("list", { name: "回答来源" }).first()).toBeVisible();
 
     const conversationId = new URL(page.url()).searchParams.get("conversation");

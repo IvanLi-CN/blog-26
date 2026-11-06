@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { ClippingDetail as ClippingWebDemo } from "../../site/components/ClippingWebDemo";
 import {
   type ClippingArticle,
   type ClippingChat,
@@ -38,6 +39,182 @@ const transport: ClippingTransport = {
 afterEach(() => cleanup());
 
 describe("ClippingDetail", () => {
+  test("retains code folding across desktop and mobile panel remounts", async () => {
+    const original = window.matchMedia;
+    let desktop = true;
+    let changed = () => undefined;
+    window.matchMedia = ((query: string) => ({
+      matches: desktop,
+      media: query,
+      addEventListener: (_event: string, listener: () => undefined) => {
+        changed = listener;
+      },
+      removeEventListener: () => undefined,
+    })) as typeof window.matchMedia;
+    const code = `\`\`\`js\n${"const saved = true;\n".repeat(30)}\`\`\``;
+    const snapshot: ClippingChat = {
+      conversationId: "mobile-fold",
+      messages: [{ id: "question", role: "user", text: "继续", timestamp: 1 }],
+      partial: code,
+      generating: true,
+    };
+    let emit: ((value: ClippingChat) => void) | undefined;
+    try {
+      const view = render(
+        <ClippingDetail
+          slug="mobile-fold"
+          initialArticle={{ ...article, canDiscuss: true }}
+          initialCanDiscuss
+          live
+          transport={{
+            request: async <T,>(path: string) =>
+              (path === "chat" ? snapshot : { ...article, canDiscuss: true }) as T,
+            subscribe: (listener) => {
+              emit = listener;
+              listener(snapshot);
+              return () => undefined;
+            },
+          }}
+        />
+      );
+      await waitFor(() => expect(view.getByRole("button", { name: "折叠代码" })).toBeTruthy());
+      const identity = view
+        .getByRole("button", { name: "折叠代码" })
+        .closest("[data-message-id]")
+        ?.getAttribute("data-message-id");
+      fireEvent.click(view.getByRole("button", { name: "折叠代码" }));
+      await act(async () => {
+        desktop = false;
+        changed();
+      });
+      expect(view.getByTestId("clipping-open-chat")).toBeTruthy();
+      await act(async () =>
+        emit?.({
+          ...snapshot,
+          generating: false,
+          partial: "",
+          messages: [
+            ...snapshot.messages,
+            { id: "backend-terminal", role: "assistant", text: code, timestamp: 2 },
+          ],
+        })
+      );
+      await act(async () => {
+        desktop = true;
+        changed();
+      });
+      await waitFor(() => expect(view.getByRole("button", { name: "展开代码" })).toBeTruthy());
+      expect(
+        view
+          .getByRole("button", { name: "展开代码" })
+          .closest("[data-message-id]")
+          ?.getAttribute("data-message-id")
+      ).toBe(identity);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  test("keeps the Web Demo static fallback noninteractive for an admin scene", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/memos/memo-web-demo-1181/?d_persona=admin&d_scene=assistant-markdown-complete"
+    );
+    try {
+      const view = render(<ClippingWebDemo slug="memo-web-demo-1181" initialArticle={article} />);
+      await act(async () => await Promise.resolve());
+      expect(view.queryByTestId("clipping-open-chat")).toBeNull();
+      expect(view.queryByTestId("clipping-chat")).toBeNull();
+    } finally {
+      window.history.replaceState({}, "", "/");
+    }
+  });
+
+  test("preserves readable failed and cancelled terminal message statuses", async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(min-width: 1280px)",
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as typeof window.matchMedia;
+    try {
+      const asset = `assets/${"a".repeat(64)}.png`;
+      const root = "/api/public/memos/test/clipping/resources/version/";
+      const imageChat: ClippingChat = {
+        messages: [
+          {
+            id: "image",
+            role: "assistant",
+            text: `![捕获](${asset})\n\n![HTTP](http://untrusted.invalid/image.png)`,
+            timestamp: 1,
+          },
+        ],
+        generating: false,
+        partial: "",
+      };
+      const imageArticle = { ...article, canDiscuss: true, resourceBaseUrl: root };
+      const imageView = render(
+        <ClippingDetail
+          slug="image"
+          initialArticle={imageArticle}
+          initialCanDiscuss
+          live
+          transport={{
+            request: async <T,>(path: string) => (path === "chat" ? imageChat : imageArticle) as T,
+            subscribe: (listener) => {
+              listener(imageChat);
+              return () => undefined;
+            },
+          }}
+        />
+      );
+      await waitFor(() =>
+        expect(imageView.container.querySelector("img")?.getAttribute("src")).toBe(
+          root + asset.slice("assets/".length)
+        )
+      );
+      expect(imageView.container.querySelector('img[src^="http://untrusted"]')).toBeNull();
+      imageView.unmount();
+      for (const status of ["failed", "cancelled"] as const) {
+        const snapshot: ClippingChat = {
+          messages: [
+            { id: "terminal", role: "assistant", text: "**保留正文**", timestamp: 1, status },
+          ],
+          partial: "",
+          generating: false,
+          error: status === "cancelled" ? "已停止生成" : "生成失败",
+          errorCode: status,
+        };
+        const chatArticle = { ...article, canDiscuss: true };
+        const view = render(
+          <ClippingDetail
+            slug="status-test"
+            initialArticle={chatArticle}
+            initialCanDiscuss
+            live
+            transport={{
+              request: async <T,>(path: string) => (path === "chat" ? snapshot : chatArticle) as T,
+              subscribe: (listener) => {
+                listener(snapshot);
+                return () => undefined;
+              },
+            }}
+          />
+        );
+        await waitFor(() => {
+          const body = view.container.querySelector(`[data-message-status="${status}"]`);
+          expect(body?.textContent).toContain("保留正文");
+          expect(body?.querySelector("strong")).not.toBeNull();
+        });
+        view.unmount();
+      }
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
   test("shows the saved Memo body immediately when the parent content changes", async () => {
     const view = render(
       <ClippingDetail

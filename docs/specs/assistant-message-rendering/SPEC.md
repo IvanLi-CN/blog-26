@@ -182,3 +182,12 @@
 ![移动端深色完整聊天页面](./assets/assistant-chat-mobile-dark.png)
 
 来源：构建时隔离的 Web Demo 正式 `/chat` 路由，`assistant-ready` 场景、普通用户 mock 身份；桌面视口为 1440×1000 CSS px，移动端视口为 393×852 CSS px，后者捕获完整纵向页面以展示输入框。用户消息中的星号保留为字面文本，助手粗体和列表正常解析，来源位于正文之外。两张截图包含响应式触控区域修正，已经主人确认准确并同意纳入本轮 PR；不包含真实模型回答或私人数据。页面证据不替代最终生成生命周期、受限媒体网络请求与 Console 入口回归。
+
+
+### 正式聊天路由完整格式
+
+![桌面完整格式](./assets/assistant-formats-desktop-light.png)
+
+![移动端完整格式](./assets/assistant-formats-mobile-dark.png)
+
+来源：隔离 Web Demo 的正式 `/chat` 路由、`assistant-markdown-complete` 场景与管理员 mock 身份。同一 fixture 在用户消息中保留字面语法，在两条助手消息中解析，以同时检查角色分流与脚注隔离。桌面请求视口为 1440×1000 CSS px，移动端为 393×852 CSS px；图片捕获完整纵向内容。表格保持直角，引用采用左侧竖线，脚注回跳为透明 SVG 图标操作。两张截图已经主人确认准确并同意纳入本轮 PR；不包含真实对话或私人数据，也不代替资源请求、生成及导航状态的端到端验收。

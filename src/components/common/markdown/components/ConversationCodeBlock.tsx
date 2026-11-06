@@ -1,11 +1,24 @@
 "use client";
 
 import type { Element, Root } from "hast";
-import { createElement, useId, useMemo, useRef, useState } from "react";
+import {
+  createElement,
+  useContext,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import rehypeHighlight from "rehype-highlight";
 import { unified } from "unified";
 import type { ConversationCodeBlockProps } from "../../conversation/types";
 import "@/styles/markdown-code.css";
+
+import {
+  ConversationPresentationContext,
+  type ConversationPresentationStore,
+} from "../../conversation/presentation-state";
 
 const highlighter = unified().use(rehypeHighlight, { detect: false, ignoreMissing: true });
 
@@ -45,6 +58,23 @@ function highlightSource(source: string, language?: string) {
 
 /** The caller establishes block identity from the Markdown AST/pre, even without a language. */
 export function ConversationCodeBlock({ source, language, className }: ConversationCodeBlockProps) {
+  const store = useContext(ConversationPresentationContext);
+  const root = useRef<HTMLDivElement>(null);
+  const persistence = useRef<{ store: ConversationPresentationStore; field: string } | null>(null);
+  useLayoutEffect(() => {
+    persistence.current = null;
+    const element = root.current;
+    const message = element?.closest<HTMLElement>("[data-message-id]");
+    if (!element || !store || !message) {
+      setExpanded(true);
+      return;
+    }
+    const index = Array.from(message.querySelectorAll(".conversation-code-block")).indexOf(element);
+    const field = `code:${message.dataset.messageId}:${index}`;
+    persistence.current = { store, field };
+    const saved = store.read(field);
+    setExpanded(typeof saved === "boolean" ? saved : true);
+  }, [store]);
   const highlighted = useMemo(() => highlightSource(source, language), [source, language]);
   const [expanded, setExpanded] = useState(true);
   const [copy, setCopy] = useState<{
@@ -70,6 +100,7 @@ export function ConversationCodeBlock({ source, language, className }: Conversat
 
   return (
     <div
+      ref={root}
       data-markdown-surface="public"
       className={["conversation-code-block", className].filter(Boolean).join(" ")}
     >
@@ -80,7 +111,13 @@ export function ConversationCodeBlock({ source, language, className }: Conversat
             type="button"
             aria-expanded={expanded}
             aria-controls={contentId}
-            onClick={() => setExpanded((value) => !value)}
+            onClick={() =>
+              setExpanded((value) => {
+                const saved = persistence.current;
+                if (saved) saved.store.write(saved.field, !value);
+                return !value;
+              })
+            }
           >
             {expanded ? "折叠代码" : "展开代码"}
           </button>

@@ -18,6 +18,10 @@
 
 本轮交付父 PR 为 [#431](https://github.com/IvanLi-CN/blog-26/pull/431)，仅到待审停靠点；子 PR 经验证后只合入 `th/assistant-message-rendering`。当前没有 `main` 合并、release 或部署授权，也没有相应完成结论。
 
+集成子 PR [#447](https://github.com/IvanLi-CN/blog-26/pull/447) 已合入交付父分支，实际合并提交为 `611c391bf186d23adffb664ab16c8df856e33d6e`。后续回归基于该提交，并以正常合并导入当时主线 `7157cef20462682e5771c5d5953e504a5fa30f9d`；导入主线不代表本主题获准合入主线或发布。
+
+回归候选随后正常合并主线修复 `153087d422cfbbf0ba583b9ce79e5c86c484296c`，合并提交为 `f9fd1c399aa3da7397d62feab291f6ec24658ec9`。该导入修复已观察到的发布准备历史来源识别阻断，不改写本主题起始基线，也不授权发布操作。
+
 ## Architectural References
 
 - [ADR 0036](../../adr/0036-assistant-generation-independent-of-ui-lifecycle.md) 约束关闭、切换及刷新时生成持续与可恢复。

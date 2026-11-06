@@ -46,6 +46,12 @@ import {
   type WebDemoScene,
   waitForWebDemoRequest,
 } from "./web-demo-runtime";
+import {
+  assistantMarkdownFinalStep,
+  assistantMarkdownMessages,
+  assistantMarkdownSnapshot,
+  isAssistantMarkdownScene,
+} from "./web-demo-scenes";
 
 const consoleWebDemoStore = createConsoleWebDemoStore();
 const demoRuntimeMotionReads = new Map<string, number>();
@@ -82,6 +88,7 @@ function prepareDemoRuntimeMotion() {
 type DemoAssistantRecord = {
   scene: WebDemoScene;
   isSeed: boolean;
+  markdownStep?: number;
   conversation: AssistantConversation;
   messages: AssistantMessage[];
   generationJob: AssistantGenerationJob | null;
@@ -181,7 +188,20 @@ function ensureDemoAssistantResetListener() {
   demoAssistantResetWindow = window;
   window.addEventListener(WEB_DEMO_ACTION_EVENT, (event) => {
     const action = (event as CustomEvent<{ action?: string }>).detail?.action;
+    if (action === "simulate-save") {
+      for (const record of demoAssistantRecords.values()) {
+        if (
+          record.scene !== "assistant-markdown-incremental" ||
+          record.generationJob?.status !== "running"
+        )
+          continue;
+        record.markdownStep = Math.min((record.markdownStep ?? 0) + 1, assistantMarkdownFinalStep);
+        applyDemoMarkdownSnapshot(record);
+      }
+      persistDemoAssistantState();
+    }
     if (action === "reset-state") {
+      window.sessionStorage.removeItem("web-demo-assistant-request-log");
       clearDemoAssistantState();
       persistDemoAssistantState();
     }
@@ -343,9 +363,54 @@ function demoAssistantRecord(
     messages: withHistory ? [userMessage, assistantMessage] : [],
     generationJob: withHistory ? generationJob : null,
   };
+  const markdown = withHistory ? assistantMarkdownMessages(scene) : null;
+  if (markdown) {
+    record.messages = markdown.map((entry, index) => ({
+      ...assistantMessage,
+      ...entry,
+      id: index === markdown.length - 1 ? assistantMessage.id : `${recordId}-markdown-${index}`,
+      sequence: index + 1,
+      citations: entry.role === "assistant" ? assistantMessage.citations : [],
+    }));
+    if (
+      ![
+        "assistant-markdown-complete",
+        "assistant-markdown-code",
+        "assistant-markdown-safety",
+      ].includes(scene)
+    )
+      applyDemoMarkdownSnapshot(record);
+  }
   demoAssistantRecords.set(recordId, record);
   persistDemoAssistantState();
   return record;
+}
+
+function applyDemoMarkdownSnapshot(record: DemoAssistantRecord) {
+  const message = record.messages.find(
+    (entry) => entry.id === record.generationJob?.assistantMessageId
+  );
+  if (!message || !isAssistantMarkdownScene(record.scene)) return;
+  const snapshot = assistantMarkdownSnapshot(record.scene, record.markdownStep ?? 0);
+  message.content = snapshot.content;
+  message.status = snapshot.status;
+  message.completedAt = snapshot.status === "streaming" ? null : Date.now();
+  message.updatedAt = Date.now();
+  if (record.generationJob) {
+    record.generationJob.status =
+      snapshot.status === "streaming"
+        ? "running"
+        : snapshot.status === "pending"
+          ? "queued"
+          : snapshot.status;
+    record.generationJob.errorCode =
+      snapshot.status === "failed"
+        ? "provider-error"
+        : snapshot.status === "cancelled"
+          ? "cancelled-by-user"
+          : null;
+    record.generationJob.finishedAt = snapshot.status === "streaming" ? null : Date.now();
+  }
 }
 
 function demoAssistantSnapshot(record: DemoAssistantRecord) {
@@ -1172,6 +1237,21 @@ function getDemoAssistantResponse(
   init?: RequestInit
 ) {
   ensureDemoAssistantResetListener();
+  try {
+    const log = JSON.parse(window.sessionStorage.getItem("web-demo-assistant-request-log") || "[]");
+    log.push({
+      method,
+      path: url.pathname,
+      conversationId: url.searchParams.get("conversation"),
+      body: method === "POST" ? readDemoRequestBody(init) : null,
+    });
+    window.sessionStorage.setItem(
+      "web-demo-assistant-request-log",
+      JSON.stringify(log.slice(-500))
+    );
+  } catch {
+    /* Request diagnostics must not prevent the mock transport. */
+  }
   if (!getWebDemoSiteFeatureState().serviceEnabled) {
     return jsonResponse({ error: "站点助手功能未启用", code: "FEATURE_DISABLED" }, 404);
   }
@@ -1302,6 +1382,20 @@ function getDemoAssistantResponse(
         `${record.conversation.id}-assistant-${sequence + 1}`
       ),
     };
+    if (isAssistantMarkdownScene(scene)) {
+      const snapshot = assistantMarkdownSnapshot(scene, 0);
+      assistantMessage.content =
+        assistantMarkdownMessages(scene)?.at(-1)?.content ?? snapshot.content;
+      assistantMessage.status =
+        scene === "assistant-markdown-incremental"
+          ? "streaming"
+          : scene === "assistant-markdown-failed"
+            ? "failed"
+            : scene === "assistant-markdown-stopped"
+              ? "cancelled"
+              : "completed";
+      record.markdownStep = 0;
+    }
     record.messages.push(userMessage, assistantMessage);
     record.conversation.lastUserMessageAt = now;
     record.generationJob = {
@@ -1325,6 +1419,18 @@ function getDemoAssistantResponse(
       createdAt: now,
       updatedAt: now,
     };
+    if (isAssistantMarkdownScene(scene)) {
+      const status = assistantMessage.status;
+      record.generationJob.status =
+        status === "streaming" ? "running" : status === "pending" ? "queued" : status;
+      record.generationJob.errorCode =
+        status === "failed"
+          ? "provider-error"
+          : status === "cancelled"
+            ? "cancelled-by-user"
+            : null;
+      record.generationJob.finishedAt = status === "streaming" ? null : now + 1;
+    }
     const submission: DemoAssistantSubmission = {
       status: "queued",
       conversationId: record.conversation.id,

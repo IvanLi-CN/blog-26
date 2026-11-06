@@ -15,7 +15,14 @@ import {
 } from "react";
 import CommentSectionWithProvider from "@/components/comments/CommentSectionWithProvider";
 import { ConversationMarkdown } from "@/components/common/ConversationMarkdown";
-import type { ConversationImageResourceContext } from "@/components/common/conversation/types";
+import {
+  ConversationPresentationContext,
+  createMemoryPresentationStore,
+} from "@/components/common/conversation/presentation-state";
+import type {
+  ConversationImageResourceContext,
+  ConversationMessageStatus,
+} from "@/components/common/conversation/types";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import "./clipping-admin.css";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -28,11 +35,18 @@ import { AssistantMessageContent } from "../../../site/components/AssistantMessa
 import "./ClippingDetail.css";
 
 export type ClippingChat = {
-  messages: Array<{ id: string; role: "user" | "assistant"; text: string; timestamp: number }>;
+  messages: Array<{
+    id: string;
+    role: "user" | "assistant";
+    text: string;
+    timestamp: number;
+    status?: ConversationMessageStatus;
+  }>;
   generating: boolean;
   partial: string;
   conversationId?: string | null;
   error?: string | null;
+  errorCode?: string | null;
 };
 export type ClippingArticle = {
   reading: ClippingReading;
@@ -104,6 +118,7 @@ function ChatPanel({
   error,
   scroll,
   resourceContext,
+  messageIdentity,
 }: {
   snapshot: ClippingChat;
   draft: string;
@@ -113,18 +128,18 @@ function ChatPanel({
   error: string | null;
   scroll: MutableRefObject<number>;
   resourceContext?: ConversationImageResourceContext;
+  messageIdentity: Map<string, string>;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const pinned = useRef(scroll.current === 0);
   const presentationId = useId().replace(/:/g, "");
-  const messageIdentity = useRef(new Map<string, string>());
   const stableMessageId = (role: "user" | "assistant", index: number, backendId?: string) => {
     const conversationKey = snapshot.conversationId ?? "legacy-clipping";
     const identityKey = `${conversationKey}:${role}:${index}`;
-    const existing = messageIdentity.current.get(identityKey);
+    const existing = messageIdentity.get(identityKey);
     if (existing) return existing;
     const identity = backendId ?? `${conversationKey}:${role}:${index}:pending`;
-    messageIdentity.current.set(identityKey, identity);
+    messageIdentity.set(identityKey, identity);
     return identity;
   };
   const lastUserIndex = snapshot.messages.findLastIndex((message) => message.role === "user");
@@ -150,14 +165,14 @@ function ChatPanel({
     messageId: string;
     role: "user" | "assistant";
     content: string;
-    status: "streaming" | "completed" | "failed";
+    status: ConversationMessageStatus;
     pending: boolean;
   };
   const rows: ChatRow[] = snapshot.messages.map((message, index) => ({
     messageId: stableMessageId(message.role, index, message.id),
     role: message.role,
     content: message.text,
-    status: "completed",
+    status: message.status ?? "completed",
     pending: false,
   }));
   if (showPendingRow && (snapshot.partial || snapshot.generating)) {
@@ -165,7 +180,14 @@ function ChatPanel({
       messageId: pendingMessageId,
       role: "assistant",
       content: snapshot.partial,
-      status: snapshot.error ? "failed" : snapshot.generating ? "streaming" : "completed",
+      status:
+        snapshot.errorCode === "cancelled"
+          ? "cancelled"
+          : snapshot.error
+            ? "failed"
+            : snapshot.generating
+              ? "streaming"
+              : "completed",
       pending: true,
     });
   }
@@ -351,7 +373,13 @@ export function ClippingDetail({
             resolveAuthorizedImage: (src) => {
               const mapped = mapClippingResourceUrl(src, article.resourceBaseUrl);
               if (mapped === src) return null;
-              return { src: mapped.startsWith("/api/") ? toPublicApiUrl(mapped) : mapped };
+              const resolved = mapped.startsWith("/api/") ? toPublicApiUrl(mapped) : mapped;
+              if (typeof window !== "undefined") {
+                const url = new URL(resolved, window.location.origin);
+                if (url.origin === window.location.origin)
+                  return { src: `${url.pathname}${url.search}${url.hash}` };
+              }
+              return { src: resolved };
             },
           }
         : undefined,
@@ -497,17 +525,32 @@ export function ClippingDetail({
       setBusy(false);
     }
   }
+  const presentationIdentity = JSON.stringify([slug, snapshot.conversationId, canDiscuss]);
+  const presentationState = useRef({
+    identity: presentationIdentity,
+    store: createMemoryPresentationStore(),
+    messageIdentity: new Map<string, string>(),
+  });
+  if (presentationState.current.identity !== presentationIdentity)
+    presentationState.current = {
+      identity: presentationIdentity,
+      store: createMemoryPresentationStore(),
+      messageIdentity: new Map<string, string>(),
+    };
   const chat = (
-    <ChatPanel
-      snapshot={snapshot}
-      draft={draft}
-      setDraft={setDraft}
-      send={() => void send()}
-      sending={sending}
-      error={chatError}
-      scroll={scroll}
-      resourceContext={conversationResourceContext}
-    />
+    <ConversationPresentationContext.Provider value={presentationState.current.store}>
+      <ChatPanel
+        snapshot={snapshot}
+        draft={draft}
+        setDraft={setDraft}
+        send={() => void send()}
+        sending={sending}
+        error={chatError}
+        scroll={scroll}
+        resourceContext={conversationResourceContext}
+        messageIdentity={presentationState.current.messageIdentity}
+      />
+    </ConversationPresentationContext.Provider>
   );
   const managementActions =
     canDiscuss && live ? (

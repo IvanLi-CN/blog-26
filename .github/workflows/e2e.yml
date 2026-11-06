@@ -143,16 +143,6 @@ jobs:
           WEB_DEMO_VIEWPORT: mobile
           WEB_DEMO_TEST_REPORT: test-results/web-demo-console-boundary-mobile.json
 
-      - name: Stop Console Web Demo preview
-        if: always()
-        run: |
-          if [ -f /tmp/blog-26-web-demo.pid ]; then
-            kill "$(cat /tmp/blog-26-web-demo.pid)" || true
-          fi
-          if [ -f /tmp/blog-26-web-demo.log ]; then
-            tail -n 200 /tmp/blog-26-web-demo.log
-          fi
-
       - name: Start public Web Demo preview
         run: |
           WEB_DEMO_MODE=public WEB_DEMO_PORT=38211 bun scripts/preview-web-demo.ts > /tmp/blog-26-public-web-demo.log 2>&1 &
@@ -179,6 +169,13 @@ jobs:
           WEB_DEMO_VIEWPORT: mobile
           WEB_DEMO_TEST_REPORT: test-results/web-demo-public-routes-mobile.json
 
+      - name: Run assistant Markdown official routes
+        run: bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/assistant-markdown.spec.ts
+        env:
+          WEB_DEMO_TEST_URL: http://127.0.0.1:38211
+          WEB_DEMO_CONSOLE_TEST_URL: http://127.0.0.1:38210
+          WEB_DEMO_TEST_REPORT: test-results/web-demo-assistant-markdown.json
+
       - name: Stop public Web Demo preview
         if: always()
         run: |
@@ -187,4 +184,14 @@ jobs:
           fi
           if [ -f /tmp/blog-26-public-web-demo.log ]; then
             tail -n 200 /tmp/blog-26-public-web-demo.log
+          fi
+
+      - name: Stop Console Web Demo preview
+        if: always()
+        run: |
+          if [ -f /tmp/blog-26-web-demo.pid ]; then
+            kill "$(cat /tmp/blog-26-web-demo.pid)" || true
+          fi
+          if [ -f /tmp/blog-26-web-demo.log ]; then
+            tail -n 200 /tmp/blog-26-web-demo.log
           fi
