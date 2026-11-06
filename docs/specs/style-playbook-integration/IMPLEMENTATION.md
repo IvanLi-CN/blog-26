@@ -145,3 +145,5 @@ REQ-PBI-018/019/020 的实现使用统一状态接口、共享目标目录、001
 ![桌面覆盖状态未知](./assets/content-sync-rag-unavailable-desktop.png)
 
 ![手机覆盖状态未知](./assets/content-sync-rag-unavailable-mobile.png)
+
+覆盖回归同时使用真实快照重启 fixture 与 `src/server/services/rag-index.test.ts` 的状态服务测试：Embedding 未配置时仍保留内容和分块总量、目标身份，所有分类计数、覆盖率及目标状态均为 `null`，原因保持 `embedding-unconfigured`。
