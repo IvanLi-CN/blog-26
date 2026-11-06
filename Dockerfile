@@ -1,172 +1,35 @@
 # syntax=docker/dockerfile:1.7
-
-ARG BUN_BUILD_IMAGE=oven/bun:1
-ARG BUN_RUNTIME_IMAGE=oven/bun:1-slim
-FROM rust:1.91-bookworm AS search-native
-WORKDIR /native/search
-COPY native/search/Cargo.toml native/search/Cargo.lock native/search/build.rs ./
-COPY native/search/src ./src
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/native/search/target \
-    cargo build --release --locked && cp target/release/libblog_search.so /search.linux-x64.node
-FROM ${BUN_BUILD_IMAGE} AS deps
+# This file only packages a verified native runtime bundle. Use image:prepare first.
+ARG BUN_DONOR_IMAGE=oven/bun:1.4.2
+ARG RUNTIME_IMAGE=ubuntu:24.04
+FROM ${BUN_DONOR_IMAGE} AS bun-donor
+FROM ${RUNTIME_IMAGE} AS runtime
 WORKDIR /app
-COPY package.json bun.lock ./
-
-# Speed up dependency install with BuildKit cache; keep it cacheable across builds
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile
-
-# Optional Playwright installation (disabled by default for production builds)
 ARG WITH_PLAYWRIGHT=false
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-RUN mkdir -p /ms-playwright
+RUN test "$WITH_PLAYWRIGHT" = false || { echo 'Container browser/build mode is unsupported; provide a native runtime bundle' >&2; exit 2; }
 RUN --mount=type=cache,target=/var/cache/apt \
     --mount=type=cache,target=/var/lib/apt \
-    if [ "$WITH_PLAYWRIGHT" = "true" ]; then \
-      apt-get update && apt-get install -y --no-install-recommends \
-        curl \
-        ca-certificates \
-        libnss3 \
-        libatk1.0-0 \
-        libatk-bridge2.0-0 \
-        libcups2 \
-        libdrm2 \
-        libxss1 \
-        libgconf-2-4 \
-        libxcomposite1 \
-        libxrandr2 \
-        libasound2 \
-        libpangocairo-1.0-0 \
-        libgtk-3-0 \
-        libgbm1 \
-      && rm -rf /var/lib/apt/lists/*; \
-    fi
-RUN if [ "$WITH_PLAYWRIGHT" = "true" ]; then \
-      timeout 1200 bunx playwright install chromium --force; \
-    fi
-# Expensive media encoding depends only on source images, recipe and encoder.
-FROM ${BUN_BUILD_IMAGE} AS project-media
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY scripts/project-media-cache.ts scripts/generate-project-poster-assets.ts scripts/generate-project-social-preview-assets.ts ./scripts/
-COPY site/lib/project-poster-media.ts site/lib/project-social-preview-media.ts ./site/lib/
-COPY site/assets/projects/posters-source ./site/assets/projects/posters-source
-COPY site/assets/projects/social-source ./site/assets/projects/social-source
-RUN bun scripts/generate-project-poster-assets.ts && bun scripts/generate-project-social-preview-assets.ts
-
-FROM ${BUN_BUILD_IMAGE} AS builder
-WORKDIR /app
-ARG BUILD_DATE
-ARG COMMIT_HASH
-ARG COMMIT_SHORT_HASH
-ARG REPOSITORY_URL
-ARG BRANCH_NAME
-ARG BRANCH_URL
-ARG PUBLIC_API_BASE_URL
-ARG PUBLIC_SITE_URL
-ARG PUBLIC_SITE_BASE_PATH
-ARG PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=true
-ARG PUBLIC_CONTENT_BUNDLE_URL=preloaded
-ARG PLAYBOOK_USE_DEPLOYED=false
-ARG PLAYBOOK_REQUIRED=false
-ARG PLAYBOOK_EDITION_INPUT_PATH=
-ARG PLAYBOOK_BUNDLE_DIR=
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /ms-playwright /ms-playwright
-COPY . .
-COPY --from=project-media /app/.cache/project-media/v1 ./.cache/project-media/v1
-COPY --from=search-native /search.linux-x64.node ./native/search/search.linux-x64.node
-ENV BUILD_DATE=${BUILD_DATE}
-ENV COMMIT_HASH=${COMMIT_HASH}
-ENV COMMIT_SHORT_HASH=${COMMIT_SHORT_HASH}
-ENV REPOSITORY_URL=${REPOSITORY_URL}
-ENV BRANCH_NAME=${BRANCH_NAME}
-ENV BRANCH_URL=${BRANCH_URL}
-ENV PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL}
-ENV PUBLIC_SITE_URL=${PUBLIC_SITE_URL}
-ENV PUBLIC_SITE_BASE_PATH=${PUBLIC_SITE_BASE_PATH}
-ENV PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${PUBLIC_ASSISTANT_LAUNCHER_DEFAULT}
-ENV PUBLIC_CONTENT_BUNDLE_URL=${PUBLIC_CONTENT_BUNDLE_URL}
-ENV PLAYBOOK_USE_DEPLOYED=${PLAYBOOK_USE_DEPLOYED}
-ENV PLAYBOOK_REQUIRED=${PLAYBOOK_REQUIRED}
-ENV PLAYBOOK_EDITION_INPUT_PATH=${PLAYBOOK_EDITION_INPUT_PATH}
-ENV PLAYBOOK_BUNDLE_DIR=${PLAYBOOK_BUNDLE_DIR}
-ENV NODE_ENV=production
-ENV TSC_COMPILE_ON_ERROR=1
-# Build the public site, backend runtime bundle, and admin SPA in-image.
-RUN bun run prebuild && bun run build:compiled
-FROM ${BUN_RUNTIME_IMAGE} AS app-image-built
-WORKDIR /app
-ARG DRIZZLE_ORM_VERSION=0.44.2
-ARG PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=true
-RUN --mount=type=cache,target=/var/cache/apt \
-    --mount=type=cache,target=/var/lib/apt \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-      curl \
-      ca-certificates \
-      sqlite3 \
-      gosu && \
+    apt-get update && apt-get install -y --no-install-recommends \
+      curl ca-certificates sqlite3 gosu libstdc++6 libgcc-s1 libatomic1 && \
     rm -rf /var/lib/apt/lists/*
+COPY --from=bun-donor /usr/local/bin/bun /usr/local/bin/bun
 ENV NODE_ENV=production
 ENV BIND_HOST=0.0.0.0
 ENV PORT=25090
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 ENV SERVE_PUBLIC_SITE=false
 ENV PUBLIC_CORS_ALLOWED_ORIGINS=https://ivanli.cc
-ENV PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${PUBLIC_ASSISTANT_LAUNCHER_DEFAULT}
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder /app/backend-dist/ ./
-COPY --from=builder /app/admin-dist ./admin-dist
-COPY --from=builder /app/console-dist ./console-dist
-COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh && \
-    mkdir -p /app/data /app/admin-dist /app/console-dist && \
-    chmod -R a+rX /app && \
-    chown -R 0:0 /app && \
-    chmod 2775 /app/data
+ENV PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=true
+# Dependency bytes stay in their own layer across application/identity changes.
+COPY --chown=0:0 deps/node_modules ./node_modules
+COPY --chown=0:0 app/ ./
+RUN mkdir -p /app/data && chmod 2775 /app/data && test -x ./docker-entrypoint.sh
 EXPOSE 25090
 HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
     CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
 ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["bun", "run", "console:start"]
 
-# Prebuilt target: use prebuilt backend/admin artifacts from build outputs
-FROM ${BUN_RUNTIME_IMAGE} AS app-image-prebuilt
-WORKDIR /app
-ARG DRIZZLE_ORM_VERSION=0.44.2
-ARG PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=true
-RUN --mount=type=cache,target=/var/cache/apt \
-    --mount=type=cache,target=/var/lib/apt \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-      curl \
-      ca-certificates \
-      sqlite3 \
-      gosu && \
-    rm -rf /var/lib/apt/lists/*
-ENV NODE_ENV=production
-ENV BIND_HOST=0.0.0.0
-ENV PORT=25090
-ENV NODE_OPTIONS=--dns-result-order=ipv4first
-ENV SERVE_PUBLIC_SITE=false
-ENV PUBLIC_CORS_ALLOWED_ORIGINS=https://ivanli.cc
-ENV PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${PUBLIC_ASSISTANT_LAUNCHER_DEFAULT}
-COPY --from=deps /app/node_modules ./node_modules
-COPY backend-dist/ ./
-COPY admin-dist ./admin-dist
-COPY console-dist ./console-dist
-COPY docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh && \
-    mkdir -p /app/data /app/admin-dist /app/console-dist && \
-    chmod -R a+rX /app && \
-    chown -R 0:0 /app && \
-    chmod 2775 /app/data
-EXPOSE 25090
-HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
-    CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
-ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["bun", "run", "console:start"]
+# Historical target names are packaging-only aliases, without build fallbacks.
+FROM runtime AS app-image-built
+FROM runtime AS app-image-prebuilt

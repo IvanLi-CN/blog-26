@@ -4,7 +4,7 @@
   "base_sha": "fffc1e28dc525285ddde46bb04ccca9f0fb5b875",
   "covered_files": {
     ".github/actions/setup-native-search/action.yml": "f9ae991e109cb2111039a7a89b4f5e6898be6938",
-    ".github/workflows/ci.yml": "61b2164fba1e2c89527417fc1852484e37ac907a",
+    ".github/workflows/ci.yml": "0fc02f297c626e37582929cd05c922206cbb25b8",
     ".github/workflows/e2e.yml": "7cf3f961a260675a925d4878f5d23a3780996052",
     "docs/specs/README.md": "466ba8fddb7bc171203ec2c6763ab0683b403501",
     "docs/specs/ci-performance/HISTORY.md": "f1cf0b9ece1d37cef8c918f2944f52666ee56d4a",
@@ -16,7 +16,21 @@
     "tests/e2e/README.md": "56ea17c3e15f330b8648ae64ce78ebd62be6a126",
     "tests/server/run-e2e.test.ts": "b4e10b890ace225afbbf9d48b5b9b8070b8f6086",
     "docs/adr/0042-native-runtime-bundle-and-thin-image.md": "6a6676bcf2ca9ce82ef76437e93e58a22afc9a45",
-    "tests/ci/performance-probe.test.ts": "4ebae2a678877bad0f0add33aac984a1b15ff422"
+    "tests/ci/performance-probe.test.ts": "4ebae2a678877bad0f0add33aac984a1b15ff422",
+    ".github/workflows/product-release.yml": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
+    "Dockerfile": "bc3079db7be8dd828cc79e86b8903f2f28fc07d8",
+    "bun.lock": "df9f7a07ba98e556db2513d96051fb3327c61282",
+    "docs/version-impact/ci-performance.json": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
+    "package.json": "361c4aa76567a8fe6cdb2870088e50e98188f406",
+    "scripts/docker-build.sh": "50d3e5d6123f34087baa4dfdcd60c42c6b7c3d37",
+    "scripts/image.ts": "78fac1e1c5398e4dea7d0fb72778142f4d2eda4c",
+    "scripts/runtime-bundle.ts": "31c26cf13309dd0a4288100219d8290da04bd932",
+    "src/lib/release/inputs.ts": "cac8d41be61502bd325bee33cf308b68965c8a37",
+    "src/lib/release/products.ts": "e80ab690a7bdde65ee4a39d6ab9d21965c7502d0",
+    "tests/ci/native-image-workflow.test.ts": "b72f76f9f84046ea008d1d066e7e2189eddb0bfd",
+    "tests/ci/prepare-release-fixture.ts": "fcc4c2dff7bdbed1177ab139098ebc42d877f831",
+    "tests/lib/playbook-workflows.test.ts": "5e5a784a47d6a4b2277b3b19ffab4d0c30a6fc3c",
+    "tests/lib/runtime-bundle.test.ts": "c3f2abb5a796fed003449a30422d34f7755327d9"
   },
   "change": {
     "description": "在完整验证与 runner total 不增加的约束下缩短 CI 关键路径，覆盖原生编译复用和隔离分片。",
@@ -81,30 +95,100 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "61b2164fba1e2c89527417fc1852484e37ac907a",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "blob": "0fc02f297c626e37582929cd05c922206cbb25b8",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
-          "path": "docs/specs/ci-performance/SPEC.md",
-          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "path": ".github/workflows/product-release.yml",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "Dockerfile",
+          "blob": "bc3079db7be8dd828cc79e86b8903f2f28fc07d8",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "bun.lock",
+          "blob": "df9f7a07ba98e556db2513d96051fb3327c61282",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "docs/adr/0042-native-runtime-bundle-and-thin-image.md",
           "blob": "6a6676bcf2ca9ce82ef76437e93e58a22afc9a45",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "docs/specs/ci-performance/SPEC.md",
+          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "docs/version-impact/ci-performance.json",
+          "blob": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "package.json",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/docker-build.sh",
+          "blob": "50d3e5d6123f34087baa4dfdcd60c42c6b7c3d37",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/image.ts",
+          "blob": "78fac1e1c5398e4dea7d0fb72778142f4d2eda4c",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/runtime-bundle.ts",
+          "blob": "31c26cf13309dd0a4288100219d8290da04bd932",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "src/lib/release/products.ts",
+          "blob": "e80ab690a7bdde65ee4a39d6ab9d21965c7502d0",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/ci/native-image-workflow.test.ts",
+          "blob": "b72f76f9f84046ea008d1d066e7e2189eddb0bfd",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "tests/ci/performance-probe.test.ts",
           "blob": "4ebae2a678877bad0f0add33aac984a1b15ff422",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/ci/prepare-release-fixture.ts",
+          "blob": "fcc4c2dff7bdbed1177ab139098ebc42d877f831",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/lib/playbook-workflows.test.ts",
+          "blob": "5e5a784a47d6a4b2277b3b19ffab4d0c30a6fc3c",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/lib/runtime-bundle.test.ts",
+          "blob": "c3f2abb5a796fed003449a30422d34f7755327d9",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         }
       ]
     },
     "current": {
       "impact": "patch",
       "reasoning": "完整覆盖不变；精确原生模块缓存、独立检查提前调度、guest/admin 独立运行时分片和 Web Demo 同 runner 并行，不改变产品接口、状态格式、required check 集合或发版入口。 当前 CI 测试分层仅调整验证归属，兼容性结论不变；重绑共享文件的当前 blob。",
-      "assessed_at": "2026-11-06T13:25:17+00:00",
+      "assessed_at": "2026-11-07T00:40:00+08:00",
       "evidence": [
         {
           "path": ".github/actions/setup-native-search/action.yml",
@@ -158,28 +242,98 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "61b2164fba1e2c89527417fc1852484e37ac907a",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "blob": "0fc02f297c626e37582929cd05c922206cbb25b8",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
-          "path": "docs/specs/ci-performance/SPEC.md",
-          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "path": ".github/workflows/product-release.yml",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "Dockerfile",
+          "blob": "bc3079db7be8dd828cc79e86b8903f2f28fc07d8",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "bun.lock",
+          "blob": "df9f7a07ba98e556db2513d96051fb3327c61282",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "docs/adr/0042-native-runtime-bundle-and-thin-image.md",
           "blob": "6a6676bcf2ca9ce82ef76437e93e58a22afc9a45",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "docs/specs/ci-performance/SPEC.md",
+          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "docs/version-impact/ci-performance.json",
+          "blob": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "package.json",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/docker-build.sh",
+          "blob": "50d3e5d6123f34087baa4dfdcd60c42c6b7c3d37",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/image.ts",
+          "blob": "78fac1e1c5398e4dea7d0fb72778142f4d2eda4c",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/runtime-bundle.ts",
+          "blob": "31c26cf13309dd0a4288100219d8290da04bd932",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "src/lib/release/products.ts",
+          "blob": "e80ab690a7bdde65ee4a39d6ab9d21965c7502d0",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/ci/native-image-workflow.test.ts",
+          "blob": "b72f76f9f84046ea008d1d066e7e2189eddb0bfd",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "tests/ci/performance-probe.test.ts",
           "blob": "4ebae2a678877bad0f0add33aac984a1b15ff422",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/ci/prepare-release-fixture.ts",
+          "blob": "fcc4c2dff7bdbed1177ab139098ebc42d877f831",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/lib/playbook-workflows.test.ts",
+          "blob": "5e5a784a47d6a4b2277b3b19ffab4d0c30a6fc3c",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/lib/runtime-bundle.test.ts",
+          "blob": "c3f2abb5a796fed003449a30422d34f7755327d9",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         }
       ],
       "scope_drift": {
         "detected": false,
-        "description": "共享构建文件增加已校验的图片中间缓存，产品 API、持久化、图片质量及测试门禁保持兼容；重绑当前 blob。"
+        "description": "原生 runtime bundle 与薄镜像只改变构建和发布产物边界；产品 API、持久化、图片交付及 required 覆盖保持兼容。"
       }
     },
     "verified": {
@@ -239,23 +393,93 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "61b2164fba1e2c89527417fc1852484e37ac907a",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "blob": "0fc02f297c626e37582929cd05c922206cbb25b8",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
-          "path": "docs/specs/ci-performance/SPEC.md",
-          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "path": ".github/workflows/product-release.yml",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "Dockerfile",
+          "blob": "bc3079db7be8dd828cc79e86b8903f2f28fc07d8",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "bun.lock",
+          "blob": "df9f7a07ba98e556db2513d96051fb3327c61282",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "docs/adr/0042-native-runtime-bundle-and-thin-image.md",
           "blob": "6a6676bcf2ca9ce82ef76437e93e58a22afc9a45",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "docs/specs/ci-performance/SPEC.md",
+          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "docs/version-impact/ci-performance.json",
+          "blob": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "package.json",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/docker-build.sh",
+          "blob": "50d3e5d6123f34087baa4dfdcd60c42c6b7c3d37",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/image.ts",
+          "blob": "78fac1e1c5398e4dea7d0fb72778142f4d2eda4c",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/runtime-bundle.ts",
+          "blob": "31c26cf13309dd0a4288100219d8290da04bd932",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "src/lib/release/products.ts",
+          "blob": "e80ab690a7bdde65ee4a39d6ab9d21965c7502d0",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/ci/native-image-workflow.test.ts",
+          "blob": "b72f76f9f84046ea008d1d066e7e2189eddb0bfd",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "tests/ci/performance-probe.test.ts",
           "blob": "4ebae2a678877bad0f0add33aac984a1b15ff422",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/ci/prepare-release-fixture.ts",
+          "blob": "fcc4c2dff7bdbed1177ab139098ebc42d877f831",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/lib/playbook-workflows.test.ts",
+          "blob": "5e5a784a47d6a4b2277b3b19ffab4d0c30a6fc3c",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/lib/runtime-bundle.test.ts",
+          "blob": "c3f2abb5a796fed003449a30422d34f7755327d9",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         }
       ]
     }
@@ -331,23 +555,93 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "61b2164fba1e2c89527417fc1852484e37ac907a",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "blob": "0fc02f297c626e37582929cd05c922206cbb25b8",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
-          "path": "docs/specs/ci-performance/SPEC.md",
-          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "path": ".github/workflows/product-release.yml",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "Dockerfile",
+          "blob": "bc3079db7be8dd828cc79e86b8903f2f28fc07d8",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "bun.lock",
+          "blob": "df9f7a07ba98e556db2513d96051fb3327c61282",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "docs/adr/0042-native-runtime-bundle-and-thin-image.md",
           "blob": "6a6676bcf2ca9ce82ef76437e93e58a22afc9a45",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "docs/specs/ci-performance/SPEC.md",
+          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "docs/version-impact/ci-performance.json",
+          "blob": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "package.json",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/docker-build.sh",
+          "blob": "50d3e5d6123f34087baa4dfdcd60c42c6b7c3d37",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/image.ts",
+          "blob": "78fac1e1c5398e4dea7d0fb72778142f4d2eda4c",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/runtime-bundle.ts",
+          "blob": "31c26cf13309dd0a4288100219d8290da04bd932",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "src/lib/release/products.ts",
+          "blob": "e80ab690a7bdde65ee4a39d6ab9d21965c7502d0",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/ci/native-image-workflow.test.ts",
+          "blob": "b72f76f9f84046ea008d1d066e7e2189eddb0bfd",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "tests/ci/performance-probe.test.ts",
           "blob": "4ebae2a678877bad0f0add33aac984a1b15ff422",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/ci/prepare-release-fixture.ts",
+          "blob": "fcc4c2dff7bdbed1177ab139098ebc42d877f831",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/lib/playbook-workflows.test.ts",
+          "blob": "5e5a784a47d6a4b2277b3b19ffab4d0c30a6fc3c",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/lib/runtime-bundle.test.ts",
+          "blob": "c3f2abb5a796fed003449a30422d34f7755327d9",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         }
       ]
     },
@@ -410,23 +704,93 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "61b2164fba1e2c89527417fc1852484e37ac907a",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "blob": "0fc02f297c626e37582929cd05c922206cbb25b8",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
-          "path": "docs/specs/ci-performance/SPEC.md",
-          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "path": ".github/workflows/product-release.yml",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "Dockerfile",
+          "blob": "bc3079db7be8dd828cc79e86b8903f2f28fc07d8",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "bun.lock",
+          "blob": "df9f7a07ba98e556db2513d96051fb3327c61282",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "docs/adr/0042-native-runtime-bundle-and-thin-image.md",
           "blob": "6a6676bcf2ca9ce82ef76437e93e58a22afc9a45",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "docs/specs/ci-performance/SPEC.md",
+          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "docs/version-impact/ci-performance.json",
+          "blob": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "package.json",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/docker-build.sh",
+          "blob": "50d3e5d6123f34087baa4dfdcd60c42c6b7c3d37",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/image.ts",
+          "blob": "78fac1e1c5398e4dea7d0fb72778142f4d2eda4c",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "scripts/runtime-bundle.ts",
+          "blob": "31c26cf13309dd0a4288100219d8290da04bd932",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "src/lib/release/inputs.ts",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "src/lib/release/products.ts",
+          "blob": "e80ab690a7bdde65ee4a39d6ab9d21965c7502d0",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/ci/native-image-workflow.test.ts",
+          "blob": "b72f76f9f84046ea008d1d066e7e2189eddb0bfd",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
           "path": "tests/ci/performance-probe.test.ts",
           "blob": "4ebae2a678877bad0f0add33aac984a1b15ff422",
-          "command": "bun run check; bun test tests/ci/performance-probe.test.ts"
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/ci/prepare-release-fixture.ts",
+          "blob": "fcc4c2dff7bdbed1177ab139098ebc42d877f831",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/lib/playbook-workflows.test.ts",
+          "blob": "5e5a784a47d6a4b2277b3b19ffab4d0c30a6fc3c",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
+        },
+        {
+          "path": "tests/lib/runtime-bundle.test.ts",
+          "blob": "c3f2abb5a796fed003449a30422d34f7755327d9",
+          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         }
       ]
     }

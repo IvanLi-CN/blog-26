@@ -7,7 +7,11 @@ import { writePublicEdition } from "../../src/lib/playbook/artifacts";
 import { readPlaybookEdition } from "../../src/lib/playbook/bundle";
 import { encodeJson } from "../../src/lib/playbook/manifest";
 import { sealDirectory } from "../../src/lib/release/artifacts";
-import { buildCommand, frozenConfigSchema } from "../../src/lib/release/inputs";
+import {
+  buildCommand,
+  frozenConfigSchema,
+  nativeReleaseBaseImage,
+} from "../../src/lib/release/inputs";
 import { entrySchema } from "../../src/lib/release/ledger";
 import { canonicalJson, digest } from "../../src/lib/release/policy";
 import { imageVersionTag } from "../../src/lib/release/version";
@@ -71,31 +75,23 @@ const entry = entrySchema.parse({
   updatedAt: "2026-10-07T00:00:00Z",
 });
 await writeFile(resolve(work, "entry.json"), canonicalJson(entry));
-function baseImage(tag: string) {
-  try {
-    const cached = execFileSync(
-      "docker",
-      ["image", "inspect", tag, "--format", "{{index .RepoDigests 0}}"],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
-    ).trim();
-    if (/^oven\/bun@sha256:[a-f0-9]{64}$/.test(cached)) return cached;
-  } catch {
-    /* A fixture can reuse its verified local digest; acquisition is only needed when absent. */
-  }
-  execFileSync("docker", ["pull", "--platform", "linux/amd64", tag], { stdio: "inherit" });
-  return execFileSync("docker", ["image", "inspect", tag, "--format", "{{index .RepoDigests 0}}"], {
-    encoding: "utf8",
-  }).trim();
-}
 const config = frozenConfigSchema.parse({
-  schemaVersion: 1,
+  schemaVersion: 2,
   identity: entry.id,
   productVersion: version,
   sourceSha,
   buildDate: entry.createdAt,
   bunVersion: "1.4.2",
   nodeVersion: "v22.23.2",
-  baseImages: { build: baseImage("oven/bun:1.4.2"), runtime: baseImage("oven/bun:1.4.2-slim") },
+  baseImages: {
+    build: nativeReleaseBaseImage("oven/bun:1.4.2"),
+    runtime: nativeReleaseBaseImage("ubuntu:24.04"),
+  },
+  nativeBuild: {
+    platform: "ubuntu-24.04-amd64-glibc-2.39",
+    recipe: "native-runtime-v1",
+    rustVersion: "1.91.0",
+  },
   env: {
     PUBLIC_API_BASE_URL: "https://console.ivanli.cc",
     PUBLIC_SITE_URL: "https://ivanli.cc",

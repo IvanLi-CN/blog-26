@@ -16,6 +16,10 @@ on:
     types: [checks_requested]
   workflow_dispatch:
     inputs:
+      export_runtime_bundle:
+        description: Export this exact verified native runtime bundle for local packaging
+        type: boolean
+        default: false
       performance_probe:
         description: Measure the complete CI workload without the independent release-version matrix
         type: boolean
@@ -43,7 +47,7 @@ jobs:
   frozen-product-smoke:
     name: Frozen Product Smoke (${{ matrix.version }})
     if: github.event_name == 'workflow_dispatch' && !inputs.project_media_cache_proof && !inputs.performance_probe && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/th/release-')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -310,7 +314,7 @@ jobs:
   docker:
     # Keep the historical job name to avoid breaking required check contexts.
     name: Build and Push Docker Image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: >-
       github.event_name == 'pull_request' ||
       github.event_name == 'workflow_dispatch' ||
@@ -319,6 +323,16 @@ jobs:
     permissions:
       contents: read
     timeout-minutes: 45
+    env:
+      DB_PATH: ./test-data/sqlite.db
+      LOCAL_CONTENT_BASE_PATH: ./test-data/local
+      CONTENT_SOURCES: local
+      PUBLIC_API_BASE_URL: https://console.ivanli.cc
+      PUBLIC_SITE_URL: https://ivanli.cc
+      PUBLIC_SITE_BASE_PATH: /
+      PUBLIC_ASSISTANT_LAUNCHER_DEFAULT: "true"
+      PUBLIC_CONTENT_BUNDLE_URL: preloaded
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -327,6 +341,11 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
 
       - name: Cache Bun & deps
         uses: actions/cache@v6
@@ -340,6 +359,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - uses: ./.github/actions/setup-native-search
+      - uses: ./.github/actions/setup-project-media
 
       - name: Prepare local-only fixture data
         run: bun run test-env:reset-fs-only
@@ -357,9 +379,6 @@ jobs:
           PUBLIC_API_BASE_URL: https://ivanli.cc
           PUBLIC_SITE_URL: https://ivanli.cc
           PUBLIC_SITE_BASE_PATH: /
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -379,19 +398,27 @@ jobs:
           echo "branch_name=${ref_name}" >> "$GITHUB_OUTPUT"
           echo "branch_url=https://github.com/${{ github.repository }}/tree/${ref_name}" >> "$GITHUB_OUTPUT"
 
-      - name: Read drizzle-orm version from package.json
-        id: pkg
+      - name: Prepare and verify native runtime bundle
+        id: bundle
         shell: bash
+        env:
+          COMMIT_HASH: ${{ steps.git-info.outputs.commit_hash }}
+          COMMIT_SHORT_HASH: ${{ steps.git-info.outputs.commit_short_hash }}
+          BUILD_DATE: ${{ steps.git-info.outputs.build_date }}
+          BRANCH_NAME: ${{ steps.git-info.outputs.branch_name }}
+          BRANCH_URL: ${{ steps.git-info.outputs.branch_url }}
+          REPOSITORY_URL: ${{ steps.git-info.outputs.repository_url }}
         run: |
           set -euo pipefail
-          ver=$(node -e "const p=require('./package.json'); const v=(p.dependencies&&p.dependencies['drizzle-orm'])||(p.devDependencies&&p.devDependencies['drizzle-orm'])||''; process.stdout.write(String(v||'').replace(/^\D+/,''));")
-          echo "drizzle_version=${ver}" >> $GITHUB_OUTPUT
+          bun run image:prepare --profile ci --output "$RUNNER_TEMP/runtime-bundle"
+          bun run image:verify --profile ci --source-sha "$COMMIT_HASH" --output "$RUNNER_TEMP/runtime-bundle"
+          bun -e 'const m=await Bun.file(process.env.RUNNER_TEMP+"/runtime-bundle/manifest.json").json(); const h=new Bun.CryptoHasher("sha256").update(JSON.stringify(m.baseImages)).digest("hex"); console.log("scope=thin-runtime-v1-ubuntu24-amd64-"+h); console.log("config_digest="+m.configDigest)' >> "$GITHUB_OUTPUT"
 
       - name: Build Docker image for validation
         uses: docker/build-push-action@v7
         with:
-          context: .
-          file: ./Dockerfile
+          context: ${{ runner.temp }}/runtime-bundle
+          file: ${{ runner.temp }}/runtime-bundle/Dockerfile
           target: app-image-built
           platforms: ${{ env.PLATFORMS }}
           push: false
@@ -400,26 +427,28 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ steps.git-info.outputs.commit_hash }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-          build-args: |
-            BUILD_DATE=${{ steps.git-info.outputs.build_date }}
-            COMMIT_HASH=${{ steps.git-info.outputs.commit_hash }}
-            COMMIT_SHORT_HASH=${{ steps.git-info.outputs.commit_short_hash }}
-            REPOSITORY_URL=${{ steps.git-info.outputs.repository_url }}
-            BRANCH_NAME=${{ steps.git-info.outputs.branch_name }}
-            BRANCH_URL=${{ steps.git-info.outputs.branch_url }}
-            PUBLIC_API_BASE_URL=https://console.ivanli.cc
-            PUBLIC_SITE_URL=https://ivanli.cc
-            PUBLIC_SITE_BASE_PATH=/
-            PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=true
-            PUBLIC_CONTENT_BUNDLE_URL=preloaded
-            WITH_PLAYWRIGHT=false
-            DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ steps.bundle.outputs.scope }}
+          cache-to: type=gha,mode=min,scope=${{ steps.bundle.outputs.scope }}
 
-      - name: Verify project media Docker layer invalidation
+      - name: Verify native bundle and thin image invalidation
         if: github.event_name == 'workflow_dispatch' && inputs.project_media_cache_proof
-        run: bun scripts/verify-project-media-docker-cache.ts
+        run: bun scripts/verify-runtime-bundle-cache.ts
+        env:
+          BUILD_ARTIFACT_DIR: ${{ runner.temp }}/runtime-bundle
+          EXPECTED_SOURCE_SHA: ${{ steps.git-info.outputs.commit_hash }}
+          EXPECTED_CONFIG_DIGEST: ${{ steps.bundle.outputs.config_digest }}
+
+      - name: Archive explicitly requested local packaging input
+        if: github.event_name == 'workflow_dispatch' && inputs.export_runtime_bundle
+        run: tar -czf "$RUNNER_TEMP/runtime-bundle.tar.gz" -C "$RUNNER_TEMP/runtime-bundle" .
+      - name: Export verified native runtime bundle
+        if: github.event_name == 'workflow_dispatch' && inputs.export_runtime_bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: runtime-bundle-${{ github.sha }}-ci-ubuntu24-amd64
+          path: ${{ runner.temp }}/runtime-bundle.tar.gz
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Smoke test single-image runtime
         shell: bash

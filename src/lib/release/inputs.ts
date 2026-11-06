@@ -35,7 +35,7 @@ export function resolveReleaseMediaDownloadConcurrency(
   return value;
 }
 
-export const frozenConfigSchema = z
+const frozenConfigV1Schema = z
   .object({
     schemaVersion: z.literal(1),
     identity: z.string(),
@@ -53,6 +53,28 @@ export const frozenConfigSchema = z
     env: z.record(z.string(), z.string()),
   })
   .strict();
+const frozenConfigV2Schema = frozenConfigV1Schema
+  .extend({
+    schemaVersion: z.literal(2),
+    baseImages: z
+      .object({
+        build: z.string().regex(/^oven\/bun@sha256:[a-f0-9]{64}$/),
+        runtime: z.string().regex(/^ubuntu@sha256:[a-f0-9]{64}$/),
+      })
+      .strict(),
+    nativeBuild: z
+      .object({
+        platform: z.literal("ubuntu-24.04-amd64-glibc-2.39"),
+        recipe: z.literal("native-runtime-v1"),
+        rustVersion: z.literal("1.91.0"),
+      })
+      .strict(),
+  })
+  .strict();
+export const frozenConfigSchema = z.discriminatedUnion("schemaVersion", [
+  frozenConfigV1Schema,
+  frozenConfigV2Schema,
+]);
 export type FrozenConfig = z.infer<typeof frozenConfigSchema>;
 const publicEnvNames = [
   "PUBLIC_API_BASE_URL",
@@ -278,6 +300,21 @@ function baseImage(tag: string): string {
   return value;
 }
 
+export function nativeReleaseBaseImage(tag: "ubuntu:24.04" | "oven/bun:1.4.2"): string {
+  const index = JSON.parse(
+    execFileSync("docker", ["buildx", "imagetools", "inspect", tag, "--raw"], { encoding: "utf8" })
+  );
+  const manifest = index.manifests?.find(
+    (item: { platform?: { os?: string; architecture?: string; variant?: string } }) =>
+      item.platform?.os === "linux" &&
+      item.platform.architecture === "amd64" &&
+      !item.platform.variant
+  );
+  if (!manifest || !/^sha256:[a-f0-9]{64}$/.test(manifest.digest))
+    throw new Error("Native platform base image digest is missing");
+  return `${tag === "ubuntu:24.04" ? "ubuntu" : "oven/bun"}@${manifest.digest}`;
+}
+
 export async function freezeInputs(entry: ReleaseEntry, root: string): Promise<void> {
   if (!entry.mergeSha || entry.stage !== "merged")
     throw new Error("Only a registered merged source can freeze external inputs");
@@ -388,15 +425,32 @@ export async function freezeInputs(entry: ReleaseEntry, root: string): Promise<v
     throw new Error(
       "All release media must be frozen; an oversized external asset prevents release"
     );
+  // Current compatibility tooling may run against a historical frozen source.
+  // That checkout must keep its original recipe; only native-bundle sources freeze v2.
+  const nativeRecipe = (await import("node:fs")).existsSync("scripts/runtime-bundle.ts");
   const config = frozenConfigSchema.parse({
-    schemaVersion: 1,
+    schemaVersion: nativeRecipe ? 2 : 1,
     identity: entry.id,
     productVersion: entry.version,
     sourceSha: entry.mergeSha,
     buildDate: entry.createdAt,
     bunVersion: "1.4.2",
     nodeVersion: "v22.23.2",
-    baseImages: { build: baseImage("oven/bun:1.4.2"), runtime: baseImage("oven/bun:1.4.2-slim") },
+    baseImages: nativeRecipe
+      ? {
+          build: nativeReleaseBaseImage("oven/bun:1.4.2"),
+          runtime: nativeReleaseBaseImage("ubuntu:24.04"),
+        }
+      : { build: baseImage("oven/bun:1.4.2"), runtime: baseImage("oven/bun:1.4.2-slim") },
+    ...(nativeRecipe
+      ? {
+          nativeBuild: {
+            platform: "ubuntu-24.04-amd64-glibc-2.39",
+            recipe: "native-runtime-v1",
+            rustVersion: "1.91.0",
+          },
+        }
+      : {}),
     env,
   });
   await writeFile(join(root, "config.json"), `${canonicalJson(config)}\n`);
