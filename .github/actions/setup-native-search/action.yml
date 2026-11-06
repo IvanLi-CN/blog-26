@@ -6,7 +6,7 @@ runs:
     - name: Identify runner image
       id: platform
       shell: bash
-      run: echo "image=${ImageOS:?Missing hosted runner image identity}" >> "$GITHUB_OUTPUT"
+      run: echo "image=${ImageOS:?Missing hosted runner image family}-${ImageVersion:?Missing hosted runner image version}" >> "$GITHUB_OUTPUT"
     - name: Restore native search module
       id: native
       uses: actions/cache@v6

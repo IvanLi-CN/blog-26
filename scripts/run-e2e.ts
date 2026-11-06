@@ -206,6 +206,19 @@ export async function prepareProjectRuntime(
 
 const allocatedPorts = new Set<number>();
 
+export function getCiProjectSelectionArgs(
+  project: E2EProjectName,
+  shard: { index: number; total: number }
+) {
+  if (project === "guest" && shard.total === 2) {
+    // This matrix accounts for roughly half the guest runtime, despite having few tests.
+    return shard.index === 1
+      ? ["mobile-reading-surface\\.spec\\.ts$"]
+      : ["^(?!.*mobile-reading-surface\\.spec\\.ts$).*$"];
+  }
+  return ["--fully-parallel", `--shard=${shard.index}/${shard.total}`];
+}
+
 async function prepareIsolatedRuntimes(projects: E2EProjectName[]) {
   const runtimeRoot = path.resolve(process.cwd(), "tmp/e2e-projects");
   await rm(runtimeRoot, { recursive: true, force: true });
@@ -258,10 +271,7 @@ function runProject(projectRuntime: ProjectRuntime, extraArgs: string[]) {
         "--project",
         projectRuntime.project,
         ...(projectRuntime.shard
-          ? [
-              "--fully-parallel",
-              `--shard=${projectRuntime.shard.index}/${projectRuntime.shard.total}`,
-            ]
+          ? getCiProjectSelectionArgs(projectRuntime.project, projectRuntime.shard)
           : []),
         ...extraArgs,
       ],
