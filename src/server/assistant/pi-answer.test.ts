@@ -323,6 +323,51 @@ test("private retrieval cannot be exported through model-generated web queries",
   }
 });
 
+test("ordinary reader history cannot be exported through model-generated web queries", async () => {
+  const question = "公开主题的最新资料";
+  const secret = "PRIVATE-HISTORY-DO-NOT-EXPORT";
+  const job = await execution(question);
+  job.messages.unshift({ ...job.userMessage, id: "prior-private-user", content: secret });
+  let requests = 0;
+  const queries: string[] = [];
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    async fetch(request) {
+      const body = await request.json();
+      requests++;
+      if (requests === 1) {
+        expect(body.messages.some((item: any) => item.content === secret)).toBe(true);
+        return call("web_search", `最新资料 ${secret}`);
+      }
+      return sse({ role: "assistant", content: "回答。" });
+    },
+  });
+  try {
+    await generatePiAnswer(
+      {
+        execution: job,
+        isAdmin: false,
+        signal: new AbortController().signal,
+        onDelta: async () => true,
+      },
+      null,
+      {
+        resolveModel: modelConfig(server.port),
+        webConfig,
+        search: async (query) => {
+          queries.push(query);
+          return [];
+        },
+      }
+    );
+    expect(queries).toEqual([question]);
+    expect(requests).toBe(2);
+  } finally {
+    server.stop(true);
+  }
+});
+
 test("clipping conversations use Pi with the article instructions and no general search tools", async () => {
   const server = Bun.serve({
     hostname: "127.0.0.1",

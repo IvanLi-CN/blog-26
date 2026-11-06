@@ -3,18 +3,18 @@
   "kind": "version-impact-record",
   "base_sha": "fffc1e28dc525285ddde46bb04ccca9f0fb5b875",
   "covered_files": {
-    "README.md": "f0021faccaa72db11a9325e8c55eaed86c779f40",
-    "README.zh-CN.md": "ff4af8511209013a43bdfaa1c62f619ac100b4ae",
+    "README.md": "6b04166184f86bee2297103e5383119658e85d20",
+    "README.zh-CN.md": "2b56971ce7c52c736617de4bfae5631b4fab1d3c",
     "docker-compose.yml": "326d3fd95046eb8d292fd07c733e9fbb2e444bac",
-    "docs/adr/0042-assistant-pi-harness-and-web-search.md": "1aa06297d4c61ee4d272cfceee55edaeb60fe39d",
+    "docs/adr/0042-assistant-pi-harness-and-web-search.md": "0bb34d0caee655ae4715dc02f14ec1388f532f2f",
     "docs/specs/site-knowledge-assistant/HISTORY.md": "0ecbf4718b108c2ce19f347473d8b93e395effce",
-    "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "1101f97cc48c4d4606167b5c60d5b030b44a7b4b",
-    "docs/specs/site-knowledge-assistant/SPEC.md": "6bd7a51dd593cbdcc8c8989024e0a385010b5325",
+    "docs/specs/site-knowledge-assistant/IMPLEMENTATION.md": "f4d8ac415808c1462e7d0a965990615943dcb08e",
+    "docs/specs/site-knowledge-assistant/SPEC.md": "d566eba62bd2ef378750089c3b7476b055937315",
     "src/lib/assistant-contracts.ts": "2ceff103a5c486df361e6836ee4e65638c72d182",
     "src/lib/schema.ts": "1609741e3eeb55f0fbd2f12bcc8012de3449a1f4",
     "src/server/assistant/context.ts": "8877a33916c64386228bff78d9e9c06e564924c9",
-    "src/server/assistant/pi-answer.test.ts": "7911890f287e0d70dfad88cc6d7f433b2a2f0b53",
-    "src/server/assistant/pi-answer.ts": "50f2183cdcd30eb33f1c6789ff683f9d62510d0d",
+    "src/server/assistant/pi-answer.test.ts": "7e998436aa532ddf57ca9b878ce7d8d662e84b62",
+    "src/server/assistant/pi-answer.ts": "0064af8b418c8c7b022b6842667f26f36abadc07",
     "src/server/assistant/runtime.test.ts": "bfa224c1a83373e84b62bcbe68afe5c79da565f6",
     "src/server/assistant/runtime.ts": "a253c54598f3a4d9a53af445da1c383952216e86",
     "src/server/assistant/web-search.ts": "28a1542613602b0b4ab8d457d9aefb103784fb49",
@@ -33,7 +33,7 @@
       "evidence": [
         {
           "path": "src/server/assistant/pi-answer.test.ts",
-          "blob": "7911890f287e0d70dfad88cc6d7f433b2a2f0b53",
+          "blob": "7e998436aa532ddf57ca9b878ce7d8d662e84b62",
           "command": "bun test --isolate src/server/assistant/pi-answer.test.ts: real Pi Harness tool loop, Hikari HTTP auth, web citations, quota deduplication, history, stop and truncated-stream checks"
         },
         {
@@ -55,7 +55,7 @@
       "evidence": [
         {
           "path": "src/server/assistant/pi-answer.test.ts",
-          "blob": "7911890f287e0d70dfad88cc6d7f433b2a2f0b53",
+          "blob": "7e998436aa532ddf57ca9b878ce7d8d662e84b62",
           "command": "bun test --isolate src/server/assistant/pi-answer.test.ts: real Pi Harness tool loop, Hikari HTTP auth, web citations, quota deduplication, history, stop and truncated-stream checks"
         },
         {
@@ -81,7 +81,7 @@
       "evidence": [
         {
           "path": "src/server/assistant/pi-answer.test.ts",
-          "blob": "7911890f287e0d70dfad88cc6d7f433b2a2f0b53",
+          "blob": "7e998436aa532ddf57ca9b878ce7d8d662e84b62",
           "command": "bun test --isolate src/server/assistant/pi-answer.test.ts: real Pi Harness tool loop, Hikari HTTP auth, web citations, quota deduplication, history, stop and truncated-stream checks"
         },
         {
@@ -117,7 +117,7 @@
       "evidence": [
         {
           "path": "src/server/assistant/pi-answer.test.ts",
-          "blob": "7911890f287e0d70dfad88cc6d7f433b2a2f0b53",
+          "blob": "7e998436aa532ddf57ca9b878ce7d8d662e84b62",
           "command": "bun test --isolate src/server/assistant/pi-answer.test.ts: real Pi Harness tool loop, Hikari HTTP auth, web citations, quota deduplication, history, stop and truncated-stream checks"
         }
       ]
