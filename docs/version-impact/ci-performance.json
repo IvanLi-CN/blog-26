@@ -5,10 +5,10 @@
   "covered_files": {
     ".github/actions/setup-native-search/action.yml": "f9ae991e109cb2111039a7a89b4f5e6898be6938",
     ".github/workflows/ci.yml": "482582b7315338cfc9dbc41116cbb7f70105a5eb",
-    ".github/workflows/e2e.yml": "3c72468816e43fc009065897220bf11cef791790",
+    ".github/workflows/e2e.yml": "8b5cdc7e969f063154a9ac96f6fa089a9c115fc8",
     "docs/specs/README.md": "6bbe1709a5c2ca211e2f30bd1654b8c09f9bd841",
     "docs/specs/ci-performance/HISTORY.md": "194574c5f8628bf7a677d6e4efd60e8668722f9d",
-    "docs/specs/ci-performance/IMPLEMENTATION.md": "fbdfc65ad72e3644e33ae9e2ff3b87abb8ad0e6f",
+    "docs/specs/ci-performance/IMPLEMENTATION.md": "4f7fdf2fdeb6b5fd75e969f9fd8683002a36e527",
     "docs/specs/ci-performance/SPEC.md": "592fa68ac128c3d229818eba854283d36af6be6e",
     "playwright.config.ts": "0cb48b0f9488c6a4d79364fe02c743febd96762b",
     "scripts/prepare-ci-apt-mirror.sh": "8fed187b4d1a1bcf57e678e0d295d68592ef6c4a",
@@ -39,7 +39,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "3c72468816e43fc009065897220bf11cef791790",
+          "blob": "8b5cdc7e969f063154a9ac96f6fa089a9c115fc8",
           "command": "bun run check; bun test tests/ci tests/lib/playbook-workflows.test.ts tests/lib/manual-release-provenance.test.ts tests/server/run-e2e.test.ts; Playwright --list with production getProjectTestArgs union/disjoint audit"
         },
         {
@@ -54,7 +54,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "fbdfc65ad72e3644e33ae9e2ff3b87abb8ad0e6f",
+          "blob": "4f7fdf2fdeb6b5fd75e969f9fd8683002a36e527",
           "command": "bun run check; bun test tests/ci tests/lib/playbook-workflows.test.ts tests/lib/manual-release-provenance.test.ts tests/server/run-e2e.test.ts; Playwright --list with production getProjectTestArgs union/disjoint audit"
         },
         {
@@ -106,7 +106,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "3c72468816e43fc009065897220bf11cef791790",
+          "blob": "8b5cdc7e969f063154a9ac96f6fa089a9c115fc8",
           "command": "bun run check; bun test tests/ci tests/lib/playbook-workflows.test.ts tests/lib/manual-release-provenance.test.ts tests/server/run-e2e.test.ts; Playwright --list with production getProjectTestArgs union/disjoint audit"
         },
         {
@@ -121,7 +121,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "fbdfc65ad72e3644e33ae9e2ff3b87abb8ad0e6f",
+          "blob": "4f7fdf2fdeb6b5fd75e969f9fd8683002a36e527",
           "command": "bun run check; bun test tests/ci tests/lib/playbook-workflows.test.ts tests/lib/manual-release-provenance.test.ts tests/server/run-e2e.test.ts; Playwright --list with production getProjectTestArgs union/disjoint audit"
         },
         {
@@ -177,7 +177,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "3c72468816e43fc009065897220bf11cef791790",
+          "blob": "8b5cdc7e969f063154a9ac96f6fa089a9c115fc8",
           "command": "bun run check; bun test tests/ci tests/lib/playbook-workflows.test.ts tests/lib/manual-release-provenance.test.ts tests/server/run-e2e.test.ts; Playwright --list with production getProjectTestArgs union/disjoint audit"
         },
         {
@@ -192,7 +192,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "fbdfc65ad72e3644e33ae9e2ff3b87abb8ad0e6f",
+          "blob": "4f7fdf2fdeb6b5fd75e969f9fd8683002a36e527",
           "command": "bun run check; bun test tests/ci tests/lib/playbook-workflows.test.ts tests/lib/manual-release-provenance.test.ts tests/server/run-e2e.test.ts; Playwright --list with production getProjectTestArgs union/disjoint audit"
         },
         {
@@ -293,7 +293,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "3c72468816e43fc009065897220bf11cef791790",
+          "blob": "8b5cdc7e969f063154a9ac96f6fa089a9c115fc8",
           "command": "bun run check; bun test tests/ci tests/lib/playbook-workflows.test.ts tests/lib/manual-release-provenance.test.ts tests/server/run-e2e.test.ts; Playwright --list with production getProjectTestArgs union/disjoint audit"
         },
         {
@@ -308,7 +308,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "fbdfc65ad72e3644e33ae9e2ff3b87abb8ad0e6f",
+          "blob": "4f7fdf2fdeb6b5fd75e969f9fd8683002a36e527",
           "command": "bun run check; bun test tests/ci tests/lib/playbook-workflows.test.ts tests/lib/manual-release-provenance.test.ts tests/server/run-e2e.test.ts; Playwright --list with production getProjectTestArgs union/disjoint audit"
         },
         {
@@ -362,7 +362,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "3c72468816e43fc009065897220bf11cef791790",
+          "blob": "8b5cdc7e969f063154a9ac96f6fa089a9c115fc8",
           "command": "bun run check; bun test tests/ci tests/lib/playbook-workflows.test.ts tests/lib/manual-release-provenance.test.ts tests/server/run-e2e.test.ts; Playwright --list with production getProjectTestArgs union/disjoint audit"
         },
         {
@@ -377,7 +377,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "fbdfc65ad72e3644e33ae9e2ff3b87abb8ad0e6f",
+          "blob": "4f7fdf2fdeb6b5fd75e969f9fd8683002a36e527",
           "command": "bun run check; bun test tests/ci tests/lib/playbook-workflows.test.ts tests/lib/manual-release-provenance.test.ts tests/server/run-e2e.test.ts; Playwright --list with production getProjectTestArgs union/disjoint audit"
         },
         {
