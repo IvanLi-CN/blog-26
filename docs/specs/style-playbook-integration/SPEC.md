@@ -221,7 +221,7 @@ Playbook 的自动与手动尝试必须进入同一可持久读取的来源历�
 
 - Method: 检查静态站成功发布、漏通知后的补漏及手动重试，并确认静态发布操作不会触发动态服务读取静态站。
 - covers: `REQ-PBI-004`
-- Pass condition: 静态站只按其发布合同更新，产物未就绪时不更新生产；动态数据库快照不因静态站发布或失败而改变。
+- Pass condition: 静态站只按其发布合同更新，产物未就绪时不更新生产；动态数据库快照不因静态站发布或失败而改变。页面 HTML 与 CSR JSON 不包含原始 bundle 字节；应用与内容发布均在上传前检查 1 GiB 未压缩体积预算、关键文件非空及普通文件边界。只构建诊断不得部署或同步 supplement。
 
 ### VER-PBI-005
 
@@ -332,6 +332,8 @@ Playbook 的自动与手动尝试必须进入同一可持久读取的来源历�
 - [ADR 0023](../../adr/0023-human-readable-playbook-tech-stack.md)
 - [统一搜索排序与独立 Playbook 同步管理](../../adr/0024-unified-search-and-playbook-sync-management.md)
 - [GitHub 动态来源与数据库 Playbook 快照](../../adr/0030-github-source-and-database-playbook-snapshots.md)
+
+- [静态 Playbook 页面负载与发布体积](../../adr/0041-bounded-static-playbook-payloads.md)
 
 ## References
 

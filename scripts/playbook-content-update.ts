@@ -32,6 +32,7 @@ import {
   publicRelationIndexFromCatalog,
 } from "../src/lib/playbook/supplement";
 import type { PlaybookSupplementEnvelope } from "../src/lib/playbook/types";
+import { verifyPublicArtifactBudget } from "../src/lib/release/artifact-budget";
 import { publicVersionSchema } from "../src/lib/release/deployment";
 import { versionSchema } from "../src/lib/release/policy";
 import { readContract } from "../src/lib/release/source";
@@ -298,6 +299,8 @@ try {
           buildVersion: generated.buildVersion || generated.version,
         });
         await writeFile(resolve(rendererRoot, "edgeone-dist/version.json"), encodeJson(metadata));
+        if (!diagnosticOnly)
+          await verifyPublicArtifactBudget(resolve(rendererRoot, "edgeone-dist"));
         if (diagnosticOnly) {
           const root = resolve(rendererRoot, "edgeone-dist");
           const records: { path: string; size: number }[] = [];

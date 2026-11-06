@@ -66,7 +66,9 @@ export function trimRouteEdition(edition: PlaybookEdition | undefined, path: str
   if (!edition) return undefined;
   const [group, slug] = path.replace(/\/$/, "").split("/");
   return {
-    ...edition,
+    // Raw bundle bytes belong to the verified build/cache boundary. Spreading
+    // the edition here duplicates the entire catalog/search in every route.
+    edition: edition.edition,
     // Search has its own current-snapshot endpoint and must not preload detail
     // bodies into every page's bootstrap or CSR response.
     search: { ...edition.search, documents: [] },
