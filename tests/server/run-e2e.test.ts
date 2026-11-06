@@ -126,3 +126,37 @@ describe("CI shard runtime isolation", () => {
     }
   });
 });
+
+describe("MCP backend-only startup", () => {
+  it("keeps database reset and the production gateway without frontend builds or a media sidecar", () => {
+    const result = spawnSync(
+      process.execPath,
+      [
+        "-e",
+        'import config from "./playwright.config"; console.log(JSON.stringify(config.webServer));',
+      ],
+      {
+        cwd: join(import.meta.dir, "../.."),
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PLAYWRIGHT_TEST_PROJECT: "mcp",
+          PLAYWRIGHT_DISABLE_WEBSERVER: "0",
+          PLAYWRIGHT_SKIP_RESET: "0",
+          PLAYWRIGHT_SKIP_BUILD: "0",
+          // Even an explicit media URL must not enable the unused sidecar.
+          PLAYWRIGHT_START_PUBLIC_MEDIA_SIDECAR: "1",
+          PUBLIC_MEDIA_IMAGOR_BASE_URL: "http://127.0.0.1:18000",
+        },
+      }
+    );
+    expect(result.status, result.stderr).toBe(0);
+    const servers = JSON.parse(result.stdout);
+    expect(servers).toHaveLength(1);
+    expect(servers[0].command).toContain("test-env:reset-fs-only");
+    expect(servers[0].command).toContain("gateway:start");
+    expect(servers[0].command).not.toContain("console:start");
+    expect(servers[0].command).not.toContain("bun run build");
+    expect(new URL(servers[0].url).pathname).toBe("/api/version");
+  });
+});

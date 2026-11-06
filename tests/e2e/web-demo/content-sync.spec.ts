@@ -26,27 +26,17 @@ test.describe("Content sync RAG coverage Web Demo", () => {
   });
 
   test("shows the Playbook state machine and admin-only source identity", async ({ page }) => {
-    const states = [
-      ["admin-dashboard", "当前"],
-      ["admin-sync-unindexed", "当前"],
-      ["admin-sync-outdated", "过时"],
-      ["admin-sync-failed", "失败"],
-      ["admin-sync-failed&d_data=empty", "无效快照"],
-      ["admin-sync-disabled", "不可用"],
-      ["admin-sync-unconfigured", "未配置"],
-    ] as const;
-
-    for (const [query, label] of states) {
-      await page.goto(`/admin/content-sync?d_scene=${query}`);
-      const status = page.getByTestId("playbook-sync-status");
-      await expect(status.getByText(label, { exact: true })).toBeVisible();
-      await expect(page.getByTestId("playbook-source-identity")).toContainText(
-        "IvanLi-CN/style-playbook-skills"
-      );
-      await expect(status).toContainText("当前 commit");
-      await expect(status).toContainText("当前 content hash");
-      await expect(status).toContainText("上一快照");
-    }
+    // The seven-scene data/label matrix is covered with the real adapter and
+    // PlaybookSyncStatusDetails in demo/business-contracts.test.tsx.
+    await page.goto("/admin/content-sync?d_scene=admin-dashboard");
+    const status = page.getByTestId("playbook-sync-status");
+    await expect(status.getByText("当前", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("playbook-source-identity")).toContainText(
+      "IvanLi-CN/style-playbook-skills"
+    );
+    await expect(status).toContainText("当前 commit");
+    await expect(status).toContainText("当前 content hash");
+    await expect(status).toContainText("上一快照");
   });
 
   test("shows RAG coverage insufficiency as a separate admin state", async ({ page }) => {
@@ -56,26 +46,13 @@ test.describe("Content sync RAG coverage Web Demo", () => {
     await expect(page.getByTestId("rag-incomplete")).toContainText("playbook");
   });
 
-  test("keeps Playbook operational identity out of the public API", async ({ page }) => {
-    await page.goto("/admin/content-sync?d_scene=admin-sync-partial");
-    const response = await page.evaluate(async () => {
-      const result = await fetch("/api/public/page?path=%2F");
-      return { status: result.status, body: await result.text() };
-    });
-    expect(response.status).toBe(200);
-    expect(response.body).not.toContain("IvanLi-CN/style-playbook-skills");
-    expect(response.body).not.toContain("sourceStatus");
-    expect(response.body).not.toContain("taskId");
-  });
-
-  test("keeps admin sync status behind the admin boundary", async ({ page }) => {
-    await page.goto("/admin/content-sync?d_persona=guest");
-    const response = await page.evaluate(async () => {
-      const result = await fetch("/api/admin/content-sync/status");
-      return { status: result.status, body: await result.text() };
-    });
-    expect(response.status).toBe(403);
-    expect(response.body).toContain("管理员权限");
+  test("keeps Playbook operational identity out of the public API", async ({ request }) => {
+    const response = await request.get("/api/public/page?path=%2F");
+    expect(response.status()).toBe(200);
+    const body = await response.text();
+    expect(body).not.toContain("IvanLi-CN/style-playbook-skills");
+    expect(body).not.toContain("sourceStatus");
+    expect(body).not.toContain("taskId");
   });
 
   test("chips select one coverage scope and reset the Playbook edition", async ({ page }) => {

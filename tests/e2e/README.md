@@ -77,3 +77,9 @@ Prefer tagging at the smallest scope that matches the intent. If an entire file 
 ## CI 执行
 
 `bun scripts/run-e2e.ts ci-project guest` 为 guest/admin 各创建两个测试分片，user/mcp 保持一个进程。每个 CI job 先 reset 和构建一次，再为每个分片复制独立数据库与内容目录，分配应用/媒体端口和报告路径；每个分片单 worker。guest 将重型 mobile-reading-surface 文件与其他文件分组，admin 使用 Playwright 的测试级分配；全部退出结果共同决定 required check，不减少 canonical full 覆盖。性能与失败传播合同见 [CI 执行效率](../../docs/specs/ci-performance/SPEC.md)。
+
+## 测试分层与后端 project
+
+`mcp` 保留 Playwright runner 和 canonical check 名称，但用例通过真实 HTTP 调用生产 gateway，不依赖浏览器、前端构建或媒体 sidecar；准备仍执行数据库迁移、seed、内容初始化与版本生成，就绪地址为 `/api/version`。
+
+API 参数、SQLite 会话与 Demo 业务状态由 `src/server/dev-api/auth.test.ts`、`apps/admin/src/demo/business-contracts.test.tsx` 承接。真实交互继续留在 E2E；逐项映射见 [CI 性能实现边界](../../docs/specs/ci-performance/IMPLEMENTATION.md#测试意图迁移映射)。`project-runtime-motion.spec.ts` 固定自身 viewport 并内部覆盖移动尺寸，只需跑一次，不能因外层移动命令不再重复它而删除其中的移动场景。

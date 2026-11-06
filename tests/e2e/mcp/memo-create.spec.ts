@@ -48,7 +48,7 @@ async function findMemoByTitle(title: string) {
 
 test.beforeAll(
   async () => {
-    await waitFor(BASE_URL, 60000);
+    await waitFor(`${BASE_URL}/api/version`, 60000);
     await seedE2EAdminPat();
     const initialized = await initializeMcpSession();
     expect(initialized.error).toBeFalsy();
