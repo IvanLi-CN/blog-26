@@ -36,3 +36,5 @@
 - 修复部分发布后 draft 无法按 tag 查询导致重复创建和重复上传的问题；区分 GHCR 上传后暂不可见与真实 digest 冲突，并将受门禁保护的修复工具恢复覆盖到 frozen products 阶段。
 
 - EdgeOne 不完整静态发布使 `version.json` 返回 200 空正文，归属检查报 JSON EOF。ADR 0040 补充基于已完成账本、GHCR 实际 digest 与同源 renderer 的严格恢复边界；原始冻结产物和版本身份保持不可变。
+
+- 修复 main evaluation 失败后废弃的准备缺少 `mergeSha`、导致后续来源投影误报未登记 VERSION 的恢复缺口；只有原 PR 的完整签名与精确合并证明通过后才保留业务语义，废弃身份不复活。
