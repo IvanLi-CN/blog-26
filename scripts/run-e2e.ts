@@ -278,17 +278,22 @@ function runProject(projectRuntime: ProjectRuntime, extraArgs: string[]) {
   });
 }
 
-async function runFull(extraArgs: string[], ciProject?: E2EProjectName) {
-  const sharedEnv: NodeJS.ProcessEnv = {
+export function buildSharedArtifactEnv(ciProject?: E2EProjectName): NodeJS.ProcessEnv {
+  return {
     DB_PATH: E2E_DEFAULT_DB_PATH,
     LOCAL_CONTENT_BASE_PATH: E2E_DEFAULT_LOCAL_CONTENT_PATH,
     CONTENT_SOURCES: "local",
     PUBLIC_SITE_URL: `http://localhost:${E2E_DEFAULT_WEB_PORT}`,
     PUBLIC_CONSOLE_URL: `http://localhost:${E2E_DEFAULT_WEB_PORT}`,
-    PUBLIC_API_BASE_URL: `http://localhost:${E2E_DEFAULT_WEB_PORT}`,
+    // Browser islands must resolve the origin of their isolated runtime after build.
+    PUBLIC_API_BASE_URL: "",
     LLM_MODEL_CATALOG_SKIP_REFRESH: "1",
     ...(ciProject ? { VITE_WEB_DEMO_BUILD: "true", VITE_WEB_DEMO_E2E_FIXTURE: "true" } : {}),
   };
+}
+
+async function runFull(extraArgs: string[], ciProject?: E2EProjectName) {
+  const sharedEnv = buildSharedArtifactEnv(ciProject);
 
   await runStep("Reset test environment", ["bun", "run", "test-env:reset-fs-only"], sharedEnv);
   await ensurePathExists(E2E_DEFAULT_DB_PATH);
