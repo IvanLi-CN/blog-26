@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "fffc1e28dc525285ddde46bb04ccca9f0fb5b875",
+  "base_sha": "aba866f31d3d789ee7e614a92ecad4eb317177f5",
   "covered_files": {
     ".github/actions/setup-project-media/action.yml": "78c91323f5d495e61feecacaf5ba157c38519789",
     ".github/workflows/ci.yml": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
