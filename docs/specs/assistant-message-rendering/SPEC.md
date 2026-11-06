@@ -166,3 +166,11 @@
 ![流式消息、失败与局部降级状态](./assets/message-states.png)
 
 来源：`public-conversation-message-states--overview`；使用简化预览渲染器，覆盖用户字面输入、生成状态、停止、失败及单消息降级，不能替代最终 Markdown 语义验收。展示面外边距为 48 px。
+
+### 统一正文样式
+
+![统一正文样式：浅色](./assets/conversation-formats-light.png)
+
+![统一正文样式：深色](./assets/conversation-formats-dark.png)
+
+来源：`public-conversation-markdown--style-consistency` 与 `public-conversation-markdown--style-consistency-dark`；使用 1440×1000 CSS px 组件画布，展示正文、链接、行内代码、嵌套引用、表格、代码操作、外图待加载与脚注回跳。图片占位不发起外图请求，操作保持透明，内容边界统一直角。两张完整总览已由主人确认；同一内容另以 `style-consistency-mobile` 在 393×852 验证。独立代码、图片及消息状态 Story 展示的是各自功能状态，聊天入口内的最终组合样式以本组总览为准。
