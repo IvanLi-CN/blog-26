@@ -20,7 +20,6 @@
     ".github/workflows/product-release.yml": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
     "Dockerfile": "bc3079db7be8dd828cc79e86b8903f2f28fc07d8",
     "bun.lock": "df9f7a07ba98e556db2513d96051fb3327c61282",
-    "docs/version-impact/ci-performance.json": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
     "package.json": "361c4aa76567a8fe6cdb2870088e50e98188f406",
     "scripts/docker-build.sh": "50d3e5d6123f34087baa4dfdcd60c42c6b7c3d37",
     "scripts/image.ts": "78fac1e1c5398e4dea7d0fb72778142f4d2eda4c",
@@ -121,11 +120,6 @@
         {
           "path": "docs/specs/ci-performance/SPEC.md",
           "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
-          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
-        },
-        {
-          "path": "docs/version-impact/ci-performance.json",
-          "blob": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
           "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -268,11 +262,6 @@
         {
           "path": "docs/specs/ci-performance/SPEC.md",
           "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
-          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
-        },
-        {
-          "path": "docs/version-impact/ci-performance.json",
-          "blob": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
           "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -419,11 +408,6 @@
         {
           "path": "docs/specs/ci-performance/SPEC.md",
           "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
-          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
-        },
-        {
-          "path": "docs/version-impact/ci-performance.json",
-          "blob": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
           "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -584,11 +568,6 @@
           "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
-          "path": "docs/version-impact/ci-performance.json",
-          "blob": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
-          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
-        },
-        {
           "path": "package.json",
           "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
           "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
@@ -730,11 +709,6 @@
         {
           "path": "docs/specs/ci-performance/SPEC.md",
           "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
-          "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
-        },
-        {
-          "path": "docs/version-impact/ci-performance.json",
-          "blob": "66abfacfe2feae035ba4de5f64a392fa6cbf52cc",
           "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
