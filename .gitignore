@@ -136,3 +136,6 @@ web-demo-site-dev-dist/
 # Embedded search native build outputs
 /native/search/target/
 /native/search/*.node
+
+# Rebuildable, validated project media cache
+.cache/project-media/
