@@ -4,6 +4,10 @@
 
 本主题是 active 的长期需求主题。博客原生阅读集合与静态站发布边界保留既有合同；动态服务的 GitHub 内容源与数据库快照边界记录在 [ADR 0030](../../adr/0030-github-source-and-database-playbook-snapshots.md)。文章与 Memo 的实时 console 边界继续由 [ADR 0010](../../adr/0010-self-contained-console-runtime.md) 定义。
 
+## 管理端 RAG 覆盖状态修复
+
+数据库快照改造期间，状态接口曾以空占位结果替代真实覆盖，前端又将待投影等未知原因误译为快照缺失。修复恢复复用现有 `ragCoverage`，将选定数据库快照显式绑定到同一次覆盖计算，并保留 unavailable 分类为 null 的契约；未改变内容采用、向量生成或数据库格式。
+
 ## GitHub-only 动态来源与数据库快照
 
 本轮需求收敛将动态服务的来源从静态站公开指针和 Release 资产改为 GitHub 内容提供方。默认仓库为 `IvanLi-CN/style-playbook-skills`，默认 ref 为 `main`，服务解析 branch/tag/commit 为单一 commit SHA，并从该 commit 的固定公开导出读取完整内容。静态站仍可独立发布访客内容，但不再是动态服务的读取入口或回退来源。

@@ -130,6 +130,114 @@ async function adoptPlaybookFixture(tag: string, releaseId: string) {
   );
 }
 
+if (phase === "coverage-status") {
+  const { contentSyncStatus } = await import("../../src/server/services/content-sync-status");
+  const missing = await contentSyncStatus({ source: "playbook" });
+  if (missing.rag.reason !== "snapshot-unavailable" || missing.rag.contents.indexed !== null)
+    throw new Error("Missing current snapshot not distinguished");
+  await adoptPlaybookFixture("v3.3.0", "300");
+  await db.insert(posts).values([
+    {
+      id: "coverage-public",
+      slug: "coverage-public",
+      title: "Public",
+      body: "Public body",
+      contentHash: "public",
+      type: "post",
+      public: true,
+      draft: false,
+      publishDate: 1,
+      dataSource: "local",
+    },
+    {
+      id: "coverage-draft",
+      slug: "coverage-draft",
+      title: "Draft",
+      body: "Draft body",
+      contentHash: "draft",
+      type: "post",
+      public: true,
+      draft: true,
+      publishDate: 1,
+      dataSource: "local",
+    },
+    {
+      id: "coverage-project",
+      slug: "coverage-project",
+      title: "Project",
+      body: "Project body",
+      contentHash: "project",
+      type: "project",
+      public: true,
+      draft: false,
+      publishDate: 1,
+      dataSource: "local",
+    },
+  ]);
+  const blog = await contentSyncStatus({ source: "blog" });
+  if (
+    blog.rag.reason !== null ||
+    blog.rag.contents.total !== 1 ||
+    blog.rag.contents.unindexed !== 1
+  )
+    throw new Error("Blog coverage includes drafts or projects");
+  const beforeCalls = embeddingCalls;
+  const before = await contentSyncStatus({ source: "playbook" });
+  if (
+    !before.playbook.adopted ||
+    before.rag.reason !== null ||
+    before.rag.contents.total < 1 ||
+    before.rag.contents.unindexed !== before.rag.contents.total
+  )
+    throw new Error(`Adopted coverage replaced by placeholder: ${JSON.stringify(before.rag)}`);
+  if (embeddingCalls !== beforeCalls) throw new Error("Status generated embeddings");
+  const { taskId } = await runRagIndex({ source: "playbook" }, "repair");
+  for (let i = 0; i < 1000; i++) {
+    const task = await getContentTask(taskId);
+    if (task?.finishedAt) {
+      if (task.status !== "success") throw new Error("Mock projection failed");
+      break;
+    }
+    if (i === 999) throw new Error("Mock projection timeout");
+    await Bun.sleep(10);
+  }
+  const calls = embeddingCalls;
+  const after = await contentSyncStatus({ source: "playbook" });
+  if (
+    after.rag.contents.coverage !== 1 ||
+    after.rag.contents.indexed !== before.rag.contents.total ||
+    after.rag.reason !== null
+  )
+    throw new Error(`Ready projection missing from status: ${JSON.stringify(after.rag)}`);
+  if (embeddingCalls !== calls) throw new Error("Status generated embeddings");
+  const all = await contentSyncStatus({ source: "all" });
+  if (
+    all.rag.reason !== null ||
+    all.rag.contents.total !== after.rag.contents.total + 1 ||
+    all.rag.contents.indexed !== after.rag.contents.indexed
+  )
+    throw new Error("All-source coverage disagrees with per-source projections");
+  const previous = await contentSyncStatus({ source: "playbook", edition: "previous" });
+  if (previous.rag.reason !== "snapshot-unavailable" || previous.rag.contents.indexed !== null)
+    throw new Error("Missing previous snapshot not distinguished");
+  delete process.env.OPENAI_API_KEY;
+  const unconfigured = await contentSyncStatus({ source: "playbook" });
+  if (
+    unconfigured.rag.reason !== "embedding-unconfigured" ||
+    unconfigured.rag.contents.total !== before.rag.contents.total ||
+    unconfigured.rag.contents.indexed !== null
+  )
+    throw new Error("Unavailable configuration lost known total or exposed classifications");
+  console.log(
+    JSON.stringify({
+      phase,
+      mock: true,
+      contents: after.rag.contents,
+      noStatusEmbeddingCalls: true,
+    })
+  );
+  process.exit(0);
+}
 if (phase === "upgrade") {
   await getRuntimePlaybookStore().load();
   if (getRuntimePlaybookStore().current?.edition.source.tag !== "v2.9.9")
