@@ -103,3 +103,36 @@ for (const phases of [
     30000
   );
 }
+
+test("Admin coverage reads adopted snapshots and persisted projections without repair", async () => {
+  const root = mkdtempSync(join(tmpdir(), "rag-status-"));
+  try {
+    const child = Bun.spawn(
+      [process.execPath, "tests/lib/rag-index-restart-fixture.ts", "coverage-status"],
+      {
+        env: {
+          PATH: process.env.PATH,
+          DB_PATH: join(root, "db.sqlite"),
+          PLAYBOOK_CACHE_DIR: join(root, "playbook"),
+          SEARCH_INDEX_PATH: join(root, "search"),
+          LOCAL_CONTENT_BASE_PATH: join(root, "local"),
+          OPENAI_API_BASE_URL: "https://synthetic-restart.example.test",
+          OPENAI_API_KEY: "synthetic-only",
+          EMBEDDING_MODEL_NAME: "synthetic-embedding",
+          PLAYBOOK_SYNC_ENABLED: "false",
+        },
+        stdout: "pipe",
+        stderr: "pipe",
+      }
+    );
+    const [stdout, stderr, code] = await Promise.all([
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+      child.exited,
+    ]);
+    if (code !== 0) throw new Error(`${stderr}\n${stdout}`);
+    expect(JSON.parse(stdout.trim().split("\n").at(-1) ?? "{}").noStatusEmbeddingCalls).toBe(true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}, 30000);

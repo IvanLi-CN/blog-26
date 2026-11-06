@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "cb4fed334b689f337e2376b748ebda76ef95f9eb",
+  "covered_files": {
+    "apps/admin/src/pages/content-sync.tsx": "fe13f5276789319fb9733e17f1b80a953e9a604e",
+    "docs/specs/memo-admin-inline-view/assets/memo-long-code-desktop.png": "7477b14a1dd398f18b1309832b45074cafbf710a",
+    "docs/specs/memo-admin-inline-view/assets/memo-long-code-mobile.png": "35326f461613c795ccf92d3b097f37ed8655076a",
+    "docs/specs/style-playbook-integration/HISTORY.md": "68ce503991f5dd7be78e61643786576292e3376d",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "734c0a4d1daf6a5707eb699b27cc0878f49872cb",
+    "docs/specs/style-playbook-integration/contracts/content-sync-status.md": "7de3bb4ff1359a6c5b90dce556a68ca9deaade5f",
+    "site/styles/public-pages.css": "c43e1bbe28b916faae15ddf4f164938113989f40",
+    "src/lib/console-web-demo.ts": "d5219922ffea9f6229b47a4cd47b6b085724d269",
+    "src/server/services/content-sync-status.ts": "3d23875a80aa784551527ae89c676ce463febd61",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "a3ea83a8d8bad87803642489d196f1715099b816",
+    "tests/e2e/web-demo/content-sync.spec.ts": "04153b6481014fb9e9cc99584a829cbaa2bc7be0",
+    "tests/lib/rag-index-restart-fixture.ts": "c301949f703d70fab67a2f74b6c5e4420b68ffc0",
+    "tests/lib/rag-index-restart.test.ts": "8118c0381e7dda297d2f3f3ab07a9c9179515061",
+    "docs/specs/style-playbook-integration/assets/content-sync-rag-unavailable-desktop.png": "a21b8778b8fba34e8cdf920d5654581051d6c315",
+    "docs/specs/style-playbook-integration/assets/content-sync-rag-unavailable-mobile.png": "cc8f0745310100e53fea573d683cdcb4f306518a"
+  },
+  "change": {
+    "description": "Restore persisted RAG coverage in the admin status response and distinguish missing snapshots from temporarily unavailable statistics. Preserve response shape and read-only behavior. Carry forward the already merged compatible Memo layout repair since published 4.1.9 without modifying its implementation.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Restore persisted RAG coverage in the admin status response and distinguish missing snapshots from temporarily unavailable statistics. Preserve response shape and read-only behavior. Carry forward the already merged compatible Memo layout repair since published 4.1.9 without modifying its implementation.",
+      "assessed_at": "2026-11-06T08:04:05.070Z",
+      "evidence": [
+        {
+          "path": "tests/lib/rag-index-restart-fixture.ts",
+          "blob": "c301949f703d70fab67a2f74b6c5e4420b68ffc0",
+          "command": "bun test tests/lib/rag-index-restart.test.ts tests/lib/playbook-snapshot-restart.test.ts tests/lib/playbook-contract.test.ts (72 passed, 6 platform skips); focused desktop and mobile content-sync Web Demo regressions passed; bun run check passed"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Restore persisted RAG coverage in the admin status response and distinguish missing snapshots from temporarily unavailable statistics. Preserve response shape and read-only behavior. Carry forward the already merged compatible Memo layout repair since published 4.1.9 without modifying its implementation.",
+      "assessed_at": "2026-11-06T08:04:05.070Z",
+      "evidence": [
+        {
+          "path": "tests/lib/rag-index-restart-fixture.ts",
+          "blob": "c301949f703d70fab67a2f74b6c5e4420b68ffc0",
+          "command": "bun test tests/lib/rag-index-restart.test.ts tests/lib/playbook-snapshot-restart.test.ts tests/lib/playbook-contract.test.ts (72 passed, 6 platform skips); focused desktop and mobile content-sync Web Demo regressions passed; bun run check passed"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "Only coverage adapter, warning mapping, focused regression tests and approved evidence; prior merged Memo files are classified but unchanged by this PR."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Restore persisted RAG coverage in the admin status response and distinguish missing snapshots from temporarily unavailable statistics. Preserve response shape and read-only behavior. Carry forward the already merged compatible Memo layout repair since published 4.1.9 without modifying its implementation.",
+      "assessed_at": "2026-11-06T08:04:05.070Z",
+      "evidence": [
+        {
+          "path": "tests/lib/rag-index-restart-fixture.ts",
+          "blob": "c301949f703d70fab67a2f74b6c5e4420b68ffc0",
+          "command": "bun test tests/lib/rag-index-restart.test.ts tests/lib/playbook-snapshot-restart.test.ts tests/lib/playbook-contract.test.ts (72 passed, 6 platform skips); focused desktop and mobile content-sync Web Demo regressions passed; bun run check passed"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9"
+      ],
+      "evidence": [
+        {
+          "path": "tests/lib/rag-index-restart-fixture.ts",
+          "blob": "c301949f703d70fab67a2f74b6c5e4420b68ffc0",
+          "command": "bun test tests/lib/rag-index-restart.test.ts tests/lib/playbook-snapshot-restart.test.ts tests/lib/playbook-contract.test.ts (72 passed, 6 platform skips); focused desktop and mobile content-sync Web Demo regressions passed; bun run check passed"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No storage schemas, stored snapshots, vectors or task write behavior change.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/rag-index-restart-fixture.ts",
+          "blob": "c301949f703d70fab67a2f74b6c5e4420b68ffc0",
+          "command": "bun test tests/lib/rag-index-restart.test.ts tests/lib/playbook-snapshot-restart.test.ts tests/lib/playbook-contract.test.ts (72 passed, 6 platform skips); focused desktop and mobile content-sync Web Demo regressions passed; bun run check passed"
+        }
+      ]
+    }
+  }
+}

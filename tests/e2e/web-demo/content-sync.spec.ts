@@ -1,6 +1,30 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Content sync RAG coverage Web Demo", () => {
+  test("distinguishes unavailable coverage from a missing Playbook snapshot", async ({ page }) => {
+    await page.goto("/admin/content-sync?d_scene=admin-dashboard");
+    await expect(page.getByTestId("rag-coverage").first()).toBeVisible();
+    await page.evaluate(() => {
+      const original = window.fetch;
+      window.fetch = async (...args) => {
+        const response = await original(...args);
+        if (!String(args[0]).includes("/api/admin/content-sync/status")) return response;
+        const status = await response.json();
+        status.rag.reason = "semantic-projection-pending";
+        status.rag.available = false;
+        status.rag.incompleteSources = [];
+        for (const counts of [status.rag.contents, status.rag.chunks])
+          for (const key of ["indexed", "unindexed", "outdated", "failed", "coverage"])
+            counts[key] = null;
+        return Response.json(status);
+      };
+    });
+    await page.getByRole("button", { name: "刷新", exact: true }).click();
+    await expect(page.getByText("RAG 覆盖状态暂不可用，请稍后刷新。")).toBeVisible();
+    await expect(page.getByText("所选 Playbook 快照不可用。")).toHaveCount(0);
+    await expect(page.getByTestId("playbook-sync-status")).toContainText("内容已采用");
+  });
+
   test("shows the Playbook state machine and admin-only source identity", async ({ page }) => {
     const states = [
       ["admin-dashboard", "当前"],

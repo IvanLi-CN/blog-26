@@ -10,7 +10,7 @@ import {
   type PlaybookStoredSnapshot,
   samePlaybookSnapshotIdentity,
 } from "./playbook-snapshot-store";
-import type { RagScope } from "./rag-index";
+import { type RagScope, ragCoverage } from "./rag-index";
 import { getAdminSearchSettings } from "./search-policy";
 
 type PlaybookSyncState =
@@ -72,55 +72,6 @@ function countPlaybookContent(snapshot: PlaybookStoredSnapshot | null) {
     policy: policies.length,
   };
   return { total: Object.values(byType).reduce((total, count) => total + count, 0), byType };
-}
-
-function emptyRagStatus(scope: RagScope, current: PlaybookStoredSnapshot | null) {
-  const empty = () => ({
-    total: 0,
-    indexed: null,
-    unindexed: null,
-    outdated: null,
-    failed: null,
-    coverage: null,
-  });
-  const wantsBlog = scope.source !== "playbook";
-  const wantsPlaybook = scope.source !== "blog";
-  const identity = {
-    source: scope.source ?? "all",
-    type: scope.type ?? "all",
-    access: "public" as const,
-    fingerprint: null,
-    model: null,
-    configuredDim: null,
-    policy: null,
-    playbook: current
-      ? {
-          edition: current.contentHash,
-          sourceReleaseId: current.sourceRevision.commit,
-          sourceTag: current.sourceRevision.ref,
-        }
-      : null,
-  };
-  return {
-    available: false,
-    reason: wantsPlaybook && !current ? "snapshot-unavailable" : "semantic-projection-pending",
-    missingSources: wantsPlaybook && !current ? ["playbook"] : [],
-    identity,
-    details: [],
-    lastIndexedAt: null,
-    incompleteSources: wantsPlaybook && !current ? ["playbook"] : [],
-    contents: empty(),
-    chunks: empty(),
-    bySource: [
-      { source: "blog", available: wantsBlog, contents: empty(), chunks: empty() },
-      {
-        source: "playbook",
-        available: wantsPlaybook && Boolean(current),
-        contents: empty(),
-        chunks: empty(),
-      },
-    ],
-  };
 }
 
 async function readStatus(scope: RagScope = {}) {
@@ -217,7 +168,31 @@ async function readStatus(scope: RagScope = {}) {
               : "unavailable";
   const totals = await contentSyncTotals();
   const tasks = await listContentTasks({ limit: 10 });
-  const rag = emptyRagStatus(scope, scope.edition === "previous" ? previous : current);
+  const selected = scope.edition === "previous" ? previous : current;
+  const coverage = (await ragCoverage({ ...scope, playbook: selected })).status;
+  const metrics = (counts: typeof coverage.contents, unknown: boolean) => ({
+    ...counts,
+    indexed: unknown ? null : counts.indexed,
+    unindexed: unknown ? null : counts.unindexed,
+    outdated: unknown ? null : counts.outdated,
+    failed: unknown ? null : counts.failed,
+    coverage: unknown ? null : counts.coverage,
+  });
+  const unavailable = !coverage.available || coverage.missingSources.length > 0;
+  const rag = {
+    ...coverage,
+    contents: metrics(coverage.contents, unavailable),
+    chunks: metrics(coverage.chunks, unavailable),
+    details: coverage.details.map((row) => {
+      const known = coverage.bySource.find((source) => source.source === row.source)?.available;
+      return { ...row, state: known ? row.state : null, reason: known ? null : coverage.reason };
+    }),
+    bySource: coverage.bySource.map((row) => ({
+      ...row,
+      contents: metrics(row.contents, !row.available),
+      chunks: metrics(row.chunks, !row.available),
+    })),
+  };
   if (before !== watermark() || !samePlaybookSnapshotIdentity(currentIdentity, store.getCurrent()))
     throw new Error("content-status-changed");
   return {
