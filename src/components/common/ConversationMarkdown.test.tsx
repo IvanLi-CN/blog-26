@@ -89,7 +89,12 @@ describe("ConversationMarkdown", () => {
     expect(duplicateIds(view.container)).toEqual([]);
     for (const message of footnoteInstances) {
       const body = getMessageBody(view.container, message);
-      expect(inspectFootnoteReferences(body)).toHaveLength(1);
+      const references = inspectFootnoteReferences(body);
+      expect(references).toHaveLength(1);
+      const backlink = body.querySelector("a[data-footnote-backref]");
+      expect(backlink?.textContent).toBe("返回正文");
+      expect(backlink?.getAttribute("aria-label")).toBe("返回正文");
+      expect(backlink?.getAttribute("href")).toBe(`#${references[0]?.referenceId}`);
     }
   });
 

@@ -90,6 +90,7 @@ export function rehypeConversationOverflow() {
         style: [
           typeof node.properties.style === "string" ? node.properties.style : "",
           "max-width:100%;overflow-x:auto;overflow-y:hidden;",
+          classes.includes("table-responsive") ? "border-radius:0;" : "",
         ].join(""),
       };
     });

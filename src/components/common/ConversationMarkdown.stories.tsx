@@ -107,6 +107,7 @@ const verifySurface: Story["play"] = async ({ args, canvasElement }) => {
     await expect(canvas.getByText(/无效公式/)).toBeInTheDocument();
   } else {
     await expect(canvas.getByRole("heading", { name: "阅读合同" })).toBeInTheDocument();
+    await expect(canvas.getByRole("link", { name: "返回正文" })).toHaveTextContent("返回正文");
   }
 
   const heading = canvasElement.querySelector("h1");
@@ -121,7 +122,10 @@ const verifySurface: Story["play"] = async ({ args, canvasElement }) => {
     await expect(getComputedStyle(list).listStyleType).not.toBe("none");
   }
   const table = canvasElement.querySelector(".table-responsive");
-  if (table) await expect(getComputedStyle(table).overflowX).toBe("auto");
+  if (table) {
+    await expect(getComputedStyle(table).overflowX).toBe("auto");
+    await expect(getComputedStyle(table).borderRadius).toBe("0px");
+  }
   const displayMath = canvasElement.querySelector(".katex-display");
   if (displayMath) await expect(getComputedStyle(displayMath).overflowX).toBe("auto");
   const ordinaryLink = canvasElement.querySelector('a[href="/posts/contract"]');

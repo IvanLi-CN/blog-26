@@ -256,21 +256,23 @@ export function ConversationMarkdown({
         return <BlockCodeContext.Provider value>{children}</BlockCodeContext.Provider>;
       },
       code: ConversationCode,
-      a({ children, href, title, className: inheritedClassName, node: _node, ...props }) {
+      a({ children, href, title, className: inheritedClassName, node, ...props }) {
         if (!href) return <span {...props}>{children}</span>;
+        const isFootnoteBackref = node?.properties?.dataFootnoteBackref != null;
         return (
           <a
             href={href}
             title={title}
             {...linkProps(href)}
             {...props}
+            aria-label={isFootnoteBackref ? "返回正文" : props["aria-label"]}
             style={{ textDecorationLine: "underline" }}
             className={classNames(
               "nature-link-inline break-words underline decoration-[rgba(var(--nature-accent-rgb),0.35)] underline-offset-4",
               inheritedClassName
             )}
           >
-            {children}
+            {isFootnoteBackref ? "返回正文" : children}
           </a>
         );
       },
