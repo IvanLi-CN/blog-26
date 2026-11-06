@@ -261,3 +261,4 @@ Web Demo 只使用隔离 fixture 和内存模拟回答；这些证据不代表�
 - [Memo 剪藏](../memo-clipping/SPEC.md)
 - [Nature 前台规范](../nature-front-ui/SPEC.md)
 - [后台 LLM 配置](../admin-llm-settings/SPEC.md)
+- [助手消息渲染](../assistant-message-rendering/SPEC.md)

@@ -1,0 +1,4 @@
+.clipping-chat-messages .conversation-markdown {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

@@ -2,6 +2,13 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ConversationMarkdown } from "@/components/common/ConversationMarkdown";
+import {
+  ConversationPresentationContext,
+  createSessionPresentationStore,
+  readConversationPresentation,
+  writeConversationPresentation,
+} from "@/components/common/conversation/presentation-state";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/Icon";
@@ -12,6 +19,8 @@ import type {
   FrontendAuthState,
 } from "@/lib/assistant-contracts";
 import {
+  getWebDemoRuntimeState,
+  getWebDemoShareUrl,
   isWebDemoBuildEnabled,
   subscribeWebDemoRequestChanges,
   WEB_DEMO_ACTION_EVENT,
@@ -38,6 +47,7 @@ import {
   getBuildDefaultAssistantLauncherEnabled,
   readSiteFeatureConfig,
 } from "../lib/site-feature-config";
+import { AssistantMessageContent } from "./AssistantMessageContent";
 import "./KnowledgeAssistant.css";
 
 type Props = { fullPage?: boolean };
@@ -604,81 +614,129 @@ function ConversationList({
 }
 
 function MessageStream({
+  stateKey,
   snapshot,
   onRetry,
 }: {
+  stateKey: string | null;
   snapshot: AssistantSnapshot | null;
   onRetry?: (message: AssistantMessage) => void;
 }) {
+  const presentationStore = useMemo(
+    () => (stateKey ? createSessionPresentationStore(stateKey) : null),
+    [stateKey]
+  );
   const container = useRef<HTMLDivElement>(null);
   const followTail = useRef(true);
-  useEffect(() => {
+  const restoredKey = useRef<string | null>(null);
+  const presentationId = useId().replace(/:/g, "");
+  const scrollHost = useCallback(() => {
     const element = container.current;
-    if (!element) return;
-    const updateFollowTail = () => {
-      followTail.current = element.scrollHeight - element.scrollTop - element.clientHeight <= 24;
-    };
-    element.addEventListener("scroll", updateFollowTail, { passive: true });
-    updateFollowTail();
-    return () => element.removeEventListener("scroll", updateFollowTail);
+    return element &&
+      element.scrollHeight > element.clientHeight &&
+      getComputedStyle(element).overflowY !== "visible"
+      ? element
+      : document.scrollingElement;
   }, []);
   useEffect(() => {
-    if (!snapshot) {
-      followTail.current = true;
-      return;
+    const update = () => {
+      const host = scrollHost();
+      if (!host || restoredKey.current !== stateKey) return;
+      followTail.current = host.scrollHeight - host.scrollTop - host.clientHeight <= 24;
+      if (stateKey) writeConversationPresentation(stateKey, "scroll", host.scrollTop);
+    };
+    const element = container.current;
+    element?.addEventListener("scroll", update, { passive: true });
+    document.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("pagehide", update);
+    return () => {
+      element?.removeEventListener("scroll", update);
+      document.removeEventListener("scroll", update);
+      window.removeEventListener("pagehide", update);
+    };
+  }, [stateKey, scrollHost]);
+  useEffect(() => {
+    if (!snapshot) return;
+    const host = scrollHost();
+    if (!host) return;
+    if (restoredKey.current !== stateKey) {
+      restoredKey.current = null;
+      const saved = stateKey ? readConversationPresentation(stateKey).scroll : undefined;
+      const frame = requestAnimationFrame(() => {
+        host.scrollTop = typeof saved === "number" ? saved : host.scrollHeight;
+        restoredKey.current = stateKey;
+        followTail.current = host.scrollHeight - host.scrollTop - host.clientHeight <= 24;
+      });
+      return () => cancelAnimationFrame(frame);
     }
-    if (followTail.current && container.current) {
-      container.current.scrollTop = container.current.scrollHeight;
-    }
-  }, [snapshot]);
+    if (followTail.current) host.scrollTop = host.scrollHeight;
+  }, [snapshot, stateKey, scrollHost]);
   return (
-    <div
-      ref={container}
-      className="knowledge-assistant-messages"
-      data-testid="assistant-messages"
-      aria-live="polite"
-    >
-      {!snapshot || snapshot.messages.length === 0 ? (
-        <div className="m-auto max-w-sm text-center text-sm leading-6 text-[color:var(--nature-text-soft)]">
-          <p className="font-medium text-[color:var(--nature-text)]">想了解什么？</p>
-          <p className="mt-1">可以询问公开文章、项目经验和工作方法。</p>
-        </div>
-      ) : (
-        snapshot.messages
-          .filter((message) => message.role === "user" || message.role === "assistant")
-          .map((message) => (
-            <div
-              className={`knowledge-assistant-message knowledge-assistant-message--${message.role}`}
-              data-testid={`assistant-message-${message.role}`}
-              key={message.id}
-            >
-              {message.content || (message.status === "streaming" ? "正在生成……" : "")}
-              {message.status === "failed" && onRetry ? (
-                <button
-                  type="button"
-                  className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-md border border-[color:var(--nature-line-strong)] px-2 text-xs font-semibold"
-                  onClick={() => onRetry(message)}
-                >
-                  <Icon name="tabler:refresh" className="h-3.5 w-3.5" />
-                  重试
-                </button>
-              ) : null}
-              {message.citations.length ? (
-                <ul className="knowledge-assistant-citations" aria-label="回答来源">
-                  {message.citations.map((citation: AssistantCitation) => (
-                    <li key={citation.id}>
-                      <a href={citation.href} target="_blank" rel="noreferrer">
-                        {citation.title}
-                        {citation.location ? ` · ${citation.location}` : ""}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ))
-      )}
-    </div>
+    <ConversationPresentationContext.Provider value={presentationStore}>
+      <div
+        ref={container}
+        className="knowledge-assistant-messages"
+        data-testid="assistant-messages"
+        aria-live="polite"
+      >
+        {!snapshot || snapshot.messages.length === 0 ? (
+          <div className="m-auto max-w-sm text-center text-sm leading-6 text-[color:var(--nature-text-soft)]">
+            <p className="font-medium text-[color:var(--nature-text)]">想了解什么？</p>
+            <p className="mt-1">可以询问公开文章、项目经验和工作方法。</p>
+          </div>
+        ) : (
+          snapshot.messages
+            .filter((message) => message.role === "user" || message.role === "assistant")
+            .map((message) => (
+              <div
+                className={`knowledge-assistant-message knowledge-assistant-message--${message.role}`}
+                data-message-id={message.id}
+                data-message-role={message.role}
+                data-presentation-id={presentationId}
+                data-testid={`assistant-message-${message.role}`}
+                key={message.id}
+              >
+                <AssistantMessageContent
+                  className="knowledge-assistant-message-content"
+                  messageId={message.id}
+                  presentationId={presentationId}
+                  role={message.role as "user" | "assistant"}
+                  content={message.content}
+                  status={message.status}
+                  renderMarkdown={ConversationMarkdown}
+                />
+                {!message.content && message.status === "streaming" ? (
+                  <p className="knowledge-assistant-streaming-placeholder" role="status">
+                    正在生成……
+                  </p>
+                ) : null}
+                {message.status === "failed" && onRetry ? (
+                  <button
+                    type="button"
+                    className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-md border border-[color:var(--nature-line-strong)] px-2 text-xs font-semibold"
+                    onClick={() => onRetry(message)}
+                  >
+                    <Icon name="tabler:refresh" className="h-3.5 w-3.5" />
+                    重试
+                  </button>
+                ) : null}
+                {message.citations.length ? (
+                  <ul className="knowledge-assistant-citations" aria-label="回答来源">
+                    {message.citations.map((citation: AssistantCitation) => (
+                      <li key={citation.id}>
+                        <a href={citation.href} target="_blank" rel="noreferrer">
+                          {citation.title}
+                          {citation.location ? ` · ${citation.location}` : ""}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ))
+        )}
+      </div>
+    </ConversationPresentationContext.Provider>
   );
 }
 
@@ -894,6 +952,12 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   const clearStoredUiState = useCallback((principalId?: string | null) => {
     try {
       window.sessionStorage.removeItem(uiStateKey(principalId));
+      if (principalId) {
+        const prefix = `${uiStateKey(principalId)}:presentation:`;
+        for (const key of Object.keys(window.sessionStorage)) {
+          if (key.startsWith(prefix)) window.sessionStorage.removeItem(key);
+        }
+      }
     } catch {
       // Session storage is an enhancement; assistant state remains server-backed.
     }
@@ -1580,7 +1644,11 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       url.searchParams.set("clipping", context.slug);
       if (context.memoId) url.searchParams.set("clippingMemoId", context.memoId);
     }
-    window.location.assign(url.toString());
+    window.location.assign(
+      isWebDemoBuildEnabled()
+        ? getWebDemoShareUrl(getWebDemoRuntimeState(window.location), url)
+        : url.toString()
+    );
   };
 
   const currentDraft = drafts[draftKey(selectedId, newConversationContextRef.current)] || "";
@@ -1793,7 +1861,16 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                 }
               />
             ) : null}
-            <MessageStream snapshot={snapshot} onRetry={(message) => void retry(message)} />
+            <MessageStream
+              key={`${auth?.principal?.id ?? "anonymous"}:${selectedId}`}
+              stateKey={
+                auth?.principal?.id
+                  ? `${uiStateKey(auth.principal.id)}:presentation:${selectedId}`
+                  : null
+              }
+              snapshot={snapshot}
+              onRetry={(message) => void retry(message)}
+            />
             <div className="knowledge-assistant-compose">
               <button
                 type="button"

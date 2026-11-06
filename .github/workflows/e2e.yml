@@ -146,16 +146,6 @@ jobs:
           WEB_DEMO_VIEWPORT: mobile
           WEB_DEMO_TEST_REPORT: test-results/web-demo-console-boundary-mobile.json
 
-      - name: Stop Console Web Demo preview
-        if: always()
-        run: |
-          if [ -f /tmp/blog-26-web-demo.pid ]; then
-            kill "$(cat /tmp/blog-26-web-demo.pid)" || true
-          fi
-          if [ -f /tmp/blog-26-web-demo.log ]; then
-            tail -n 200 /tmp/blog-26-web-demo.log
-          fi
-
       - name: Start public Web Demo preview
         run: |
           WEB_DEMO_MODE=public WEB_DEMO_PORT=38211 bun scripts/preview-web-demo.ts > /tmp/blog-26-public-web-demo.log 2>&1 &
@@ -168,6 +158,23 @@ jobs:
           done
           cat /tmp/blog-26-public-web-demo.log
           exit 1
+
+      - name: Run assistant Markdown official routes
+        run: bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/assistant-markdown.spec.ts
+        env:
+          WEB_DEMO_TEST_URL: http://127.0.0.1:38211
+          WEB_DEMO_CONSOLE_TEST_URL: http://127.0.0.1:38210
+          WEB_DEMO_TEST_REPORT: test-results/web-demo-assistant-markdown.json
+
+      - name: Stop Console Web Demo preview
+        if: always()
+        run: |
+          if [ -f /tmp/blog-26-web-demo.pid ]; then
+            kill "$(cat /tmp/blog-26-web-demo.pid)" || true
+          fi
+          if [ -f /tmp/blog-26-web-demo.log ]; then
+            tail -n 200 /tmp/blog-26-web-demo.log
+          fi
 
       - name: Run public Web Demo official routes
         run: bunx playwright test --fully-parallel --workers=2 --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-csr.spec.ts tests/e2e/web-demo/public-comments.spec.ts tests/e2e/web-demo/project-runtime-motion.spec.ts tests/e2e/web-demo/search-modes.spec.ts tests/e2e/web-demo/github-admin-binding.spec.ts tests/e2e/web-demo/public-cover-media.spec.ts tests/e2e/web-demo/assistant.spec.ts
