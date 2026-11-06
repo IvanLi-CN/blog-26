@@ -16,6 +16,10 @@ on:
     types: [checks_requested]
   workflow_dispatch:
     inputs:
+      performance_probe:
+        description: Measure the complete CI workload without the independent release-version matrix
+        type: boolean
+        default: false
       project_media_cache_proof:
         description: Run isolated media cold/warm and Docker invalidation experiments
         type: boolean
@@ -38,7 +42,7 @@ env:
 jobs:
   frozen-product-smoke:
     name: Frozen Product Smoke (${{ matrix.version }})
-    if: github.event_name == 'workflow_dispatch' && !inputs.project_media_cache_proof && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/th/release-')
+    if: github.event_name == 'workflow_dispatch' && !inputs.project_media_cache_proof && !inputs.performance_probe && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/th/release-')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
