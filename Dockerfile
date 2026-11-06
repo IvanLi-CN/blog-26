@@ -47,6 +47,16 @@ RUN --mount=type=cache,target=/var/cache/apt \
 RUN if [ "$WITH_PLAYWRIGHT" = "true" ]; then \
       timeout 1200 bunx playwright install chromium --force; \
     fi
+# Expensive media encoding depends only on source images, recipe and encoder.
+FROM ${BUN_BUILD_IMAGE} AS project-media
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY scripts/project-media-cache.ts scripts/generate-project-poster-assets.ts scripts/generate-project-social-preview-assets.ts ./scripts/
+COPY site/lib/project-poster-media.ts site/lib/project-social-preview-media.ts ./site/lib/
+COPY site/assets/projects/posters-source ./site/assets/projects/posters-source
+COPY site/assets/projects/social-source ./site/assets/projects/social-source
+RUN bun scripts/generate-project-poster-assets.ts && bun scripts/generate-project-social-preview-assets.ts
+
 FROM ${BUN_BUILD_IMAGE} AS builder
 WORKDIR /app
 ARG BUILD_DATE
@@ -67,6 +77,7 @@ ARG PLAYBOOK_BUNDLE_DIR=
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /ms-playwright /ms-playwright
 COPY . .
+COPY --from=project-media /app/.cache/project-media/v1 ./.cache/project-media/v1
 COPY --from=search-native /search.linux-x64.node ./native/search/search.linux-x64.node
 ENV BUILD_DATE=${BUILD_DATE}
 ENV COMMIT_HASH=${COMMIT_HASH}

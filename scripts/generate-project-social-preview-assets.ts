@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { mkdir, readdir, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { basename, extname, join, resolve } from "node:path";
 import sharp from "sharp";
 import {
@@ -14,9 +14,17 @@ import {
   projectSocialPreviewPlaceholderMaxBytes,
   projectSocialPreviewWidths,
 } from "../site/lib/project-social-preview-media";
+import {
+  cachedProjectMediaAsset,
+  type MediaCacheStats,
+  mediaCacheRoot,
+  newMediaCacheStats,
+  projectMediaRecipe,
+  pruneMediaCacheEntries,
+  pruneMediaOutputs,
+} from "./project-media-cache";
 
 const SOURCE_THEME_PATTERN = /^(?<slug>.+)-(?:light|dark)$/;
-const GENERATED_SOCIAL_PREVIEW_PATTERN = /-\d+\.(?:avif|webp)$/;
 
 export type ProjectSocialPreviewSource = {
   sourcePath: string;
@@ -29,6 +37,8 @@ export type GenerateProjectSocialPreviewAssetsOptions = {
   sourceDir?: string;
   outputDir?: string;
   manifestPath?: string;
+  cacheDir?: string;
+  cacheStats?: MediaCacheStats;
 };
 
 export type GeneratedProjectSocialPreviewAssets = {
@@ -41,9 +51,10 @@ function projectRoot() {
   return resolve(import.meta.dir, "..");
 }
 
-function defaultOptions(): Required<GenerateProjectSocialPreviewAssetsOptions> {
+function defaultOptions(): Required<Omit<GenerateProjectSocialPreviewAssetsOptions, "cacheStats">> {
   const root = projectRoot();
   return {
+    cacheDir: mediaCacheRoot,
     sourceDir: resolve(root, "site/assets/projects/social-source"),
     outputDir: resolve(root, "public/projects/social"),
     manifestPath: resolve(root, "site/generated/project-social-preview-assets.ts"),
@@ -84,9 +95,7 @@ export function generatedProjectSocialPreviewFileName(
 }
 
 async function assertNoPublicSourcePng(outputDir: string) {
-  const entries = await readdir(outputDir, { withFileTypes: true }).catch(
-    () => [] as Awaited<ReturnType<typeof readdir>>
-  );
+  const entries = await readdir(outputDir, { withFileTypes: true }).catch(() => []);
   for (const entry of entries) {
     const entryPath = join(outputDir, entry.name);
     if (entry.isDirectory()) {
@@ -97,15 +106,6 @@ async function assertNoPublicSourcePng(outputDir: string) {
       throw new Error(`Raw PNG social preview must not remain in ${outputDir}: ${entry.name}`);
     }
   }
-}
-
-async function clearGeneratedSocialPreviewFiles(outputDir: string) {
-  const entries = await readdir(outputDir).catch(() => [] as string[]);
-  await Promise.all(
-    entries
-      .filter((entry) => GENERATED_SOCIAL_PREVIEW_PATTERN.test(entry))
-      .map((entry) => unlink(join(outputDir, entry)))
-  );
 }
 
 async function encodeWithinBudget(
@@ -199,19 +199,67 @@ export async function generateProjectSocialPreviewAssets(
   options: GenerateProjectSocialPreviewAssetsOptions = {}
 ): Promise<GeneratedProjectSocialPreviewAssets> {
   const defaults = defaultOptions();
-  const sourceDir = options.sourceDir ?? defaults.sourceDir;
-  const outputDir = options.outputDir ?? defaults.outputDir;
+  const sourceDir = await realpath(options.sourceDir ?? defaults.sourceDir);
+  const requestedOutputDir = options.outputDir ?? defaults.outputDir;
+  await mkdir(requestedOutputDir, { recursive: true });
+  const outputDir = await realpath(requestedOutputDir);
   const manifestPath = options.manifestPath ?? defaults.manifestPath;
   const sources = await discoverProjectSocialPreviewSources(sourceDir);
 
   await mkdir(outputDir, { recursive: true });
   await assertNoPublicSourcePng(outputDir);
-  await clearGeneratedSocialPreviewFiles(outputDir);
+  const started = performance.now();
+  const stats = options.cacheStats ?? newMediaCacheStats();
+  const recipe = await projectMediaRecipe("social");
+  const expectedFiles = new Set<string>();
+  const activeKeys = new Set<string>();
 
   const assets: Record<string, ProjectSocialPreviewAsset> = {};
   const themedDrafts: Record<string, Partial<ProjectSocialPreviewThemedAsset>> = {};
   for (const source of sources) {
-    const asset = await generateAsset(source, outputDir);
+    const metadata = await sharp(source.sourcePath).metadata();
+    if (!metadata.width || !metadata.height || metadata.width < 1280)
+      throw new Error(`${basename(source.sourcePath)} must be at least 1280px wide`);
+    const rotatedWidth = (metadata.orientation ?? 1) >= 5 ? metadata.height : metadata.width;
+    const rotatedHeight = (metadata.orientation ?? 1) >= 5 ? metadata.width : metadata.height;
+    const sources = {} as ProjectSocialPreviewAsset["sources"];
+    const variants = [];
+    for (const format of projectSocialPreviewFormats) {
+      sources[format] = {} as Record<ProjectSocialPreviewWidth, string>;
+      for (const width of projectSocialPreviewWidths) {
+        const name = generatedProjectSocialPreviewFileName(source.stem, width, format);
+        expectedFiles.add(name);
+        sources[format][width] = `/projects/social/${name}`;
+        const actualWidth = Math.min(width, rotatedWidth);
+        variants.push({
+          name,
+          width: actualWidth,
+          height: Math.round((rotatedHeight * actualWidth) / rotatedWidth),
+          format,
+          budget: projectSocialPreviewBudgets[width][format],
+        });
+      }
+    }
+    const asset = await cachedProjectMediaAsset({
+      kind: "social",
+      recipe,
+      sourcePath: source.sourcePath,
+      stem: source.stem,
+      cacheDir: options.cacheDir ?? defaults.cacheDir,
+      outputDir,
+      stats,
+      activeKeys,
+      variants,
+      expected: {
+        width: Math.min(1280, rotatedWidth),
+        height: Math.round((rotatedHeight * Math.min(1280, rotatedWidth)) / rotatedWidth),
+        placeholder: "",
+        sources,
+      },
+      placeholderHeight: Math.round((rotatedHeight * 32) / rotatedWidth),
+      placeholderMaxBytes: projectSocialPreviewPlaceholderMaxBytes,
+      generate: (directory) => generateAsset(source, directory),
+    });
     if (source.theme) {
       themedDrafts[source.slug] ??= {};
       themedDrafts[source.slug][source.theme] = asset;
@@ -230,6 +278,11 @@ export async function generateProjectSocialPreviewAssets(
     themedAssets[slug] = { light: draft.light, dark: draft.dark };
   }
 
+  const removed = await pruneMediaOutputs(outputDir, expectedFiles);
+  await pruneMediaCacheEntries(options.cacheDir ?? defaults.cacheDir, "social", recipe, activeKeys);
+  console.log(
+    `[project-media:social] hits=${stats.hits} rebuilt=${stats.rebuilt} unavailable=${stats.unavailable} removed=${removed} elapsed_ms=${Math.round(performance.now() - started)}`
+  );
   await mkdir(resolve(manifestPath, ".."), { recursive: true });
   await writeFile(manifestPath, renderManifest(assets, themedAssets));
   return { assets, themedAssets, sources };

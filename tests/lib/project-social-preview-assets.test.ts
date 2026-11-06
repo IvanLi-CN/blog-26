@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -7,7 +7,7 @@ import { generateProjectSocialPreviewAssets } from "../../scripts/generate-proje
 import { verifyProjectSocialPreviewAssets } from "../../scripts/verify-project-social-preview-assets";
 
 test("project social preview generator emits responsive assets and intrinsic dimensions", async () => {
-  const root = await mkdtemp(join(tmpdir(), "project-social-preview-assets-"));
+  const root = await realpath(await mkdtemp(join(tmpdir(), "project-social-preview-assets-")));
   const sourceDir = join(root, "source");
   const outputDir = join(root, "public/projects/social");
   const manifestPath = join(root, "site/generated/project-social-preview-assets.ts");
@@ -71,7 +71,12 @@ test("project social preview generator emits responsive assets and intrinsic dim
       verifyProjectSocialPreviewAssets({ sourceDir, publicDir: outputDir, distDir: null })
     ).rejects.toThrow(/Raw PNG social preview/);
     await expect(
-      generateProjectSocialPreviewAssets({ sourceDir, outputDir, manifestPath })
+      generateProjectSocialPreviewAssets({
+        sourceDir,
+        outputDir,
+        manifestPath,
+        cacheDir: join(root, "cache"),
+      })
     ).rejects.toThrow(/Raw PNG social preview/);
   } finally {
     await rm(root, { recursive: true, force: true });

@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "fffc1e28dc525285ddde46bb04ccca9f0fb5b875",
   "covered_files": {
-    ".github/workflows/e2e.yml": "204a973704ada7dd34163dda4963fcdc98ef5443",
+    ".github/workflows/e2e.yml": "7cf3f961a260675a925d4878f5d23a3780996052",
     "GLOSSARY.md": "8eb1f3de85f5b2f2942e6750ca58614e39949012",
     "docs/adr/0040-assistant-content-and-media-trust-boundary.md": "a7b0171ed17a5da4386ec24e27368b01067327aa",
     "docs/specs/README.md": "466ba8fddb7bc171203ec2c6763ab0683b403501",
@@ -136,7 +136,7 @@
     "current": {
       "impact": "patch",
       "reasoning": "Repair assistant Markdown semantics, preserve literal user input, gate untrusted media, and retain reading/code choices across snapshots and existing UI lifecycle without changing server API or persisted message formats; recognize authenticated VERSION-preserving nested release carry under the separately approved release-policy extension. 当前 CI 测试分层仅调整验证归属，兼容性结论不变；重绑共享文件的当前 blob。",
-      "assessed_at": "2026-11-06T18:50:55+08:00",
+      "assessed_at": "2026-11-06T13:25:17+00:00",
       "evidence": [
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
@@ -181,13 +181,13 @@
       ],
       "scope_drift": {
         "detected": false,
-        "description": "Within approved assistant rendering and lifecycle acceptance; Console consumes existing status/errorCode fields and Demo remains a separate build artifact."
+        "description": "共享构建文件增加已校验的图片中间缓存，产品 API、持久化、图片质量及测试门禁保持兼容；重绑当前 blob。"
       }
     },
     "verified": {
       "impact": "patch",
       "reasoning": "Repair assistant Markdown semantics, preserve literal user input, gate untrusted media, and retain reading/code choices across snapshots and existing UI lifecycle without changing server API or persisted message formats; recognize authenticated VERSION-preserving nested release carry under the separately approved release-policy extension. 当前 CI 测试分层仅调整验证归属，兼容性结论不变；重绑共享文件的当前 blob。",
-      "assessed_at": "2026-11-06T18:50:55+08:00",
+      "assessed_at": "2026-11-06T13:25:17+00:00",
       "evidence": [
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",

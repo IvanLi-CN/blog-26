@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -7,7 +7,7 @@ import { generateProjectPosterAssets } from "../../scripts/generate-project-post
 import { verifyProjectPosterAssets } from "../../scripts/verify-project-poster-assets";
 
 test("project poster generator emits responsive assets and an inline preview", async () => {
-  const root = await mkdtemp(join(tmpdir(), "project-poster-assets-"));
+  const root = await realpath(await mkdtemp(join(tmpdir(), "project-poster-assets-")));
   const sourceDir = join(root, "source");
   const outputDir = join(root, "public/projects/posters");
   const manifestPath = join(root, "site/generated/project-poster-assets.ts");
@@ -29,7 +29,12 @@ test("project poster generator emits responsive assets and an inline preview", a
       )
     );
 
-    const generated = await generateProjectPosterAssets({ sourceDir, outputDir, manifestPath });
+    const generated = await generateProjectPosterAssets({
+      sourceDir,
+      outputDir,
+      manifestPath,
+      cacheDir: join(root, "cache"),
+    });
     const [files, manifest] = await Promise.all([
       readdir(outputDir),
       readFile(manifestPath, "utf8"),
@@ -67,7 +72,12 @@ test("project poster generator emits responsive assets and an inline preview", a
       verifyProjectPosterAssets({ sourceDir, publicDir: outputDir, distDir: null })
     ).rejects.toThrow(/Raw PNG poster/);
     await expect(
-      generateProjectPosterAssets({ sourceDir, outputDir, manifestPath })
+      generateProjectPosterAssets({
+        sourceDir,
+        outputDir,
+        manifestPath,
+        cacheDir: join(root, "cache"),
+      })
     ).rejects.toThrow(/Raw PNG poster/);
   } finally {
     await rm(root, { recursive: true, force: true });
