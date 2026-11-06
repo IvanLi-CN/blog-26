@@ -53,4 +53,4 @@ Set `PUBLIC_MEDIA_ARTIFACT_DIR=./edgeone-dist` to make the media verifier inspec
 
 Actions 的 `setup-project-media` 在安装依赖后恢复同配方的聚合缓存，并在 job 成功后保存新源图集合的精确键；首次并行冷启动可能重复生成。Docker `project-media` 阶段独立于应用源码和构建身份，builder 继续运行真实生成器并校验缓存。
 
-性能实验通过现有 CI/CD Pipeline 的 `workflow_dispatch` 输入 `project_media_cache_proof=true` 启用，在现有 Build/Docker job 内分别运行 `benchmark-project-media-cache.ts` 和 `verify-project-media-docker-cache.ts`。实验使用临时目录，覆盖完整素材冷生成、三次暖运行、单图变化和 Docker 无关源码/身份变化；不发布镜像。该专用实验不运行完整产品版本矩阵，普通 dispatch 与自动 PR/main 的原有检查不变。日志中的生成收益还须扣除真实 restore/save 传输成本，不能仅以命中次数证明性能。
+性能实验通过现有 CI/CD Pipeline 的 `workflow_dispatch` 输入 `project_media_cache_proof=true` 启用，在现有 Build/Docker job 内运行 `benchmark-project-media-cache.ts`，并用 `bun run image:verify` 验证当前 native runtime bundle。实验使用临时目录，覆盖完整素材冷生成、三次暖运行、单图变化和 bundle 身份校验；不发布镜像。该专用实验不运行完整产品版本矩阵，普通 dispatch 与自动 PR/main 的原有检查不变。日志中的生成收益还须扣除真实 restore/save 传输成本，不能仅以命中次数证明性能。
