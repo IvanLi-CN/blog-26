@@ -83,7 +83,7 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "b9f21e8ef06e376f6254606a9bb900b083babc9f",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "Release input freezing preserves complete same-version v1/v2 watermark pairs from legacy snapshots and closes only new/current candidates with v3 siblings"
         },
         {

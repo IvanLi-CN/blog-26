@@ -124,7 +124,7 @@
         },
         {
           "path": "tests/lib/playbook-workflows.test.ts",
-          "blob": "21a260ea600138843aa6cfcced2c5324582bb93e",
+          "blob": "5e5a784a47d6a4b2277b3b19ffab4d0c30a6fc3c",
           "command": "Workflow boundary tests reject non-HTTPS sync endpoints, keep invalid optional supplements, defer unavailable optional assets, validate public/supplement merge compatibility before sync, gate content builds on deployed renderer capabilities, surface receiver failures after preserving the public deployment, clear stale supplement retries, and assert that supplements stay out of public frozen and backend artifacts"
         },
         {

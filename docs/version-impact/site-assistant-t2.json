@@ -193,7 +193,7 @@
         },
         {
           "path": "package.json",
-          "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
           "command": "bun run check completes successfully with 26 existing Biome warnings and 13 infos; the admin UI boundary passes for 48 files; bun run db:migrations:validate passes"
         },
         {

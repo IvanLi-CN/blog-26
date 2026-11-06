@@ -45,7 +45,7 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "d0291f6ee1da7c5a2627ed14cdda1a99ddc39583",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "Frozen release packaging preserves the exact sealed media identity during recovery"
         }
       ],
@@ -132,7 +132,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "d0291f6ee1da7c5a2627ed14cdda1a99ddc39583",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "Frozen media identity selection changes packaging behavior without writing persistent state"
         }
       ]

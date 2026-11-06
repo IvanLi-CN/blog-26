@@ -84,7 +84,7 @@
         },
         {
           "path": "package.json",
-          "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
           "command": "VITE_WEB_DEMO_BUILD=true ADMIN_OUT_DIR=web-demo-admin-dist bunx vite build --config apps/admin/vite.config.ts --configLoader runner; bunx biome check --write <changed files>; git diff --check; sourceAssessment(prBase=84eebd33, publishedBaseline=e6790c24, semanticChanges=102, records=5, impact=minor)"
         }
       ]

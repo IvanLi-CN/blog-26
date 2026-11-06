@@ -22,7 +22,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "bun test tests/lib/manual-release-*.test.ts scripts/package-public-media.test.ts"
         }
       ]
@@ -34,7 +34,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "bun test tests/lib/manual-release-*.test.ts scripts/package-public-media.test.ts: bounded primary and HTTP/1.1 fallback reads pass"
         },
         {
@@ -65,7 +65,7 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "bun test tests/lib/manual-release-*.test.ts scripts/package-public-media.test.ts: release input and fallback adapter coverage passes"
         },
         {
@@ -75,7 +75,7 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "bun run check: release input implementation passes repository lint and format gates"
         }
       ]
@@ -116,7 +116,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "The public snapshot and media URL, response, and frozen input contracts remain unchanged"
         }
       ]
@@ -130,7 +130,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "4916a35dc48bb612c920bc621914f733f91e8639",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "No database, cache, artifact manifest identity, or release ledger format changes"
         }
       ]

@@ -84,7 +84,7 @@
         },
         {
           "path": "package.json",
-          "blob": "d302eecab6d7ec8e908c2b16eeed1988a18c4bd2",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
           "command": "bun run check: Biome check and Admin UI boundary check pass; existing warnings and infos are non-fatal"
         }
       ]

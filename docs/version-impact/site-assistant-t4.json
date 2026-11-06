@@ -122,7 +122,7 @@
         },
         {
           "path": "package.json",
-          "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
           "command": "bun run check; bunx biome check on changed files; git diff --check"
         },
         {

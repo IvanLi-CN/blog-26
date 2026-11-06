@@ -37,7 +37,7 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "08d91ed05a6ceee922254e53b8189b8e139f8d2f",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "freezeInputs enables base-media capture without changing generated page references"
         }
       ],
@@ -99,7 +99,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "08d91ed05a6ceee922254e53b8189b8e139f8d2f",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "The change only affects sealed release inputs; public API and runtime media contracts remain unchanged"
         }
       ]
@@ -113,7 +113,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "08d91ed05a6ceee922254e53b8189b8e139f8d2f",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "The additional asset exists only in the immutable release input directory"
         }
       ]

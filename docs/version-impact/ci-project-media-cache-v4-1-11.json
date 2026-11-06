@@ -70,7 +70,7 @@
         },
         {
           "path": "docs/specs/ci-performance/SPEC.md",
-          "blob": "6ae3789f1587111aee14c3c5c919d3011ddb7816",
+          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -167,7 +167,7 @@
         },
         {
           "path": "docs/specs/ci-performance/SPEC.md",
-          "blob": "6ae3789f1587111aee14c3c5c919d3011ddb7816",
+          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -268,7 +268,7 @@
         },
         {
           "path": "docs/specs/ci-performance/SPEC.md",
-          "blob": "6ae3789f1587111aee14c3c5c919d3011ddb7816",
+          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -416,7 +416,7 @@
         },
         {
           "path": "docs/specs/ci-performance/SPEC.md",
-          "blob": "6ae3789f1587111aee14c3c5c919d3011ddb7816",
+          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -515,7 +515,7 @@
         },
         {
           "path": "docs/specs/ci-performance/SPEC.md",
-          "blob": "6ae3789f1587111aee14c3c5c919d3011ddb7816",
+          "blob": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
