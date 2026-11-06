@@ -27,6 +27,48 @@ async function goBackToHydratedPublicRoute(page: Page) {
 test.describe("Console Memo Web Demo", () => {
   test.describe.configure({ timeout: 60_000 });
 
+  test("keeps long code inside the Memo column without overlapping comments", async ({ page }) => {
+    await gotoHydratedPublicRoute(page, `/memos/${privateSlug}/?d_persona=admin&d_delay=normal`);
+    const main = page.locator(".memo-authoring-detail-main");
+    await expect(main).toBeVisible();
+
+    for (const width of [1362, 1280, 1279, 393]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(async () => {
+        const bounds = await main.evaluate((element) => {
+          const comments = document.querySelector(".memo-authoring-detail-comments");
+          const layout = element.parentElement;
+          const body = element.querySelector('[data-testid="public-memo-detail-body"]');
+          const pre = body?.querySelector("pre");
+          if (!comments || !layout || !pre) throw new Error("Memo layout fixture is missing");
+          const rect = (node: Element) => {
+            const { left, right, top, bottom } = node.getBoundingClientRect();
+            return { left, right, top, bottom };
+          };
+          return {
+            main: rect(element),
+            comments: rect(comments),
+            layout: rect(layout),
+            code: rect(pre),
+            codeOverflows: pre.scrollWidth > pre.clientWidth,
+            documentWidth: document.documentElement.scrollWidth,
+            viewportWidth: window.innerWidth,
+          };
+        });
+        expect(bounds.main.left).toBeGreaterThanOrEqual(bounds.layout.left - 1);
+        expect(bounds.main.right).toBeLessThanOrEqual(bounds.layout.right + 1);
+        expect(bounds.code.right).toBeLessThanOrEqual(bounds.main.right + 1);
+        expect(bounds.codeOverflows).toBe(true);
+        expect(bounds.documentWidth).toBeLessThanOrEqual(bounds.viewportWidth + 1);
+        if (width >= 1280) {
+          expect(bounds.comments.left - bounds.main.right).toBeGreaterThanOrEqual(31);
+        } else {
+          expect(bounds.comments.top).toBeGreaterThanOrEqual(bounds.main.bottom);
+        }
+      }).toPass({ timeout: 5000 });
+    }
+  });
+
   test("covers the admin list eye action, same-origin detail, preview boundary, and back position", async ({
     page,
   }) => {
