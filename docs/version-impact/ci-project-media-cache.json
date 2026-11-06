@@ -76,7 +76,7 @@
         },
         {
           "path": "scripts/README.md",
-          "blob": "66e6769469669b77df3db6f86e7629937e856fac",
+          "blob": "f4015fa5b4418665575939b4e698f447030e7863",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -173,7 +173,7 @@
         },
         {
           "path": "scripts/README.md",
-          "blob": "66e6769469669b77df3db6f86e7629937e856fac",
+          "blob": "f4015fa5b4418665575939b4e698f447030e7863",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -274,7 +274,7 @@
         },
         {
           "path": "scripts/README.md",
-          "blob": "66e6769469669b77df3db6f86e7629937e856fac",
+          "blob": "f4015fa5b4418665575939b4e698f447030e7863",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
