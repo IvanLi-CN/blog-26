@@ -1,0 +1,316 @@
+/* Chat reading rules are scoped here; standalone media/code and article styles stay independent. */
+.conversation-markdown {
+  --conversation-border: var(--nature-line-strong);
+  min-width: 0;
+  max-width: 100%;
+  color: var(--nature-text);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.conversation-markdown
+  :where(
+    p,
+    ul,
+    ol,
+    blockquote,
+    hr,
+    .table-responsive,
+    .conversation-code-block,
+    .conversation-image,
+    .katex-display,
+    section[data-footnotes]
+  ) {
+  margin-block: 0.75rem;
+}
+
+.conversation-markdown > :first-child,
+.conversation-markdown :is(blockquote, li, section[data-footnotes]) > :first-child {
+  margin-top: 0;
+}
+
+.conversation-markdown > :last-child,
+.conversation-markdown :is(blockquote, li, section[data-footnotes]) > :last-child {
+  margin-bottom: 0;
+}
+
+.conversation-markdown p {
+  color: inherit;
+  line-height: 1.75;
+}
+
+.conversation-markdown :is(h1, h2, h3, h4, h5, h6):not(.sr-only) {
+  margin-block: 0.75rem;
+  color: var(--nature-text);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.conversation-markdown > :is(h1, h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+
+.conversation-markdown :is(h1, h2, h3):not(.sr-only) {
+  font-family: var(--font-display), "Noto Serif SC", serif;
+}
+
+.conversation-markdown h1:not(.sr-only) {
+  font-size: 1.25rem;
+}
+.conversation-markdown h2:not(.sr-only) {
+  font-size: 1.125rem;
+}
+.conversation-markdown :is(h3, h4):not(.sr-only) {
+  font-size: 1rem;
+}
+.conversation-markdown h5:not(.sr-only) {
+  font-size: 0.875rem;
+}
+.conversation-markdown h6:not(.sr-only) {
+  font-size: 0.8125rem;
+  color: var(--nature-text-soft);
+}
+
+.conversation-markdown ul {
+  list-style: disc outside;
+  padding-left: 1.5rem;
+}
+.conversation-markdown ol {
+  list-style: decimal outside;
+  padding-left: 1.5rem;
+}
+.conversation-markdown li + li {
+  margin-top: 0.25rem;
+}
+.conversation-markdown li > :is(ul, ol) {
+  margin-block: 0.375rem;
+}
+
+.conversation-markdown blockquote {
+  padding: 0 0 0 0.75rem;
+  border: 0;
+  border-left: 3px solid var(--conversation-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--nature-text);
+  font-style: normal;
+}
+
+.conversation-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--conversation-border);
+}
+
+.conversation-markdown .conversation-link {
+  color: var(--nature-accent-strong);
+  text-decoration-line: underline;
+  text-decoration-color: rgba(var(--nature-accent-rgb), 0.35);
+  text-underline-offset: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.conversation-markdown .conversation-inline-code {
+  padding: 0.125rem 0.25rem;
+  border: 1px solid var(--conversation-border);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 0.875em;
+}
+
+.conversation-markdown
+  :is(.table-responsive, .conversation-code-block, .conversation-image__content) {
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--conversation-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.conversation-markdown :is(.table-responsive, .katex-display) {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.conversation-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  color: inherit;
+  font-size: 0.875rem;
+}
+
+.conversation-markdown :is(thead, tbody, tr) {
+  background: transparent;
+  border-color: var(--conversation-border);
+}
+.conversation-markdown :is(th, td) {
+  padding: 0.5rem 0.75rem;
+  border-color: var(--conversation-border);
+  color: inherit;
+  font-size: inherit;
+  line-height: 1.75;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.conversation-markdown th {
+  font-weight: 600;
+}
+.conversation-markdown [align="left"] {
+  text-align: left;
+}
+.conversation-markdown [align="center"] {
+  text-align: center;
+}
+.conversation-markdown [align="right"] {
+  text-align: right;
+}
+
+.conversation-markdown .conversation-code-block {
+  --markdown-code-background: transparent;
+  --markdown-code-border: var(--conversation-border);
+  --markdown-code-foreground: var(--nature-text);
+  --markdown-code-comment: var(--nature-text-soft);
+  --markdown-code-keyword: var(--nature-accent-strong);
+  --markdown-code-string: var(--nature-accent-strong);
+  --markdown-code-number: var(--nature-text);
+  --markdown-code-function: var(--nature-accent-strong);
+  --markdown-code-variable: var(--nature-text);
+  --markdown-code-literal: var(--nature-accent-strong);
+  color: var(--nature-text);
+}
+
+.conversation-markdown .conversation-code-toolbar {
+  padding: 0.25rem 0.75rem;
+  border-color: var(--conversation-border);
+  color: var(--nature-text-soft);
+}
+
+.conversation-markdown .conversation-code-block[data-markdown-surface] pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow-x: auto;
+}
+
+.conversation-markdown .conversation-code-block pre > code {
+  padding: 0.75rem;
+  line-height: 1.75;
+}
+.conversation-markdown :is(.conversation-code-feedback, .conversation-code-summary) {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  color: var(--nature-text-soft);
+}
+.conversation-markdown .conversation-code-feedback:empty {
+  padding-block: 0;
+}
+
+.conversation-markdown .conversation-image {
+  color: inherit;
+}
+.conversation-markdown .conversation-image__content {
+  padding: 0.75rem;
+}
+.conversation-markdown .conversation-image img {
+  border-radius: 0;
+  box-shadow: none;
+}
+.conversation-markdown :is(.conversation-image__status, .conversation-image__domain) {
+  color: var(--nature-text-soft);
+}
+
+.conversation-markdown
+  :is(
+    .conversation-code-actions button,
+    .conversation-image__actions button,
+    .conversation-image__actions a,
+    .conversation-footnote-backref
+  ) {
+  display: inline-flex;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--nature-accent-strong);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.conversation-markdown
+  :is(
+    .conversation-code-actions button,
+    .conversation-image__actions button,
+    .conversation-image__actions a,
+    .conversation-footnote-backref
+  ):is(:hover, :active) {
+  background: transparent;
+  box-shadow: none;
+}
+
+.conversation-markdown
+  :is(
+    .conversation-code-actions button,
+    .conversation-image__actions button,
+    .conversation-image__actions a,
+    .conversation-footnote-backref,
+    .conversation-link,
+    .conversation-code-block pre
+  ):focus-visible {
+  outline: 2px solid var(--nature-accent-strong);
+  outline-offset: 2px;
+}
+
+.conversation-markdown .conversation-code-block pre:focus-visible {
+  outline-offset: -3px;
+}
+.conversation-markdown a.conversation-footnote-backref {
+  padding: 0;
+  vertical-align: middle;
+}
+.conversation-markdown section[data-footnotes] {
+  color: var(--nature-text-soft);
+  font-size: 0.875rem;
+}
+
+@media (min-width: 768px) {
+  .conversation-markdown h1:not(.sr-only) {
+    font-size: 1.5rem;
+  }
+  .conversation-markdown h2:not(.sr-only) {
+    font-size: 1.25rem;
+  }
+  .conversation-markdown h3:not(.sr-only) {
+    font-size: 1.125rem;
+  }
+}
+
+@media (min-width: 1024px) and (pointer: fine) {
+  .conversation-markdown
+    :is(
+      .conversation-code-actions button,
+      .conversation-image__actions button,
+      .conversation-image__actions a
+    ) {
+    min-width: 36px;
+    min-height: 36px;
+  }
+  .conversation-markdown a.conversation-footnote-backref {
+    min-width: 32px;
+    min-height: 32px;
+  }
+}

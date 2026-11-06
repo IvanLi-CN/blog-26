@@ -2,14 +2,16 @@ import type { Element, Root } from "hast";
 import { visit } from "unist-util-visit";
 import type { ResponsiveTablesOptions } from "../types";
 
+type ConversationResponsiveTablesOptions = ResponsiveTablesOptions & { wrapCells?: boolean };
+
 /**
  * Rehype 插件：响应式表格
  *
  * 此插件会将表格包装在一个可滚动的容器中，
  * 以确保在小屏幕设备上表格能够正常显示。
  */
-export function rehypeResponsiveTables(options: ResponsiveTablesOptions = {}) {
-  const { containerClassName = "table-responsive" } = options;
+export function rehypeResponsiveTables(options: ConversationResponsiveTablesOptions = {}) {
+  const { containerClassName = "table-responsive", wrapCells = false } = options;
 
   return (tree: Root) => {
     visit(tree, "element", (node: Element, index, parent) => {
@@ -120,7 +122,7 @@ export function rehypeResponsiveTables(options: ResponsiveTablesOptions = {}) {
             ...existingClasses,
             "px-6",
             "py-4",
-            "whitespace-nowrap",
+            ...(wrapCells ? ["whitespace-normal", "break-words"] : ["whitespace-nowrap"]),
             "text-sm",
             "text-[color:var(--nature-text)]",
           ],

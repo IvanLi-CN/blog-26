@@ -681,9 +681,15 @@
   border: 1px solid var(--nature-line);
   border-radius: 10px;
   padding: 0.7rem 0.85rem;
-  line-height: 1.7;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.knowledge-assistant-message-content .conversation-markdown > :first-child {
+  margin-top: 0;
+}
+
+.knowledge-assistant-message-content .conversation-markdown > :last-child {
+  margin-bottom: 0;
 }
 
 .knowledge-assistant-message--user {
@@ -717,7 +723,7 @@
   position: relative;
   flex-shrink: 0;
   border-top: 1px solid var(--nature-line);
-  padding: 0.75rem 0.75rem max(0.75rem, env(safe-area-inset-bottom, 0px));
+  padding: 1.5rem 0.75rem max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
 .knowledge-assistant-compose textarea {
@@ -731,12 +737,12 @@
 
 .knowledge-assistant-compose-resize-handle {
   position: absolute;
-  top: -0.5rem;
+  top: -22px;
   left: 50%;
   z-index: 1;
   display: grid;
   width: 3rem;
-  height: 1.5rem;
+  height: 44px;
   place-items: center;
   border: 0;
   border-radius: 999px;
@@ -811,7 +817,7 @@
 }
 
 .knowledge-assistant-send-button {
-  min-height: 2.25rem;
+  min-height: 44px;
   gap: 0.4rem;
   padding: 0.45rem 0.8rem;
   box-shadow: 0 8px 18px rgba(var(--nature-accent-rgb), 0.18);
@@ -819,6 +825,21 @@
 
 .knowledge-assistant-send-button:hover:not(:disabled) {
   box-shadow: 0 10px 22px rgba(var(--nature-accent-rgb), 0.24);
+}
+
+@media (min-width: 1024px) and (pointer: fine) {
+  .knowledge-assistant-compose {
+    padding-top: 0.75rem;
+  }
+
+  .knowledge-assistant-compose-resize-handle {
+    top: -16px;
+    height: 32px;
+  }
+
+  .knowledge-assistant-send-button {
+    min-height: 2.25rem;
+  }
 }
 
 .knowledge-assistant-shortcut {

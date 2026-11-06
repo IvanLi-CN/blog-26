@@ -1,0 +1,72 @@
+.conversation-image {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  margin-block: 0.75rem;
+  color: var(--nature-text, #24352d);
+  overflow-wrap: anywhere;
+}
+
+.conversation-image__content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+}
+
+.conversation-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+
+.conversation-image__description {
+  font-size: 0.9375rem;
+}
+
+.conversation-image__status,
+.conversation-image__domain {
+  color: var(--nature-text-soft, #52655a);
+  font-size: 0.8125rem;
+}
+
+.conversation-image__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.conversation-image__actions button,
+.conversation-image__actions a {
+  display: inline-flex;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid rgba(var(--nature-border-rgb, 84, 114, 96), 0.4);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.conversation-image__actions :is(button, a):focus-visible {
+  outline: 2px solid var(--nature-accent-strong, #4e7e60);
+  outline-offset: 3px;
+}
+
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  .conversation-image__actions button,
+  .conversation-image__actions a {
+    min-height: 36px;
+    min-width: 36px;
+  }
+}

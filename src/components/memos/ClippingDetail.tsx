@@ -8,11 +8,21 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import CommentSectionWithProvider from "@/components/comments/CommentSectionWithProvider";
+import { ConversationMarkdown } from "@/components/common/ConversationMarkdown";
+import {
+  ConversationPresentationContext,
+  createMemoryPresentationStore,
+} from "@/components/common/conversation/presentation-state";
+import type {
+  ConversationImageResourceContext,
+  ConversationMessageStatus,
+} from "@/components/common/conversation/types";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import "./clipping-admin.css";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -21,13 +31,22 @@ import { mapClippingResourceUrl } from "@/lib/clipping-resources";
 import type { ClippingReading } from "@/lib/memo-clipping";
 import type { PublicMediaContext } from "@/lib/public-media";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
+import { AssistantMessageContent } from "../../../site/components/AssistantMessageContent";
+import "./ClippingDetail.css";
 
 export type ClippingChat = {
-  messages: Array<{ id: string; role: "user" | "assistant"; text: string; timestamp: number }>;
+  messages: Array<{
+    id: string;
+    role: "user" | "assistant";
+    text: string;
+    timestamp: number;
+    status?: ConversationMessageStatus;
+  }>;
   generating: boolean;
   partial: string;
   conversationId?: string | null;
   error?: string | null;
+  errorCode?: string | null;
 };
 export type ClippingArticle = {
   reading: ClippingReading;
@@ -97,9 +116,9 @@ function ChatPanel({
   send,
   sending,
   error,
-  surface,
   scroll,
-  publicAssetVersion,
+  resourceContext,
+  messageIdentity,
 }: {
   snapshot: ClippingChat;
   draft: string;
@@ -107,12 +126,102 @@ function ChatPanel({
   send: () => void;
   sending: boolean;
   error: string | null;
-  surface: "public" | "admin";
   scroll: MutableRefObject<number>;
-  publicAssetVersion?: string | null;
+  resourceContext?: ConversationImageResourceContext;
+  messageIdentity: Map<string, string>;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const pinned = useRef(scroll.current === 0);
+  const presentationId = useId().replace(/:/g, "");
+  const stableMessageId = (role: "user" | "assistant", index: number, backendId?: string) => {
+    const conversationKey = snapshot.conversationId ?? "legacy-clipping";
+    const identityKey = `${conversationKey}:${role}:${index}`;
+    const existing = messageIdentity.get(identityKey);
+    if (existing) return existing;
+    const identity = backendId ?? `${conversationKey}:${role}:${index}:pending`;
+    messageIdentity.set(identityKey, identity);
+    return identity;
+  };
+  const lastUserIndex = snapshot.messages.findLastIndex((message) => message.role === "user");
+  const lastAssistantIndex = snapshot.messages.findLastIndex(
+    (message) => message.role === "assistant"
+  );
+  const pendingTurn = lastUserIndex > lastAssistantIndex;
+  const terminalForPending =
+    !pendingTurn && lastUserIndex >= 0 && lastAssistantIndex === lastUserIndex + 1
+      ? snapshot.messages[lastAssistantIndex]
+      : undefined;
+  const partialOverlapsTerminal = Boolean(
+    snapshot.partial &&
+      terminalForPending &&
+      (terminalForPending.text === snapshot.partial ||
+        terminalForPending.text.startsWith(snapshot.partial) ||
+        snapshot.partial.startsWith(terminalForPending.text))
+  );
+  const pendingMessageId = stableMessageId("assistant", snapshot.messages.length);
+  const showPendingRow =
+    !terminalForPending || (Boolean(snapshot.partial) && !partialOverlapsTerminal);
+  type ChatRow = {
+    messageId: string;
+    role: "user" | "assistant";
+    content: string;
+    status: ConversationMessageStatus;
+    pending: boolean;
+  };
+  const rows: ChatRow[] = snapshot.messages.map((message, index) => ({
+    messageId: stableMessageId(message.role, index, message.id),
+    role: message.role,
+    content: message.text,
+    status: message.status ?? "completed",
+    pending: false,
+  }));
+  if (showPendingRow && (snapshot.partial || snapshot.generating)) {
+    rows.push({
+      messageId: pendingMessageId,
+      role: "assistant",
+      content: snapshot.partial,
+      status:
+        snapshot.errorCode === "cancelled"
+          ? "cancelled"
+          : snapshot.error
+            ? "failed"
+            : snapshot.generating
+              ? "streaming"
+              : "completed",
+      pending: true,
+    });
+  }
+  const renderRow = (row: ChatRow) => (
+    <div
+      key={row.messageId}
+      className="clipping-chat-message"
+      data-message-id={row.messageId}
+      data-presentation-id={presentationId}
+      data-message-role={row.role}
+    >
+      <p className="nature-muted mb-2 text-xs">
+        {row.role === "user"
+          ? "你"
+          : row.pending && snapshot.generating
+            ? "文章助手 · 正在回答"
+            : "文章助手"}
+      </p>
+      <AssistantMessageContent
+        messageId={row.messageId}
+        presentationId={presentationId}
+        {...({ role: row.role } as const)}
+        content={row.content}
+        status={row.status}
+        renderMarkdown={ConversationMarkdown}
+        resourceContext={resourceContext}
+      />
+      {row.pending && !snapshot.partial && snapshot.generating ? (
+        <p className="nature-muted text-sm" role="status">
+          正在阅读相关段落…
+        </p>
+      ) : null}
+    </div>
+  );
   useLayoutEffect(() => {
     if (container.current) container.current.scrollTop = scroll.current;
   }, [scroll]);
@@ -141,39 +250,7 @@ function ChatPanel({
             围绕这篇文章提问。回答会引用原文段落，并说明哪些是推断。
           </p>
         ) : null}
-        {snapshot.messages.map((message) => (
-          <div key={`${message.id}-${message.role}`} className="clipping-chat-message">
-            <p className="nature-muted mb-2 text-xs">
-              {message.role === "user" ? "你" : "文章助手"}
-            </p>
-            <MarkdownRenderer
-              surface={surface}
-              content={message.text}
-              variant="memo"
-              nofollowExternalLinks
-              enableMermaid={false}
-              publicAssetVersion={publicAssetVersion}
-            />
-          </div>
-        ))}
-        {snapshot.partial ? (
-          <div>
-            <p className="nature-muted mb-2 text-xs">文章助手 · 正在回答</p>
-            <MarkdownRenderer
-              surface={surface}
-              content={snapshot.partial}
-              variant="memo"
-              nofollowExternalLinks
-              enableMermaid={false}
-              publicAssetVersion={publicAssetVersion}
-            />
-          </div>
-        ) : null}
-        {snapshot.generating && !snapshot.partial ? (
-          <p className="nature-muted text-sm" role="status">
-            正在阅读相关段落…
-          </p>
-        ) : null}
+        {rows.map(renderRow)}
       </div>
       {error || snapshot.error ? (
         <p role="alert" className="nature-alert nature-alert-error mx-4 mb-3 text-sm">
@@ -287,6 +364,25 @@ export function ClippingDetail({
       const mapped = mapClippingResourceUrl(url, article.resourceBaseUrl);
       return mapped.startsWith("/api/") ? toPublicApiUrl(mapped) : mapped;
     },
+    [article.resourceBaseUrl]
+  );
+  const conversationResourceContext = useMemo<ConversationImageResourceContext | undefined>(
+    () =>
+      article.resourceBaseUrl
+        ? {
+            resolveAuthorizedImage: (src) => {
+              const mapped = mapClippingResourceUrl(src, article.resourceBaseUrl);
+              if (mapped === src) return null;
+              const resolved = mapped.startsWith("/api/") ? toPublicApiUrl(mapped) : mapped;
+              if (typeof window !== "undefined") {
+                const url = new URL(resolved, window.location.origin);
+                if (url.origin === window.location.origin)
+                  return { src: `${url.pathname}${url.search}${url.hash}` };
+              }
+              return { src: resolved };
+            },
+          }
+        : undefined,
     [article.resourceBaseUrl]
   );
   const desktop = useSyncExternalStore(subscribeDesktop, desktopSnapshot, serverSnapshot);
@@ -429,18 +525,32 @@ export function ClippingDetail({
       setBusy(false);
     }
   }
+  const presentationIdentity = JSON.stringify([slug, snapshot.conversationId, canDiscuss]);
+  const presentationState = useRef({
+    identity: presentationIdentity,
+    store: createMemoryPresentationStore(),
+    messageIdentity: new Map<string, string>(),
+  });
+  if (presentationState.current.identity !== presentationIdentity)
+    presentationState.current = {
+      identity: presentationIdentity,
+      store: createMemoryPresentationStore(),
+      messageIdentity: new Map<string, string>(),
+    };
   const chat = (
-    <ChatPanel
-      snapshot={snapshot}
-      draft={draft}
-      setDraft={setDraft}
-      send={() => void send()}
-      sending={sending}
-      error={chatError}
-      surface={surface}
-      scroll={scroll}
-      publicAssetVersion={publicAssetVersion}
-    />
+    <ConversationPresentationContext.Provider value={presentationState.current.store}>
+      <ChatPanel
+        snapshot={snapshot}
+        draft={draft}
+        setDraft={setDraft}
+        send={() => void send()}
+        sending={sending}
+        error={chatError}
+        scroll={scroll}
+        resourceContext={conversationResourceContext}
+        messageIdentity={presentationState.current.messageIdentity}
+      />
+    </ConversationPresentationContext.Provider>
   );
   const managementActions =
     canDiscuss && live ? (

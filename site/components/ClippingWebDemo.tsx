@@ -19,9 +19,18 @@ export function ClippingDetail(props: Parameters<typeof ProductionClippingDetail
       recordWebDemoMutation
     )
   );
-  const [revision, setRevision] = useState(0);
+  const [, setRevision] = useState(0);
+  const [mountRevision, setMountRevision] = useState(0);
   useEffect(() => {
+    let previous = getDefaultWebDemoState(`/memos/${props.slug}`);
     const sync = (state: WebDemoState) => {
+      if (
+        state.scene !== previous.scene ||
+        state.persona !== previous.persona ||
+        state.data !== previous.data
+      )
+        setMountRevision((current) => current + 1);
+      previous = state;
       model.setState(state);
       setRevision((current) => current + 1);
     };
@@ -32,7 +41,10 @@ export function ClippingDetail(props: Parameters<typeof ProductionClippingDetail
     const locationChanged = () => sync(getWebDemoState(window.location, "public"));
     const action = (event: Event) => {
       const detail = (event as CustomEvent<WebDemoActionDetail>).detail;
-      if (detail?.action === "reset-state") model.reset(getWebDemoState(window.location, "public"));
+      if (detail?.action === "reset-state") {
+        model.reset(getWebDemoState(window.location, "public"));
+        setMountRevision((current) => current + 1);
+      }
       if (detail?.action === "simulate-save") model.simulateSave();
       if (
         detail?.action === "reset-state" ||
@@ -50,16 +62,17 @@ export function ClippingDetail(props: Parameters<typeof ProductionClippingDetail
       window.removeEventListener(WEB_DEMO_ACTION_EVENT, action);
       window.removeEventListener("popstate", locationChanged);
     };
-  }, [model]);
+  }, [model, props.slug]);
   const article = model.getArticle();
   return (
     <ProductionClippingDetail
       {...props}
-      key={revision}
-      live
+      key={mountRevision}
+      live={props.live}
+      hideChat={props.hideChat || !props.live}
       transport={model.transport}
       initialArticle={article}
-      initialCanDiscuss={Boolean(article.canDiscuss)}
+      initialCanDiscuss={Boolean(props.live && article.canDiscuss)}
     />
   );
 }

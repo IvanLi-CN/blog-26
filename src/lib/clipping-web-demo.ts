@@ -6,6 +6,13 @@ import type {
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import { WEB_DEMO_CLIPPING_SLUG, type WebDemoState } from "./web-demo-runtime";
 
+import {
+  amrResourceBase,
+  assistantMarkdownMessages,
+  assistantMarkdownSnapshot,
+  isAssistantMarkdownScene,
+} from "./web-demo-scenes";
+
 const targetUrl = "https://earendil.com/posts/pi-durable/";
 const currentVersion = "11111111-1111-4111-8111-111111111111";
 const previousVersion = "22222222-2222-4222-8222-222222222222";
@@ -61,6 +68,7 @@ export function getClippingWebDemoArticle(state: WebDemoState): ClippingArticle 
   const long = state.scene === "clipping-long-article" || state.data === "dense";
   const empty = state.data === "empty";
   return {
+    resourceBaseUrl: isAssistantMarkdownScene(state.scene) ? amrResourceBase : null,
     title: "Pi Durable：可恢复的 Agent 工作流",
     content: empty ? notes : `${notes}\n\n---\n\n${summary}`,
     source: empty
@@ -163,7 +171,55 @@ export function createClippingWebDemoModel(
     partial: "",
     conversationId: "demo-article-conversation",
   };
-  let chat = structuredClone(initialChat);
+  let markdownStep = 0;
+  const sceneChat = (): ClippingChat => {
+    const messages = assistantMarkdownMessages(state.scene);
+    if (!messages) return structuredClone(initialChat);
+    const current = assistantMarkdownSnapshot(state.scene, markdownStep);
+    const lifecycle = [
+      "assistant-markdown-incremental",
+      "assistant-markdown-failed",
+      "assistant-markdown-stopped",
+    ].includes(state.scene);
+    const history = lifecycle ? messages.slice(0, -1) : messages;
+    return {
+      conversationId: "demo-article-conversation",
+      messages: [
+        ...history.map((message, index) => ({
+          id: `demo-markdown-${index}`,
+          role: message.role,
+          text: message.content,
+          timestamp: fixtureTime + index,
+        })),
+        ...(lifecycle && current.status !== "streaming"
+          ? [
+              {
+                id: `demo-markdown-${history.length}`,
+                role: "assistant" as const,
+                text: current.content,
+                timestamp: fixtureTime + history.length,
+                status: current.status,
+              },
+            ]
+          : []),
+      ],
+      generating: lifecycle && current.status === "streaming",
+      partial: lifecycle && current.status === "streaming" ? current.content : "",
+      errorCode:
+        current.status === "cancelled"
+          ? "cancelled"
+          : current.status === "failed"
+            ? "generation_failed"
+            : null,
+      error:
+        current.status === "failed"
+          ? "模拟生成失败，已接收正文保留。"
+          : current.status === "cancelled"
+            ? "已停止生成"
+            : null,
+    };
+  };
+  let chat = sceneChat();
   const snapshot = () => structuredClone(chat);
   const permitted = () => {
     if (state.persona !== "admin") throw new Error("模拟访客没有对话或重新处理权限。");
@@ -173,6 +229,16 @@ export function createClippingWebDemoModel(
   };
   const transport: ClippingTransport = {
     async request<T>(operation: string, body?: unknown): Promise<T> {
+      try {
+        if (typeof window !== "undefined") {
+          const key = "web-demo-clipping-request-log";
+          const log = JSON.parse(window.sessionStorage.getItem(key) || "[]");
+          log.push({ operation, body: body ?? null });
+          window.sessionStorage.setItem(key, JSON.stringify(log.slice(-500)));
+        }
+      } catch {
+        // Diagnostics must never affect the isolated transport.
+      }
       const requestGeneration = generation;
       if (state.network === "offline")
         throw new Error("模拟网络故障：请求没有发送到真实服务。请选择正常网络后重试。");
@@ -253,10 +319,20 @@ export function createClippingWebDemoModel(
       if (next.scene !== state.scene || next.data !== state.data) {
         article = getClippingWebDemoArticle(next);
         processingStep = 0;
+        markdownStep = 0;
+        state = { ...next };
+        chat = sceneChat();
       }
       state = { ...next };
+      publish();
     },
     simulateSave() {
+      if (isAssistantMarkdownScene(state.scene)) {
+        markdownStep += 1;
+        chat = sceneChat();
+        publish();
+        return;
+      }
       article.content = `${notes}\n\n模拟保存：新增的备注仅存在于当前演示内存。${article.source ? `\n\n---\n\n${summary}` : ""}`;
     },
     reset(next: WebDemoState) {
@@ -266,7 +342,9 @@ export function createClippingWebDemoModel(
       processingStep = 0;
       requests.clear();
       sequence = 0;
-      chat = structuredClone(initialChat);
+      markdownStep = 0;
+      chat = sceneChat();
+      publish();
     },
   };
 }
