@@ -4,11 +4,11 @@
   "base_sha": "4001a2df221914b8777670bbfb49798f7c0e7500",
   "covered_files": {
     ".github/workflows/enable-recovery-auto-merge.yml": "9bceaeafdbac4718809aedcf4fe5f9f50c488ed3",
-    ".github/workflows/recover-published-release.yml": "6b793bd16513a8986c29389608ad90265732c6f1",
+    ".github/workflows/recover-published-release.yml": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
     "scripts/recover-published-release.ts": "33007d14c6602fcca26b3ff12e63e65899c8eeac"
   },
   "change": {
-    "description": "Add temporary, identity-bound recovery workflows for the already-published v2.13.0 release after deployment propagation was confirmed.",
+    "description": "Add an identity-bound recovery workflow that deploys the immutable static archive from a published GitHub Release after the original deployment attempt fails.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -16,8 +16,13 @@
     "planned": {
       "impact": "patch",
       "reasoning": "The recovery-only workflow changes no product runtime, API, persistent state, or release inputs.",
-      "assessed_at": "2026-10-11T13:00:00+08:00",
+      "assessed_at": "2026-11-07T00:00:00+08:00",
       "evidence": [
+        {
+          "path": ".github/workflows/recover-published-release.yml",
+          "blob": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
+          "command": "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/recover-published-release.yml\")'"
+        },
         {
           "path": "scripts/recover-published-release.ts",
           "blob": "33007d14c6602fcca26b3ff12e63e65899c8eeac",
@@ -28,8 +33,13 @@
     "current": {
       "impact": "patch",
       "reasoning": "The candidate only adds an identity-bound operational recovery path; product behavior and release artifacts are unchanged.",
-      "assessed_at": "2026-10-11T13:00:00+08:00",
+      "assessed_at": "2026-11-07T00:00:00+08:00",
       "evidence": [
+        {
+          "path": ".github/workflows/recover-published-release.yml",
+          "blob": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
+          "command": "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/recover-published-release.yml\")'"
+        },
         {
           "path": "scripts/recover-published-release.ts",
           "blob": "33007d14c6602fcca26b3ff12e63e65899c8eeac",
@@ -44,8 +54,13 @@
     "verified": {
       "impact": "patch",
       "reasoning": "The recovery script verifies the frozen manifest, deployed identity, production ownership, GHCR digest, and GitHub latest pointer before recording completion.",
-      "assessed_at": "2026-10-11T13:00:00+08:00",
+      "assessed_at": "2026-11-07T00:00:00+08:00",
       "evidence": [
+        {
+          "path": ".github/workflows/recover-published-release.yml",
+          "blob": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
+          "command": "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/recover-published-release.yml\")'"
+        },
         {
           "path": "scripts/recover-published-release.ts",
           "blob": "33007d14c6602fcca26b3ff12e63e65899c8eeac",
@@ -69,6 +84,11 @@
       ],
       "evidence": [
         {
+          "path": ".github/workflows/recover-published-release.yml",
+          "blob": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
+          "command": "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/recover-published-release.yml\")'"
+        },
+        {
           "path": "scripts/recover-published-release.ts",
           "blob": "33007d14c6602fcca26b3ff12e63e65899c8eeac",
           "command": "bunx biome check scripts/recover-published-release.ts"
@@ -82,6 +102,11 @@
       "readable_by_prior_versions": [],
       "upgrade_from_versions": ["2.13.0"],
       "evidence": [
+        {
+          "path": ".github/workflows/recover-published-release.yml",
+          "blob": "15b07aad6e6529d67edcdb1fdee5b352bf380f1c",
+          "command": "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/recover-published-release.yml\")'"
+        },
         {
           "path": "scripts/recover-published-release.ts",
           "blob": "33007d14c6602fcca26b3ff12e63e65899c8eeac",
