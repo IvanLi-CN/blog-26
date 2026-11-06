@@ -82,7 +82,8 @@ jobs:
         run: |
           rustup toolchain install 1.91.0 --profile minimal
           bun tests/ci/prepare-release-fixture.ts
-          RUSTUP_TOOLCHAIN=1.91.0 bun scripts/product-release.ts build-products
+          RUSTUP_TOOLCHAIN=1.91.0 bun scripts/product-release.ts preflight-frozen-media
+          RUSTUP_TOOLCHAIN=1.91.0 bun scripts/product-release.ts build-products --use-preflight
           bun scripts/smoke-product-release.ts
       - name: Save candidate identity and product digest evidence
         uses: actions/upload-artifact@v7
@@ -420,6 +421,8 @@ jobs:
           file: ${{ runner.temp }}/runtime-bundle/Dockerfile
           target: app-image-built
           platforms: ${{ env.PLATFORMS }}
+          build-args: |
+            PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${{ env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT }}
           push: false
           load: true
           tags: blog:ci-smoke
@@ -431,7 +434,7 @@ jobs:
 
       - name: Verify native bundle and thin image invalidation
         if: github.event_name == 'workflow_dispatch' && inputs.project_media_cache_proof
-        run: bun scripts/verify-runtime-bundle-cache.ts
+        run: bun scripts/verify-project-media-docker-cache.ts
         env:
           BUILD_ARTIFACT_DIR: ${{ runner.temp }}/runtime-bundle
           EXPECTED_SOURCE_SHA: ${{ steps.git-info.outputs.commit_hash }}

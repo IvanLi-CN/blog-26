@@ -238,6 +238,8 @@ export async function buildProducts(
       `BUN_DONOR_IMAGE=${config.baseImages.build}`,
       "--build-arg",
       `RUNTIME_IMAGE=${config.baseImages.runtime}`,
+      "--build-arg",
+      `PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT || "true"}`,
       "--label",
       `org.opencontainers.image.version=${entry.version}`,
       "--label",

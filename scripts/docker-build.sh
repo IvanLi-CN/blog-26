@@ -41,5 +41,7 @@ VERIFY_ARGS=(--profile "$BUILD_ARTIFACT_PROFILE" --source-sha "$EXPECTED_SOURCE_
 if [[ "$(uname -s)" != Linux ]]; then VERIFY_ARGS+=(--portable); fi
 bun run image:verify "${VERIFY_ARGS[@]}"
 export DOCKER_BUILDKIT=1 BUILDKIT_PROGRESS=${BUILDKIT_PROGRESS:-plain}
-docker buildx build --load --platform linux/amd64 --file "$BUILD_ARTIFACT_DIR/Dockerfile" --target "$TARGET" -t "$IMAGE_TAG" "$BUILD_ARTIFACT_DIR"
+docker buildx build --load --platform linux/amd64 --file "$BUILD_ARTIFACT_DIR/Dockerfile" --target "$TARGET" \
+  --build-arg "PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${PUBLIC_ASSISTANT_LAUNCHER_DEFAULT:-true}" \
+  -t "$IMAGE_TAG" "$BUILD_ARTIFACT_DIR"
 echo "[docker-build] Packaged verified bundle: $BUILD_ARTIFACT_DIR -> $IMAGE_TAG"

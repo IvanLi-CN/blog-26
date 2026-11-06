@@ -45,6 +45,13 @@ test("all new image producers use native Ubuntu and a packaging-only Dockerfile"
   expect(dockerfile).not.toContain("COPY . .");
   expect(dockerfile).toContain("FROM runtime AS app-image-built");
   expect(dockerfile).toContain("FROM runtime AS app-image-prebuilt");
+  expect(dockerfile).toContain("ARG PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=true");
+  expect(dockerfile).toContain(
+    "ENV PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${PUBLIC_ASSISTANT_LAUNCHER_DEFAULT}"
+  );
+  expect(String(steps[pack]?.with?.["build-args"])).toContain(
+    "PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${{ env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT }}"
+  );
   expect(dockerfile.indexOf("deps/node_modules")).toBeLessThan(dockerfile.indexOf("app/ ./"));
 });
 

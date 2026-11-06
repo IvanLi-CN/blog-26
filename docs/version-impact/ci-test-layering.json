@@ -4,7 +4,7 @@
   "base_sha": "fffc1e28dc525285ddde46bb04ccca9f0fb5b875",
   "covered_files": {
     ".github/actions/setup-native-search/action.yml": "f9ae991e109cb2111039a7a89b4f5e6898be6938",
-    ".github/workflows/ci.yml": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
+    ".github/workflows/ci.yml": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
     ".github/workflows/e2e.yml": "7cf3f961a260675a925d4878f5d23a3780996052",
     "apps/admin/src/demo/business-contracts.test.tsx": "a9b1a24ab12aaf56cec304dfedae4b52d021e5d4",
     "docs/specs/README.md": "466ba8fddb7bc171203ec2c6763ab0683b403501",
@@ -385,7 +385,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
+          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -484,7 +484,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
+          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
