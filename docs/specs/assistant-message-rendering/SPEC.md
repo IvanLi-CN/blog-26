@@ -80,6 +80,13 @@
 - 未完整或无效的链接 MUST NOT 产生推测性跳转。停止、失败和完成时，最终显示必须采用最新服务端正文，旧的延迟工作不得覆盖终态。
 - 渲染异常 MUST 限于相应内容或单条消息，并保留可读原文与必要反馈；相邻消息及发送、停止、重试操作不能被异常阻断。
 
+### REQ-AMR-012 — 统一正文视觉
+
+- 助手正文 MUST 使用统一的主题配色、块级间距、细边框和键盘焦点规则；标题、列表、代码与普通文字保留各自的语义层级。
+- 引用、表格、代码与图片等块级内容 MUST 使用直角边界且无装饰阴影，不继承网站卡片的有机大圆角。引用 MUST 使用透明背景与左侧竖线，不强制斜体或添加其余三边框。
+- 正文操作 MUST 使用透明的轻量控件。脚注回跳 MUST 显示线性 SVG 图标，不显示 emoji 或可见文本，并保留可访问名称、原有目标、触控区域与键盘焦点提示。
+- 同一规则 MUST 适用于浅色、深色、桌面和移动端，不改变文章、Memo 或其他正文消费者的样式。
+
 ## Verification
 
 ### VER-AMR-001 — 语法与发言者
@@ -118,6 +125,12 @@
 - covers: `REQ-AMR-009`, `REQ-AMR-011`
 - Pass condition: 已收到内容保持可读，未形成错误跳转，终态采用最新原文；异常不波及其他消息，持久数据及提交次数保持正确。
 
+### VER-AMR-007 — 正文样式一致性
+
+- Method: 在可控组件总览中同时呈现普通正文、链接、行内代码、引用及嵌套引用、表格、代码及操作、图片状态和脚注，核查浅深主题与桌面、移动端的 computed style 和可见效果。
+- covers: `REQ-AMR-012`
+- Pass condition: 各块使用相同的间距、边框与主题规则；引用仅有左侧竖线；块级边界直角且无阴影；回跳图标在默认、悬停和按下时均无底色，并可用键盘返回正文。
+
 ## Related ADRs
 
 - [ADR 0036：生成独立于 UI 生命周期](../../adr/0036-assistant-generation-independent-of-ui-lifecycle.md)
@@ -153,3 +166,11 @@
 ![流式消息、失败与局部降级状态](./assets/message-states.png)
 
 来源：`public-conversation-message-states--overview`；使用简化预览渲染器，覆盖用户字面输入、生成状态、停止、失败及单消息降级，不能替代最终 Markdown 语义验收。展示面外边距为 48 px。
+
+### 统一正文样式
+
+![统一正文样式：浅色](./assets/conversation-formats-light.png)
+
+![统一正文样式：深色](./assets/conversation-formats-dark.png)
+
+来源：`public-conversation-markdown--style-consistency` 与 `public-conversation-markdown--style-consistency-dark`；使用 1440×1000 CSS px 组件画布，展示正文、链接、行内代码、嵌套引用、表格、代码操作、外图待加载与脚注回跳。图片占位不发起外图请求，操作保持透明，内容边界统一直角。两张完整总览已由主人确认；同一内容另以 `style-consistency-mobile` 在 393×852 验证。独立代码、图片及消息状态 Story 展示的是各自功能状态，聊天入口内的最终组合样式以本组总览为准。
