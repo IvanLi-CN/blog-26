@@ -50,7 +50,7 @@
         },
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {

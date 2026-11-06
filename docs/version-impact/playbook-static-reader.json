@@ -21,7 +21,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "Product Release snapshots the static reader and retained-edition verifier with the current Playbook compatibility tooling before frozen preflight and image packaging"
         },
         {
@@ -43,7 +43,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "The recovery workflow applies the current static-reader and retained-edition verifier compatibility implementation to the frozen product build"
         },
         {
@@ -79,7 +79,7 @@
         },
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "The compatibility copy is limited to the static build reader and does not change the release ledger identity or frozen input bytes"
         },
         {
@@ -124,7 +124,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "The recovery workflow reuses the registered source and frozen artifact identity while applying the validated reader and retained-edition projections"
         },
         {

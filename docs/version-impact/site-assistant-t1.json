@@ -105,7 +105,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "1da8cc6003ac6bffdfecfe6076e362b472876e93",
+          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
           "command": "Existing CI jobs now trigger for pull requests targeting th/site-knowledge-assistant"
         },
         {
@@ -176,7 +176,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "1da8cc6003ac6bffdfecfe6076e362b472876e93",
+          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
           "command": "bun run check; git diff --check"
         }
       ]

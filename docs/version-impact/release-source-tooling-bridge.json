@@ -18,7 +18,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ]
@@ -30,7 +30,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "The workflow preserves the registered source for input acquisition and applies verified current compatibility files before frozen media preflight and image packaging."
         }
       ],
@@ -46,7 +46,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         }
       ]
@@ -86,7 +86,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "The workflow does not alter public HTTP, tRPC, MCP, or static product contracts."
         }
       ]
@@ -100,7 +100,7 @@
       "evidence": [
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "The temporary tooling directory is runner-local and is removed with the job."
         }
       ]
