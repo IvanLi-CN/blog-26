@@ -16,6 +16,8 @@ Product Release 原 run 重试先读取 main 上的登记工具，再 checkout �
 
 发布恢复不能依赖按 tag 的 API 查找 draft：404 后枚举同 tag release，严格核验来源、机器人作者和完整身份 marker；唯一含产物的 draft 优先恢复，空重复 draft 保留，多个含产物的 draft 或任何身份冲突均失败关闭。镜像上传后仅对暂不可见进行有限读取重试，实际 digest 不一致立即拒绝并记录两个 digest，不重传或改写版本镜像。
 
+静态站返回 HTTP 200 且 `version.json` 正文恰为空时，只允许用独立的完整证明恢复归属判断：GHCR `latest` 的实际 manifest digest 和版本/来源标签必须匹配账本中已完成且验证 latest 的正式发布，公开 Playbook manifest 的 renderer 必须与同一来源提交一致。仍执行版本单调性检查。非空损坏 JSON、缺失镜像、未完成发布、摘要冲突、未知 renderer 和较新产品均拒绝；既有 404 bootstrap 例外不扩大。此规则只恢复发布前检查，不把损坏页面判为发布成功。
+
 EdgeOne CLI 诊断仅输出退出码和固定枚举的阶段、错误类别，不输出原始响应、凭据、项目标识或签名预览 URL。
 
 ## Consequences

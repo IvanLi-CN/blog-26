@@ -94,6 +94,8 @@
 
 ### REQ-MVR-017
 
+生产归属检查遇到 HTTP 200 且版本正文恰为空时，MUST 同时验证 GHCR latest 的实际 digest、版本与来源标签、账本 complete 正式发布及 latestVerified、公开 Playbook manifest renderer 的同源匹配，并继续执行版本单调性检查。缺失或冲突证据、非空损坏 JSON、未知来源和较新产品 MUST 失败关闭；MUST NOT 扩大既有 404 bootstrap 例外，也不得将归属可恢复视为页面验收成功。
+
 Product Release 的 failure/cancelled recovery MUST 通过 `retry` workflow 只接受 `release_id`，严格核验原 run ID、repository、workflow path、main、merge SHA、未完成 stage 和 run conclusion，再调用原 run rerun；MUST NOT 接受 version/source/artifact 参数、创建 successor identity 或复制 artifact。新失败 MUST 记录固定 phase 与实际 step，成功推进或完成恢复 MUST 清除旧 failure。
 
 ### REQ-MVR-018

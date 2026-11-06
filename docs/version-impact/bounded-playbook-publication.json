@@ -4,11 +4,11 @@
   "base_sha": "7adc8d363e56ac9d0f32fd918f7a5a6eff913fd0",
   "covered_files": {
     ".github/workflows/playbook-content-update.yml": "a7baea40b4c7f353b8c89e50496e41ee9274c35e",
-    "docs/adr/0040-published-product-recovery-tooling.md": "61a6fa787754d399fd335fc097404fc3bea90b81",
+    "docs/adr/0040-published-product-recovery-tooling.md": "9d54cb32f245fafdbe75a398e84690093bff703e",
     "docs/adr/0041-bounded-static-playbook-payloads.md": "cb76904182eed5f0b30ef76db52bd6ab6dc1a4d6",
-    "docs/specs/manual-version-release/HISTORY.md": "696fcf676914d829505090459c4e7497d9261c26",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "f8ee9350e6df6787a089b34c0c452369cbc89249",
-    "docs/specs/manual-version-release/SPEC.md": "0b298c0e3f4b1ca13d5ecf5fdd46f9eb2a5869a4",
+    "docs/specs/manual-version-release/HISTORY.md": "d87fb0c0f5b962f07c38db17a420a41c18940d92",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "19dad1ec005bdd7ab099e8b0b91e26e464f1a612",
+    "docs/specs/manual-version-release/SPEC.md": "67dfdc560fe47f688a13af2a7316720ebfb7a019",
     "docs/specs/style-playbook-integration/HISTORY.md": "61b01fcc77c0a3e48764e6e9fee579d8dfef0ffe",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "a91769a458cf32a940b9685acf8c0a9db6b8400d",
     "docs/specs/style-playbook-integration/SPEC.md": "12c3b2da20799c6ca36358b68c141f73b0d805aa",
@@ -18,23 +18,24 @@
     "src/lib/release/artifact-budget.ts": "f62e60264958aab87eb7efddd4330834ea6edab2",
     "src/lib/release/completion.ts": "469464dbec3c74725ac5382c8144c80df5d1a306",
     "src/lib/release/products.ts": "b7b1556603e93622d2db90d76c861967fcf2cb4c",
-    "src/lib/release/publication.ts": "c08b9d368dec6e4c2222d4dc6ee6c0211e863918",
+    "src/lib/release/publication.ts": "02aed3c87b2831166e593c09722e157091b6efa9",
     "tests/e2e/web-demo/search-modes.spec.ts": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
     "tests/lib/manual-release-publication.test.ts": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
     "tests/lib/manual-release-recovery.test.ts": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
     "tests/lib/playbook-contract.test.ts": "88f2f469498b7b62670816e828e7746d92394980",
+    "tests/lib/production-owner-recovery.test.ts": "b5dea1d3f51ebf6721282350680ae14065788b4a",
     "tests/lib/public-artifact-budget.test.ts": "dbdd15e1705af9a4e7c04a45ec57d6a7f0dae633",
     "tests/lib/public-csr-route.test.ts": "0a1c7bba065d1380ae10141cf6d42d037b9bca41"
   },
   "change": {
-    "description": "Bound Playbook browser payloads and deployment artifacts while preserving raw integrity bytes, immutable publication recovery and all public reading/search behavior.",
+    "description": "Bound Playbook browser and deployment payloads and recover empty static version metadata only through completed-ledger, immutable-image and renderer identity proofs.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api", "persistent-state"]
   },
   "classification": {
     "planned": {
       "impact": "patch",
-      "reasoning": "Bound Playbook browser payloads and deployment artifacts while preserving raw integrity bytes, immutable publication recovery and all public reading/search behavior.",
+      "reasoning": "Bound Playbook browser and deployment payloads and recover empty static version metadata only through completed-ledger, immutable-image and renderer identity proofs.",
       "assessed_at": "2026-11-06T02:26:18.146171+00:00",
       "evidence": [
         {
@@ -56,12 +57,17 @@
           "path": "tests/e2e/web-demo/search-modes.spec.ts",
           "blob": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
           "command": "GitHub Actions E2E run 42153849189 job 127683204640: Web Demo official routes passed"
+        },
+        {
+          "path": "tests/lib/production-owner-recovery.test.ts",
+          "blob": "b5dea1d3f51ebf6721282350680ae14065788b4a",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/production-owner-recovery.test.ts tests/lib/edgeone-cli.test.ts: 96 pass"
         }
       ]
     },
     "current": {
       "impact": "patch",
-      "reasoning": "Bound Playbook browser payloads and deployment artifacts while preserving raw integrity bytes, immutable publication recovery and all public reading/search behavior.",
+      "reasoning": "Bound Playbook browser and deployment payloads and recover empty static version metadata only through completed-ledger, immutable-image and renderer identity proofs.",
       "assessed_at": "2026-11-06T02:26:18.146539+00:00",
       "evidence": [
         {
@@ -83,6 +89,11 @@
           "path": "tests/e2e/web-demo/search-modes.spec.ts",
           "blob": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
           "command": "GitHub Actions E2E run 42153849189 job 127683204640: Web Demo official routes passed"
+        },
+        {
+          "path": "tests/lib/production-owner-recovery.test.ts",
+          "blob": "b5dea1d3f51ebf6721282350680ae14065788b4a",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/production-owner-recovery.test.ts tests/lib/edgeone-cli.test.ts: 96 pass"
         }
       ],
       "scope_drift": {
@@ -92,7 +103,7 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "Bound Playbook browser payloads and deployment artifacts while preserving raw integrity bytes, immutable publication recovery and all public reading/search behavior.",
+      "reasoning": "Bound Playbook browser and deployment payloads and recover empty static version metadata only through completed-ledger, immutable-image and renderer identity proofs.",
       "assessed_at": "2026-11-06T02:26:18.146556+00:00",
       "evidence": [
         {
@@ -114,6 +125,11 @@
           "path": "tests/e2e/web-demo/search-modes.spec.ts",
           "blob": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
           "command": "GitHub Actions E2E run 42153849189 job 127683204640: Web Demo official routes passed"
+        },
+        {
+          "path": "tests/lib/production-owner-recovery.test.ts",
+          "blob": "b5dea1d3f51ebf6721282350680ae14065788b4a",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/production-owner-recovery.test.ts tests/lib/edgeone-cli.test.ts: 96 pass"
         }
       ]
     }

@@ -41,3 +41,7 @@
 - [运行手册](../../runbooks/manual-version-release.md)
 
 - 发布适配器在 by-tag 404 后枚举并校验同身份 draft，复用唯一含产物的 draft，保留空重复 draft，并拒绝冲突身份或多个含产物的 draft；镜像上传后仅对暂不可见进行有界重读，真实 digest 冲突立即失败。已有完整冻结 products 的恢复使用通过 main 门禁的修复工具，仍从原 run 恢复并校验所有冻结字节。
+
+## 空静态版本元数据的归属恢复
+
+`assertProductionOwner()` 仅对 HTTP 200 的零字节版本正文启用恢复：核验镜像实际 digest 与标签、已完成且已验证 latest 的正式登记、同源 Playbook renderer，再复用版本单调性检查。`production-owner-recovery.test.ts` 覆盖成功路径与摘要、renderer、登记阶段、latest、缺失镜像、损坏 JSON、较新产品和 bootstrap 边界。生产部署和页面正文仍须独立验收。
