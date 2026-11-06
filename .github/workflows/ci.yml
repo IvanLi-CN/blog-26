@@ -432,9 +432,14 @@ jobs:
           cache-from: type=gha,scope=${{ steps.bundle.outputs.scope }}
           cache-to: type=gha,mode=min,scope=${{ steps.bundle.outputs.scope }}
 
-      - name: Verify native bundle and thin image invalidation
+      - name: Verify native bundle packaging input
         if: github.event_name == 'workflow_dispatch' && inputs.project_media_cache_proof
-        run: bun scripts/verify-project-media-docker-cache.ts
+        run: |
+          bun run image:verify \
+            --profile ci \
+            --source-sha "$EXPECTED_SOURCE_SHA" \
+            --config-digest "$EXPECTED_CONFIG_DIGEST" \
+            --output "$BUILD_ARTIFACT_DIR"
         env:
           BUILD_ARTIFACT_DIR: ${{ runner.temp }}/runtime-bundle
           EXPECTED_SOURCE_SHA: ${{ steps.git-info.outputs.commit_hash }}

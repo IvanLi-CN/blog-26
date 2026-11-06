@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "10eb06f50f674c34f2f263d97e78b17e65af0d7a",
   "covered_files": {
-    ".github/workflows/ci.yml": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
+    ".github/workflows/ci.yml": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
     ".github/workflows/playbook-content-rollback.yml": "34f672e7df238b1afb5c3547ac48c4f89e64fa18",
     ".github/workflows/playbook-content-update.yml": "1881a9cf171984494fbb9386d4abbb91a3000cd7",
     ".github/workflows/product-release.yml": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",

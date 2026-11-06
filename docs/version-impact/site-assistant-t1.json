@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
-    ".github/workflows/ci.yml": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
+    ".github/workflows/ci.yml": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
     ".github/workflows/e2e.yml": "d1428a9ce4c50ca643e7f15c6b6ce40fc2b35471",
     "GLOSSARY.md": "efb890146870ba8a26e7f6b5384810ad7dd08447",
     "docs/adr/0032-temporary-assistant-conversations-and-usage-retention.md": "b545e0c10f42c2e4a9a6256ccdb9d65a4b431f4b",
@@ -105,7 +105,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
+          "blob": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
           "command": "Existing CI jobs now trigger for pull requests targeting th/site-knowledge-assistant"
         },
         {
@@ -176,7 +176,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "2f84d96d1601a5401bff36ab7eff9935eb815e5e",
+          "blob": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
           "command": "bun run check; git diff --check"
         }
       ]

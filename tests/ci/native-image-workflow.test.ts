@@ -52,6 +52,9 @@ test("all new image producers use native Ubuntu and a packaging-only Dockerfile"
   expect(String(steps[pack]?.with?.["build-args"])).toContain(
     "PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${{ env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT }}"
   );
+  const diagnostic = steps.find((step) => step.name === "Verify native bundle packaging input");
+  expect(diagnostic?.run).toContain("bun run image:verify");
+  expect(diagnostic?.run).not.toContain("verify-project-media-docker-cache");
   expect(dockerfile.indexOf("deps/node_modules")).toBeLessThan(dockerfile.indexOf("app/ ./"));
 });
 
