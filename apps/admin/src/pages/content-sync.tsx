@@ -652,7 +652,9 @@ export function ContentSyncPage() {
               <Alert tone="warning">
                 {data.rag.reason === "embedding-unconfigured"
                   ? "Embedding 未配置；覆盖状态不可得。"
-                  : "所选 Playbook 快照不可用。"}
+                  : data.rag.reason === "snapshot-unavailable"
+                    ? "所选 Playbook 快照不可用。"
+                    : "RAG 覆盖状态暂不可用，请稍后刷新。"}
               </Alert>
             )}
             {data?.rag.incompleteSources.length ? (

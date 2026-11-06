@@ -2,6 +2,8 @@
 
 ## Current Status
 
+- 内容同步状态接口恢复读取当前/上一版数据库快照对应的真实 RAG 覆盖，保留已知总量，配置或快照不可用时分类计数为 null；读取状态不会触发向量生成或修复。管理页只在明确 `snapshot-unavailable` 时显示快照不可用，其他未知原因显示覆盖状态暂不可用。回归覆盖未索引、已索引、缺少快照、未配置及公开内容范围。
+
 - 静态内容构建保留公开 catalog/search 原始字节及其摘要；现代 edition 的构建 seed 与缓存持久化同时携带原始字节证据，读取时先校验摘要，再比对受控的目录/搜索规范化投影。真实 `v2.4.7` 公共 bundle 的 seed JSON 往返与公开文件写出已通过；原始字节损坏或搜索投影篡改仍拒绝，生产内容采用仍须通过 CI 部署验证。
 
 - Lifecycle: active
@@ -135,3 +137,13 @@ REQ-PBI-018/019/020 的实现使用统一状态接口、共享目标目录、001
 ## 页面 payload 与发布体积边界
 
 `trimRouteEdition()` 显式投影 identity、已裁剪 catalog 和 search 元数据，禁止原始 catalog/search 的 base64 字节随 HTML/CSR 重复序列化。原始文件继续用于 digest 校验和公开 edition 恢复。`verifyPublicArtifactBudget()` 在产品冻结和内容上传前执行 1 GiB 未压缩预算、关键文件非空及普通文件检查。内容 workflow 的显式诊断输入只构建并保留产物，不部署、不写 supplement。回归证据覆盖 current/legacy 原始字段、输入不变性、超预算、空文件及链接拒绝。线上验收仍须确认页面正文与版本，平台 Success 不是完整发布证据。
+
+## 管理端覆盖状态视觉证据
+
+已确认的 Web Demo 故障注入场景：快照仍已采用，覆盖状态未知时保留已知总量，分类显示未知，不误报快照缺失。桌面为 1440×1000，手机为 393×852。
+
+![桌面覆盖状态未知](./assets/content-sync-rag-unavailable-desktop.png)
+
+![手机覆盖状态未知](./assets/content-sync-rag-unavailable-mobile.png)
+
+覆盖回归同时使用真实快照重启 fixture 与 `src/server/services/rag-index.test.ts` 的状态服务测试：Embedding 未配置时仍保留内容和分块总量、目标身份，所有分类计数、覆盖率及目标状态均为 `null`，原因保持 `embedding-unconfigured`。
