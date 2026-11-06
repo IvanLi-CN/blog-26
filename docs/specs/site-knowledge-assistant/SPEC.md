@@ -5,7 +5,7 @@
 ## Context and Scope
 
 - Context: 登录用户需要在阅读站内内容时持续问答，并可在浮动面板与完整界面之间继续同一条对话。既有剪藏讨论属于这套对话能力；普通用户临时使用，管理员持续使用，后台需要区分个人额度与全站 AI 消耗。
-- In scope: 站内知识问答与来源引用；静态站及动态前台的统一入口、对话面板、完整界面与对话切换；前台身份；剪藏对话归并与旧记录归属；对话保留；Token 与问答次数配额、单用户恢复；后台用户列表、仪表盘和运营用量模块。
+- In scope: 站内优先的通用问答、Tavily 互联网搜索与来源引用；静态站及动态前台的统一入口、对话面板、完整界面与对话切换；前台身份；剪藏对话归并与旧记录归属；对话保留；Token 与问答次数配额、单用户恢复；后台用户列表、仪表盘和运营用量模块。
 - Out of scope: 通用角色系统、游客问答、单用户定制配额、管理员浏览他人私人对话、按价格折算账单、外部递归研究、任意工具执行和自动内容发布。剪藏抓取、摘要与翻译继续由剪藏主题定义；公开评论的审核、删除与布局继续由评论主题定义。
 
 ## Terms and Interfaces
@@ -22,6 +22,10 @@
 - 助手 MUST 支持多轮问答，按需检索调用者获准访问的站内内容，并在使用站内资料回答时提供可定位的来源引用。
 - 回答 MUST 区分来源内容与推断；没有取得材料、检索失败或证据不足时必须如实说明，不得虚构已阅读的内容或来源。
 - 助手 MUST 沿用站点配置的 LLM 能力与凭据解析边界，不向浏览器暴露模型密钥，不因本功能增加任意 shell、凭据或内容发布权限。
+- 一般助手 MUST 允许通用知识、写作和编程问答，不能因站内没有资料而拒答。站内事实优先使用获准访问的站内资料，稳定常识不强制检索；时效性、不确定事实或明确联网请求按需使用 Tavily Hikari。无关站内命中不能阻止针对知识缺口联网。
+- 一般与剪藏对话 MUST 由 Pi Harness 编排模型执行；应用数据库继续作为私人历史、生成任务与配额的唯一产品存储。剪藏对话维持当前文章上下文与禁止联网的专用规则。
+- 联网搜索 MUST 使用服务端配置的 Tavily Hikari HTTP 接口与 Bearer Token，默认每轮允许十二次搜索，支持服务端调高。必须支持逐次超时、整体执行期限、取消、失败降级和独立搜索调用计量；同一问题内多次模型或工具调用不得重复计问题次数。
+- 外部引用 MUST 来源于实际搜索结果，保存为 `web` 引用并仅接受有效 HTTP(S) URL。不得将凭据、非公开站内材料或私人历史自动拼入外部查询；管理员或已恢复历史的轮次，联网查询限于当前用户问题。
 
 ### REQ-SKA-002 — 统一前台用户
 
@@ -252,6 +256,8 @@ Web Demo 只使用隔离 fixture 和内存模拟回答；这些证据不代表�
 - [ADR 0036: Assistant Generation Independent of UI Lifecycle](../../adr/0036-assistant-generation-independent-of-ui-lifecycle.md)
 - [ADR 0037: Unified Assistant and Clipping Conversations](../../adr/0037-unified-assistant-and-clipping-conversations.md)
 - [ADR 0039: Server-Driven Assistant Feature Configuration](../../adr/0039-server-driven-assistant-feature-configuration.md)
+
+- [ADR 0042: Assistant Pi Harness and Web Search](../../adr/0042-assistant-pi-harness-and-web-search.md)
 
 ## References
 

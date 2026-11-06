@@ -29,6 +29,12 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_API_BASE_URL=${OPENAI_API_BASE_URL}
       
+      # 助手联网搜索（密钥仅供服务端使用）
+      - TAVILY_BASE_URL=${TAVILY_BASE_URL:-https://tavily.ivanli.cc/api/tavily}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - ASSISTANT_MAX_WEB_SEARCHES=${ASSISTANT_MAX_WEB_SEARCHES:-12}
+      - TAVILY_TIMEOUT_MS=${TAVILY_TIMEOUT_MS:-20000}
+
       # Redis 配置
       - REDIS_HOST=redis
       - REDIS_PORT=6379

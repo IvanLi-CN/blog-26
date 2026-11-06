@@ -27,3 +27,7 @@
 - [剪藏讨论迁移运行手册](../../runbooks/site-assistant-discussion-migration.md)
 - [评论兼容背景](../github-reader-comments/HISTORY.md)
 - [剪藏兼容背景](../memo-clipping/HISTORY.md)
+
+## Pi 执行边界
+
+ADR 0042 将一般助手与剪藏对话的模型编排统一到 Pi Harness，保留 ADR 0038 的应用消息所有权和现有中断恢复语义。一般助手从仅站内资料回答扩展为站内优先、允许通用回答并按需使用 Tavily Hikari；剪藏对话仍沿用当前文章阅读边界。
