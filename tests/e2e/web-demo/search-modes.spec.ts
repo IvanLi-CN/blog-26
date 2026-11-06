@@ -89,6 +89,10 @@ test("rewrite waits for the unified server result", async ({ page }) => {
 });
 test("switching the Web Demo scene reloads the search behavior", async ({ page }) => {
   await page.goto("/search/?q=SQLite&mode=rag&d_scene=search-ready&d_delay=normal");
+  await expect(page.locator('body[data-web-demo-inspector-app="public"]')).toHaveAttribute(
+    "data-web-demo-inspector-open",
+    /^(true|false)$/
+  );
   const inspectorTrigger = page.getByTestId("web-demo-inspector-trigger");
   if (await inspectorTrigger.isVisible()) await inspectorTrigger.click();
   const scene = page.getByTestId("web-demo-inspector-scene-select");
