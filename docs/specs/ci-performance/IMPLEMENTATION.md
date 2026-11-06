@@ -20,3 +20,11 @@
 | project-runtime-motion 被外层矩阵重复运行 | 此文件不是迁移到模拟 DOM：它本身用 `test.use` 固定 1780×1071，并在 narrow/mobile 用例内部切换至 393×852 | 只在第一条 public 命令运行一次；保留全部真实浏览器动画、几何、reduced motion、失败恢复、移动明暗主题场景，其他文件仍跑桌面/移动两遍 |
 
 新非浏览器套件由现有 `test:unit` 自动发现并以 `--isolate` 执行，不新增 job、缓存、artifact 或 retention 配置。超时、重试、worker 数与 required checks 集合不变。性能基线是 PR #451 最终候选的完整 11-check workload（墙钟 9:13、runner total 49:38）；新候选须等待 Actions 才能报告结果。
+
+## 图片构建复用
+
+两个项目图片生成器通过 `scripts/project-media-cache.ts` 复用经过版本、摘要、路径、尺寸、格式与预算校验的单图条目；配方覆盖实际脚本及编码器平台身份，源图字节和文件身份决定单图键。manifest 从当前集合重建，过期缓存与生成产物按受管理路径清理。原子条目发布避免半成品命中；缓存故障回退生成，实际生成失败保持 fail-closed。
+
+Build、浏览器 E2E 和 Web Demo 通过共享 composite action 恢复聚合缓存；MCP 无图片生成，不恢复该缓存。Docker 将同一生成器与输入放进 `project-media` 阶段，应用源码和构建身份保留在 builder；宿主缓存不进入上下文。
+
+验证由 `tests/lib/project-media-cache.test.ts`、既有图片套件、全量 required checks，以及现有 CI/CD Pipeline 的显式性能实验输入承担。冷暖性能与 Docker 失效证据保存在绑定候选 SHA 的 Actions 日志和 PR 中，不把运行结果回写成源代码变更。实验不增加常规 job、生产者依赖、artifact 或 retention。

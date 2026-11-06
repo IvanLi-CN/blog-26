@@ -1,0 +1,20 @@
+name: Cache project media
+description: Restore rebuildable per-image entries; generators validate every hit.
+outputs:
+  cache-hit:
+    description: Whether the complete source-set key was restored
+    value: ${{ steps.cache.outputs.cache-hit }}
+runs:
+  using: composite
+  steps:
+    - name: Fingerprint media inputs and encoder
+      id: identity
+      shell: bash
+      run: bun scripts/project-media-cache-key.ts
+    - name: Restore project media entries
+      id: cache
+      uses: actions/cache@v6
+      with:
+        path: .cache/project-media/v1
+        key: ${{ steps.identity.outputs.key }}
+        restore-keys: ${{ steps.identity.outputs.prefix }}
