@@ -2,6 +2,15 @@ name: Recover Published Release
 
 on:
   workflow_dispatch:
+    inputs:
+      release_id:
+        description: Published release identity to deploy from its immutable GitHub Release assets
+        required: true
+        type: string
+      tag:
+        description: GitHub Release tag containing the published static archive
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -28,14 +37,32 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - name: Download immutable release manifest
-        run: gh release download v2.13.0 --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/recovery" --pattern release-manifest.json
+      - name: Download immutable published static product
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/recovery/site"
+          gh release download "${{ inputs.tag }}" --repo "$GITHUB_REPOSITORY" \
+            --dir "$RUNNER_TEMP/recovery" \
+            --pattern release-manifest.json \
+            --pattern frontend.tar.gz
+          tar -xzf "$RUNNER_TEMP/recovery/frontend.tar.gz" \
+            --no-same-owner -C "$RUNNER_TEMP/recovery/site"
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Deploy the immutable published static product
+        run: |
+          set -euo pipefail
+          npx edgeone@1.6.34 makers deploy "$RUNNER_TEMP/recovery/site" \
+            -n "$EDGEONE_PROJECT_NAME" \
+            -t "$EDGEONE_API_TOKEN" \
+            -e production
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_PROJECT_NAME: ${{ vars.EDGEONE_PROJECT_NAME }}
       - name: Verify deployed identity and promote latest
         run: bun scripts/recover-published-release.ts
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_ID: ddbd308e0009d436196055e04da5963ab69b1e9353755a220aa93c860450e4b3
+          RELEASE_ID: ${{ inputs.release_id }}
           RELEASE_MANIFEST_PATH: ${{ runner.temp }}/recovery/release-manifest.json
           PUBLIC_SITE_URL: https://ivanli.cc
