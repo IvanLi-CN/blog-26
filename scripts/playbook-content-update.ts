@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { downloadRetainedEdition, readPublicPointer } from "../src/lib/playbook/artifacts";
 import {
@@ -32,6 +32,7 @@ import {
   publicRelationIndexFromCatalog,
 } from "../src/lib/playbook/supplement";
 import type { PlaybookSupplementEnvelope } from "../src/lib/playbook/types";
+import { verifyPublicArtifactBudget } from "../src/lib/release/artifact-budget";
 import { publicVersionSchema } from "../src/lib/release/deployment";
 import { versionSchema } from "../src/lib/release/policy";
 import { readContract } from "../src/lib/release/source";
@@ -50,6 +51,8 @@ if (!rollback && !(await readPublicPointer(manifestUrl))) {
   process.exit(0);
 }
 const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, "utf8"));
+const diagnosticOnly =
+  process.env.GITHUB_EVENT_NAME === "workflow_dispatch" && event.inputs?.diagnostic_only === "true";
 const input: ReleaseTrigger =
   process.env.GITHUB_EVENT_NAME === "schedule" ? { mode: "reconcile" } : event.inputs;
 const reader = githubReleaseReader();
@@ -296,6 +299,30 @@ try {
           buildVersion: generated.buildVersion || generated.version,
         });
         await writeFile(resolve(rendererRoot, "edgeone-dist/version.json"), encodeJson(metadata));
+        if (!diagnosticOnly)
+          await verifyPublicArtifactBudget(resolve(rendererRoot, "edgeone-dist"));
+        if (diagnosticOnly) {
+          const root = resolve(rendererRoot, "edgeone-dist");
+          const records: { path: string; size: number }[] = [];
+          async function inspect(directory: string, prefix = "") {
+            for (const entry of await readdir(directory, { withFileTypes: true })) {
+              const path = prefix + entry.name;
+              if (entry.isDirectory()) await inspect(resolve(directory, entry.name), `${path}/`);
+              else if (entry.isFile())
+                records.push({ path, size: (await stat(resolve(directory, entry.name))).size });
+              else throw new Error("Diagnostic artifact contains a non-regular file");
+            }
+          }
+          await inspect(root);
+          await writeFile(resolve(taskRoot, "artifact-files.json"), encodeJson(records));
+          const archive = resolve(taskRoot, "content-artifact.tar.gz");
+          await run(["tar", "-czf", archive, "-C", root, "."]);
+          if (process.env.GITHUB_OUTPUT)
+            await appendFile(process.env.GITHUB_OUTPUT, `diagnostic_root=${taskRoot}\n`);
+          console.log(
+            `Diagnostic artifact: ${records.length} files, ${records.reduce((n, r) => n + r.size, 0)} bytes; no deployment will run`
+          );
+        }
         return parseEditionIdentity(
           JSON.parse(
             await readFile(
@@ -371,7 +398,7 @@ try {
       },
     },
     selected.manifest,
-    { rollback, automaticUpdatesEnabled: enabled }
+    { rollback, automaticUpdatesEnabled: enabled, diagnosticOnly }
   );
 } catch (error) {
   if (process.env.GITHUB_STEP_SUMMARY)
@@ -380,6 +407,10 @@ try {
       "\nPlaybook deployment failed. The requested input above was not verified as adopted; see the failing step log.\n"
     );
   throw error;
+}
+if (diagnosticOnly) {
+  console.log("Diagnostic artifact prepared; production and supplement sync were not changed");
+  process.exit(0);
 }
 if (supplementStatus === "valid" && supplementRoot && rendererRoot) {
   const preparedSupplementPath = resolve(

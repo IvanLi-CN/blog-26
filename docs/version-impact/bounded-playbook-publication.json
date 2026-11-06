@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "7adc8d363e56ac9d0f32fd918f7a5a6eff913fd0",
+  "covered_files": {
+    ".github/workflows/playbook-content-update.yml": "a7baea40b4c7f353b8c89e50496e41ee9274c35e",
+    "docs/adr/0040-published-product-recovery-tooling.md": "61a6fa787754d399fd335fc097404fc3bea90b81",
+    "docs/adr/0041-bounded-static-playbook-payloads.md": "cb76904182eed5f0b30ef76db52bd6ab6dc1a4d6",
+    "docs/specs/manual-version-release/HISTORY.md": "696fcf676914d829505090459c4e7497d9261c26",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "f8ee9350e6df6787a089b34c0c452369cbc89249",
+    "docs/specs/manual-version-release/SPEC.md": "0b298c0e3f4b1ca13d5ecf5fdd46f9eb2a5869a4",
+    "docs/specs/style-playbook-integration/HISTORY.md": "61b01fcc77c0a3e48764e6e9fee579d8dfef0ffe",
+    "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "a91769a458cf32a940b9685acf8c0a9db6b8400d",
+    "docs/specs/style-playbook-integration/SPEC.md": "12c3b2da20799c6ca36358b68c141f73b0d805aa",
+    "scripts/playbook-content-update.ts": "a4eda8832e5b47bf8f412d95d61b30214d5ce981",
+    "site/lib/route-data-utils.ts": "f555872ba3cfad34c59e3f414c2a25c5d3a5aa5b",
+    "src/lib/playbook/release.ts": "1bd6cd4f269ac5151d70bbf9b2f2aed64eda8037",
+    "src/lib/release/artifact-budget.ts": "f62e60264958aab87eb7efddd4330834ea6edab2",
+    "src/lib/release/completion.ts": "469464dbec3c74725ac5382c8144c80df5d1a306",
+    "src/lib/release/products.ts": "b7b1556603e93622d2db90d76c861967fcf2cb4c",
+    "src/lib/release/publication.ts": "c08b9d368dec6e4c2222d4dc6ee6c0211e863918",
+    "tests/lib/manual-release-publication.test.ts": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+    "tests/lib/manual-release-recovery.test.ts": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
+    "tests/lib/playbook-contract.test.ts": "88f2f469498b7b62670816e828e7746d92394980",
+    "tests/lib/public-artifact-budget.test.ts": "dbdd15e1705af9a4e7c04a45ec57d6a7f0dae633",
+    "tests/lib/public-csr-route.test.ts": "0a1c7bba065d1380ae10141cf6d42d037b9bca41"
+  },
+  "change": {
+    "description": "Bound Playbook browser payloads and deployment artifacts while preserving raw integrity bytes, immutable publication recovery and all public reading/search behavior.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Bound Playbook browser payloads and deployment artifacts while preserving raw integrity bytes, immutable publication recovery and all public reading/search behavior.",
+      "assessed_at": "2026-11-06T02:26:18.146171+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "0a1c7bba065d1380ae10141cf6d42d037b9bca41",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/lib/public-artifact-budget.test.ts",
+          "blob": "dbdd15e1705af9a4e7c04a45ec57d6a7f0dae633",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Bound Playbook browser payloads and deployment artifacts while preserving raw integrity bytes, immutable publication recovery and all public reading/search behavior.",
+      "assessed_at": "2026-11-06T02:26:18.146539+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "0a1c7bba065d1380ae10141cf6d42d037b9bca41",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/lib/public-artifact-budget.test.ts",
+          "blob": "dbdd15e1705af9a4e7c04a45ec57d6a7f0dae633",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "In-scope static publication repair after proven raw-payload amplification and EdgeOne builder ENOSPC."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Bound Playbook browser payloads and deployment artifacts while preserving raw integrity bytes, immutable publication recovery and all public reading/search behavior.",
+      "assessed_at": "2026-11-06T02:26:18.146556+00:00",
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "0a1c7bba065d1380ae10141cf6d42d037b9bca41",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/lib/public-artifact-budget.test.ts",
+          "blob": "dbdd15e1705af9a4e7c04a45ec57d6a7f0dae633",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7"
+      ],
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "0a1c7bba065d1380ae10141cf6d42d037b9bca41",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/lib/public-artifact-budget.test.ts",
+          "blob": "dbdd15e1705af9a4e7c04a45ec57d6a7f0dae633",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No database, ledger, raw bundle format or historical edition changes. Integrity bytes remain in verified storage, absent only from browser projections.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/public-csr-route.test.ts",
+          "blob": "0a1c7bba065d1380ae10141cf6d42d037b9bca41",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/lib/public-artifact-budget.test.ts",
+          "blob": "dbdd15e1705af9a4e7c04a45ec57d6a7f0dae633",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-publication.test.ts",
+          "blob": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
+        }
+      ]
+    }
+  }
+}

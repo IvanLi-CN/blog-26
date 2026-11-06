@@ -2,6 +2,10 @@ name: Update Playbook content
 on:
   workflow_dispatch:
     inputs:
+      diagnostic_only:
+        description: Build and retain an artifact without deploying or syncing supplements
+        type: boolean
+        default: false
       mode:
         type: choice
         options: [release, reconcile]
@@ -74,6 +78,7 @@ jobs:
           node-version: 22.23.2
       - run: bun install --frozen-lockfile
       - name: Reconcile, build and deploy under the production lock
+        id: content
         run: bun scripts/playbook-content-update.ts
         env:
           GH_TOKEN: ${{ secrets.PLAYBOOK_SOURCE_TOKEN }}
@@ -89,3 +94,13 @@ jobs:
           PUBLIC_OCTO_RILL_METRICS_BASE_URL: ${{ vars.PUBLIC_OCTO_RILL_METRICS_BASE_URL }}
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
           EDGEONE_PROJECT_NAME: ${{ vars.EDGEONE_PROJECT_NAME }}
+      - name: Retain diagnostic artifact
+        if: inputs.diagnostic_only == true && steps.content.outputs.diagnostic_root != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: playbook-content-diagnostic
+          path: |
+            ${{ steps.content.outputs.diagnostic_root }}/artifact-files.json
+            ${{ steps.content.outputs.diagnostic_root }}/content-artifact.tar.gz
+          if-no-files-found: error
+          retention-days: 7

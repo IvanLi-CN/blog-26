@@ -158,3 +158,7 @@ Blog 数据合同现在区分项目的 `catalog_visibility` 与 `source_visibili
 ## 公开文件字节与构建投影
 
 现代公共 search 文件的空白和规范化结果可以与原始归档字节不同。构建 seed 保留原始 catalog/search 字节证据，按 edition 文件摘要验证后再核对规范化投影，避免把同源有效文件错误判定为损坏；原始文件身份、公开边界和 edition digest 不因修复而改变。
+
+## 静态发布空间耗尽诊断
+
+内容发布将校验用原始 bundle 字节重复序列化到每个 Playbook 页面，导致产物膨胀。EdgeOne 构建器复制阶段空间耗尽后仍上报成功。修复将校验材料与访客投影分开，加入上传前体积和关键文件门禁，并保留不发布的诊断入口；不修改已冻结产品。决定见 [ADR 0041](../../adr/0041-bounded-static-playbook-payloads.md)。
