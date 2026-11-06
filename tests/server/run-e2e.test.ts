@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import {
   buildSharedArtifactEnv,
   buildSingleProjectEnv,
+  getProjectTestArgs,
   prepareProjectRuntime,
 } from "../../scripts/run-e2e";
 import { E2E_GATEWAY_BIND_HOST } from "../e2e/runtime";
@@ -38,6 +40,36 @@ describe("run-e2e single-project env", () => {
 });
 
 describe("CI shard runtime isolation", () => {
+  it("selects complete disjoint test sets through the production Playwright argument builder", () => {
+    function discover(project: "guest" | "admin", shard?: { index: number; total: number }) {
+      const result = spawnSync(
+        process.execPath,
+        ["x", "playwright", ...getProjectTestArgs(project, shard, ["--list", "--reporter=json"])],
+        { cwd: join(import.meta.dir, "../.."), encoding: "utf8", maxBuffer: 10 * 1024 * 1024 }
+      );
+      expect(result.status, result.stderr).toBe(0);
+      const ids = new Set<string>();
+      function visit(suite: {
+        specs?: Array<{ id: string }>;
+        suites?: Parameters<typeof visit>[0][];
+      }) {
+        for (const spec of suite.specs ?? []) ids.add(spec.id);
+        for (const child of suite.suites ?? []) visit(child);
+      }
+      for (const suite of JSON.parse(result.stdout).suites) visit(suite);
+      return ids;
+    }
+    for (const project of ["guest", "admin"] as const) {
+      const full = discover(project);
+      const a = discover(project, { index: 1, total: 2 });
+      const b = discover(project, { index: 2, total: 2 });
+      expect(a.size).toBeGreaterThan(0);
+      expect(b.size).toBeGreaterThan(0);
+      expect([...a].filter((id) => b.has(id))).toEqual([]);
+      expect(new Set([...a, ...b])).toEqual(full);
+    }
+  }, 60_000);
+
   it("builds browser API resolution that follows each shard origin", async () => {
     const root = await mkdtemp(join(tmpdir(), "blog-e2e-origin-"));
     const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");

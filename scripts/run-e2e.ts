@@ -219,6 +219,20 @@ export function getCiProjectSelectionArgs(
   return ["--fully-parallel", `--shard=${shard.index}/${shard.total}`];
 }
 
+export function getProjectTestArgs(
+  project: E2EProjectName,
+  shard?: { index: number; total: number },
+  extraArgs: string[] = []
+) {
+  // The variadic --project option otherwise consumes a following positional file filter.
+  return [
+    "test",
+    `--project=${project}`,
+    ...(shard ? getCiProjectSelectionArgs(project, shard) : []),
+    ...extraArgs,
+  ];
+}
+
 async function prepareIsolatedRuntimes(projects: E2EProjectName[]) {
   const runtimeRoot = path.resolve(process.cwd(), "tmp/e2e-projects");
   await rm(runtimeRoot, { recursive: true, force: true });
@@ -267,13 +281,7 @@ function runProject(projectRuntime: ProjectRuntime, extraArgs: string[]) {
       [
         "x",
         "playwright",
-        "test",
-        "--project",
-        projectRuntime.project,
-        ...(projectRuntime.shard
-          ? getCiProjectSelectionArgs(projectRuntime.project, projectRuntime.shard)
-          : []),
-        ...extraArgs,
+        ...getProjectTestArgs(projectRuntime.project, projectRuntime.shard, extraArgs),
       ],
       {
         env,
@@ -343,7 +351,7 @@ async function runSingleProject(project: E2EProjectName, extraArgs: string[]) {
   const env = buildSingleProjectEnv(project);
   await runStep(
     `Playwright project ${project}`,
-    ["bun", "x", "playwright", "test", "--project", project, ...extraArgs],
+    ["bun", "x", "playwright", ...getProjectTestArgs(project, undefined, extraArgs)],
     env
   );
 }
