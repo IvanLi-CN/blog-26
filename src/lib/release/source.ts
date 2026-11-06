@@ -161,12 +161,21 @@ export function semanticSourceBlobs(
       }
       const preparedRelease = ledger.entries.find(
         (entry) =>
-          entry.stage === "pr_open" &&
+          (entry.stage === "pr_open" ||
+            (entry.stage === "abandoned" && entry.prNumber && entry.preparationHead)) &&
           entry.mergeSha === undefined &&
           entry.sourceSha === parent &&
           entry.version === candidateVersionText
       );
-      if (preparedRelease) continue;
+      if (preparedRelease) {
+        if (preparedRelease.stage === "abandoned") {
+          if (!proveRelease) throw new Error("VERSION release provenance must be verified");
+          // Failed main evaluation may retire a merged PR before mergeSha is bound.
+          // The caller must authenticate this exact merge through the original PR.
+          proveRelease({ ...preparedRelease, mergeSha: sha });
+        }
+        continue;
+      }
       if (businessVersion !== null && candidateVersion === businessVersion) continue;
       if (
         businessVersion !== null ||

@@ -82,6 +82,41 @@ describe("business evidence across VERSION-only releases", () => {
       expect(proofs).toBe(1);
       expect(publishedBaseline(ledger)).toEqual(contract.bootstrap);
       expect(supportedVersions(ledger)).toEqual(["2.7.0"]);
+      const abandoned = {
+        ...initial.ledger,
+        entries: [
+          {
+            ...initial.entry,
+            stage: "abandoned" as const,
+            preparationHead: alpha,
+            prNumber: 73,
+          },
+        ],
+      };
+      expect(() => semanticSourceBlobs(abandoned, alpha)).toThrow("provenance");
+      let abandonedProofs = 0;
+      const recovered = semanticSourceBlobs(abandoned, alpha, (entry) => {
+        expect(entry.id).toBe(initial.entry.id);
+        expect(entry.stage).toBe("abandoned");
+        expect(entry.mergeSha).toBe(alpha);
+        expect(entry.prNumber).toBe(73);
+        abandonedProofs++;
+      });
+      expect(abandonedProofs).toBe(1);
+      expect(recovered).toEqual(before);
+      expect(abandoned.entries[0]).not.toHaveProperty("mergeSha");
+      expect(() =>
+        semanticSourceBlobs(abandoned, alpha, () => {
+          throw new Error("Release PR merge provenance rejected");
+        })
+      ).toThrow("Release PR merge provenance rejected");
+      expect(() =>
+        semanticSourceBlobs(
+          { ...abandoned, entries: [{ ...abandoned.entries[0]!, prNumber: undefined }] },
+          alpha,
+          () => {}
+        )
+      ).toThrow("Unregistered VERSION");
       const next = reserveRelease(ledger, {
         sourceSha: alpha,
         actor: "owner",

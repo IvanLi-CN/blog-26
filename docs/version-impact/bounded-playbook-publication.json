@@ -6,8 +6,8 @@
     ".github/workflows/playbook-content-update.yml": "a7baea40b4c7f353b8c89e50496e41ee9274c35e",
     "docs/adr/0040-published-product-recovery-tooling.md": "f92d5e6e2b986fb70f6eebd017879db8c97506f1",
     "docs/adr/0041-bounded-static-playbook-payloads.md": "cb76904182eed5f0b30ef76db52bd6ab6dc1a4d6",
-    "docs/specs/manual-version-release/HISTORY.md": "d87fb0c0f5b962f07c38db17a420a41c18940d92",
-    "docs/specs/manual-version-release/IMPLEMENTATION.md": "08bf8342432f2b43f3414b29b85bb324fa0a43d4",
+    "docs/specs/manual-version-release/HISTORY.md": "b3cac319e35b674caacc71a0d1b863b57a20eac7",
+    "docs/specs/manual-version-release/IMPLEMENTATION.md": "e349bbb55df679a831583ba534fa9767984a3103",
     "docs/specs/manual-version-release/SPEC.md": "439e34274ad589fdc28c2ccae4754bcfda4d699b",
     "docs/specs/style-playbook-integration/HISTORY.md": "61b01fcc77c0a3e48764e6e9fee579d8dfef0ffe",
     "docs/specs/style-playbook-integration/IMPLEMENTATION.md": "a91769a458cf32a940b9685acf8c0a9db6b8400d",
@@ -19,13 +19,15 @@
     "src/lib/release/completion.ts": "469464dbec3c74725ac5382c8144c80df5d1a306",
     "src/lib/release/products.ts": "b7b1556603e93622d2db90d76c861967fcf2cb4c",
     "src/lib/release/publication.ts": "582eec5435f13ce7b47d1e115e096dc6215b1dc9",
-    "tests/e2e/web-demo/search-modes.spec.ts": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
+    "tests/e2e/web-demo/search-modes.spec.ts": "cf421454c8e2e8b8849fd67dd26826b403984aba",
     "tests/lib/manual-release-publication.test.ts": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
     "tests/lib/manual-release-recovery.test.ts": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
     "tests/lib/playbook-contract.test.ts": "88f2f469498b7b62670816e828e7746d92394980",
     "tests/lib/production-owner-recovery.test.ts": "a8f028bc5662fe0d6c4a2f209868a05c9233c637",
     "tests/lib/public-artifact-budget.test.ts": "dbdd15e1705af9a4e7c04a45ec57d6a7f0dae633",
-    "tests/lib/public-csr-route.test.ts": "0a1c7bba065d1380ae10141cf6d42d037b9bca41"
+    "tests/lib/public-csr-route.test.ts": "0a1c7bba065d1380ae10141cf6d42d037b9bca41",
+    "src/lib/release/source.ts": "2167640ea0ba46b83f4193e1a8f432f86fe701ee",
+    "tests/lib/manual-release-source.test.ts": "6ee8d4d42eb514567a9aee7b0de988ef1fbcd1c9"
   },
   "change": {
     "description": "Bound Playbook browser and deployment payloads and recover empty static version metadata only through completed-ledger, immutable-image and renderer identity proofs.",
@@ -54,14 +56,14 @@
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
         },
         {
-          "path": "tests/e2e/web-demo/search-modes.spec.ts",
-          "blob": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
-          "command": "GitHub Actions E2E run 42153849189 job 127683204640: Web Demo official routes passed"
-        },
-        {
           "path": "tests/lib/production-owner-recovery.test.ts",
           "blob": "a8f028bc5662fe0d6c4a2f209868a05c9233c637",
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/production-owner-recovery.test.ts tests/lib/edgeone-cli.test.ts: 101 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-source.test.ts",
+          "blob": "6ee8d4d42eb514567a9aee7b0de988ef1fbcd1c9",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/production-owner-recovery.test.ts tests/lib/edgeone-cli.test.ts; abandoned VERSION provenance regression verified red before fix and green after fix"
         }
       ]
     },
@@ -86,14 +88,14 @@
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
         },
         {
-          "path": "tests/e2e/web-demo/search-modes.spec.ts",
-          "blob": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
-          "command": "GitHub Actions E2E run 42153849189 job 127683204640: Web Demo official routes passed"
-        },
-        {
           "path": "tests/lib/production-owner-recovery.test.ts",
           "blob": "a8f028bc5662fe0d6c4a2f209868a05c9233c637",
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/production-owner-recovery.test.ts tests/lib/edgeone-cli.test.ts: 101 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-source.test.ts",
+          "blob": "6ee8d4d42eb514567a9aee7b0de988ef1fbcd1c9",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/production-owner-recovery.test.ts tests/lib/edgeone-cli.test.ts; abandoned VERSION provenance regression verified red before fix and green after fix"
         }
       ],
       "scope_drift": {
@@ -122,14 +124,14 @@
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/public-artifact-budget.test.ts tests/lib/public-csr-route.test.ts tests/lib/playbook-contract.test.ts: 159 pass"
         },
         {
-          "path": "tests/e2e/web-demo/search-modes.spec.ts",
-          "blob": "47bc6eb97bdca783c19090e1390741a85dd8cd4b",
-          "command": "GitHub Actions E2E run 42153849189 job 127683204640: Web Demo official routes passed"
-        },
-        {
           "path": "tests/lib/production-owner-recovery.test.ts",
           "blob": "a8f028bc5662fe0d6c4a2f209868a05c9233c637",
           "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/production-owner-recovery.test.ts tests/lib/edgeone-cli.test.ts: 101 pass"
+        },
+        {
+          "path": "tests/lib/manual-release-source.test.ts",
+          "blob": "6ee8d4d42eb514567a9aee7b0de988ef1fbcd1c9",
+          "command": "bun test tests/lib/manual-release-*.test.ts tests/lib/production-owner-recovery.test.ts tests/lib/edgeone-cli.test.ts; abandoned VERSION provenance regression verified red before fix and green after fix"
         }
       ]
     }
