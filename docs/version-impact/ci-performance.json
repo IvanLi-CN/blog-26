@@ -4,7 +4,7 @@
   "base_sha": "fffc1e28dc525285ddde46bb04ccca9f0fb5b875",
   "covered_files": {
     ".github/actions/setup-native-search/action.yml": "f9ae991e109cb2111039a7a89b4f5e6898be6938",
-    ".github/workflows/ci.yml": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+    ".github/workflows/ci.yml": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
     ".github/workflows/e2e.yml": "7cf3f961a260675a925d4878f5d23a3780996052",
     "docs/specs/README.md": "466ba8fddb7bc171203ec2c6763ab0683b403501",
     "docs/specs/ci-performance/HISTORY.md": "f1cf0b9ece1d37cef8c918f2944f52666ee56d4a",
@@ -94,7 +94,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
           "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -236,7 +236,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
           "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -382,7 +382,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
           "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -539,7 +539,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
           "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {
@@ -683,7 +683,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
           "command": "bun run check; bun test tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts tests/lib/runtime-bundle.test.ts tests/lib/manual-release-media.test.ts tests/lib/playbook-workflows.test.ts"
         },
         {

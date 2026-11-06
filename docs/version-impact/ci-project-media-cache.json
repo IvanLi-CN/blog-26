@@ -4,7 +4,7 @@
   "base_sha": "fffc1e28dc525285ddde46bb04ccca9f0fb5b875",
   "covered_files": {
     ".github/actions/setup-project-media/action.yml": "78c91323f5d495e61feecacaf5ba157c38519789",
-    ".github/workflows/ci.yml": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+    ".github/workflows/ci.yml": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
     ".github/workflows/e2e.yml": "7cf3f961a260675a925d4878f5d23a3780996052",
     ".gitignore": "b91faefead45cb68edbf0d80398b5a40acd38a5c",
     "Dockerfile": "bc3079db7be8dd828cc79e86b8903f2f28fc07d8",
@@ -40,7 +40,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -137,7 +137,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -238,7 +238,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -385,7 +385,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -484,7 +484,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "be4f08622c0dad5e5a6e73ea8b2e9b8dc44a3d2d",
+          "blob": "81652eb2bff844e35bc535157fcaddbcc0d2b63c",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
