@@ -220,7 +220,11 @@
           "blob": "b4e10b890ace225afbbf9d48b5b9b8070b8f6086",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         }
-      ]
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "本轮按已授权的测试分层方向实施；迁移意图和保留的浏览器、HTTP 覆盖已逐项映射，无新增产品行为。"
+      }
     },
     "verified": {
       "impact": "patch",
