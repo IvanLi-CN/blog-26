@@ -127,14 +127,78 @@ function ChatPanel({
     messageIdentity.current.set(identityKey, identity);
     return identity;
   };
-  const terminalAssistant = [...snapshot.messages]
-    .reverse()
-    .find((message) => message.role === "assistant");
-  const partialIsTerminal = Boolean(
+  const lastUserIndex = snapshot.messages.findLastIndex((message) => message.role === "user");
+  const lastAssistantIndex = snapshot.messages.findLastIndex(
+    (message) => message.role === "assistant"
+  );
+  const pendingTurn = lastUserIndex > lastAssistantIndex;
+  const terminalForPending =
+    !pendingTurn && lastUserIndex >= 0 && lastAssistantIndex === lastUserIndex + 1
+      ? snapshot.messages[lastAssistantIndex]
+      : undefined;
+  const partialOverlapsTerminal = Boolean(
     snapshot.partial &&
-      terminalAssistant &&
-      (terminalAssistant.text === snapshot.partial ||
-        terminalAssistant.text.startsWith(snapshot.partial))
+      terminalForPending &&
+      (terminalForPending.text === snapshot.partial ||
+        terminalForPending.text.startsWith(snapshot.partial) ||
+        snapshot.partial.startsWith(terminalForPending.text))
+  );
+  const pendingMessageId = stableMessageId("assistant", snapshot.messages.length);
+  const showPendingRow =
+    !terminalForPending || (Boolean(snapshot.partial) && !partialOverlapsTerminal);
+  type ChatRow = {
+    messageId: string;
+    role: "user" | "assistant";
+    content: string;
+    status: "streaming" | "completed" | "failed";
+    pending: boolean;
+  };
+  const rows: ChatRow[] = snapshot.messages.map((message, index) => ({
+    messageId: stableMessageId(message.role, index, message.id),
+    role: message.role,
+    content: message.text,
+    status: "completed",
+    pending: false,
+  }));
+  if (showPendingRow && (snapshot.partial || snapshot.generating)) {
+    rows.push({
+      messageId: pendingMessageId,
+      role: "assistant",
+      content: snapshot.partial,
+      status: snapshot.error ? "failed" : snapshot.generating ? "streaming" : "completed",
+      pending: true,
+    });
+  }
+  const renderRow = (row: ChatRow) => (
+    <div
+      key={row.messageId}
+      className="clipping-chat-message"
+      data-message-id={row.messageId}
+      data-presentation-id={presentationId}
+      data-message-role={row.role}
+    >
+      <p className="nature-muted mb-2 text-xs">
+        {row.role === "user"
+          ? "你"
+          : row.pending && snapshot.generating
+            ? "文章助手 · 正在回答"
+            : "文章助手"}
+      </p>
+      <AssistantMessageContent
+        messageId={row.messageId}
+        presentationId={presentationId}
+        {...({ role: row.role } as const)}
+        content={row.content}
+        status={row.status}
+        renderMarkdown={ConversationMarkdown}
+        resourceContext={resourceContext}
+      />
+      {row.pending && !snapshot.partial && snapshot.generating ? (
+        <p className="nature-muted text-sm" role="status">
+          正在阅读相关段落…
+        </p>
+      ) : null}
+    </div>
   );
   useLayoutEffect(() => {
     if (container.current) container.current.scrollTop = scroll.current;
@@ -164,77 +228,7 @@ function ChatPanel({
             围绕这篇文章提问。回答会引用原文段落，并说明哪些是推断。
           </p>
         ) : null}
-        {snapshot.messages.map((message) =>
-          // Keep the local identity keyed by position so a legacy partial and its terminal row
-          // retain the same renderer subtree when the backend ID first becomes available.
-          (() => {
-            const messageId = stableMessageId(
-              message.role,
-              snapshot.messages.indexOf(message),
-              message.id
-            );
-            return (
-              <div
-                key={messageId}
-                className="clipping-chat-message"
-                data-message-id={messageId}
-                data-presentation-id={presentationId}
-                data-message-role={message.role}
-              >
-                <p className="nature-muted mb-2 text-xs">
-                  {message.role === "user" ? "你" : "文章助手"}
-                </p>
-                <AssistantMessageContent
-                  messageId={messageId}
-                  presentationId={presentationId}
-                  role={message.role}
-                  content={message.text}
-                  status="completed"
-                  renderMarkdown={ConversationMarkdown}
-                  resourceContext={resourceContext}
-                />
-              </div>
-            );
-          })()
-        )}
-        {snapshot.partial && !partialIsTerminal ? (
-          <div
-            data-message-id={stableMessageId("assistant", snapshot.messages.length)}
-            data-presentation-id={presentationId}
-            data-message-role="assistant"
-          >
-            <p className="nature-muted mb-2 text-xs">文章助手 · 正在回答</p>
-            <AssistantMessageContent
-              messageId={stableMessageId("assistant", snapshot.messages.length)}
-              presentationId={presentationId}
-              {...({ role: "assistant" } as const)}
-              content={snapshot.partial}
-              status={snapshot.error ? "failed" : snapshot.generating ? "streaming" : "completed"}
-              renderMarkdown={ConversationMarkdown}
-              resourceContext={resourceContext}
-            />
-          </div>
-        ) : null}
-        {snapshot.generating && !snapshot.partial ? (
-          <div
-            data-message-id={stableMessageId("assistant", snapshot.messages.length)}
-            data-presentation-id={presentationId}
-            data-message-role="assistant"
-          >
-            <AssistantMessageContent
-              messageId={stableMessageId("assistant", snapshot.messages.length)}
-              presentationId={presentationId}
-              {...({ role: "assistant" } as const)}
-              content=""
-              status="streaming"
-              renderMarkdown={ConversationMarkdown}
-              resourceContext={resourceContext}
-            />
-            <p className="nature-muted text-sm" role="status">
-              正在阅读相关段落…
-            </p>
-          </div>
-        ) : null}
+        {rows.map(renderRow)}
       </div>
       {error || snapshot.error ? (
         <p role="alert" className="nature-alert nature-alert-error mx-4 mb-3 text-sm">
