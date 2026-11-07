@@ -13,7 +13,7 @@
     "docs/specs/style-playbook-integration/SPEC.md": "c32aebac0d7ee18817b87ae79ad93a56ec0654c6",
     "docs/specs/style-playbook-integration/assets/tech-stack-raw-desktop-open-dark.png": "705a3f9b51eed64e8e00ca3ffc9707c6e3bfd784",
     "docs/specs/style-playbook-integration/assets/tech-stack-raw-mobile-open-dark.png": "6908d067c35a8b654c2b1ae88860a3d1080ca9cf",
-    "package.json": "b70913ecc7e6f53c2e1a77658e1bee9e7ca072b4",
+    "package.json": "361c4aa76567a8fe6cdb2870088e50e98188f406",
     "scripts/build-web-demo.ts": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
     "src/components/playbook/PlaybookPage.tsx": "b0d05112c62bd495f93edd1b759066f15d409c39",
     "src/components/playbook/PlaybookTechStack.stories.tsx": "c12ecb55dcd97efeb4d50050fa31e8feb90c3fcb",

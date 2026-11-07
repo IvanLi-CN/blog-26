@@ -33,7 +33,7 @@
     "src/components/common/markdown/plugins/rehype-image-optimization.ts": "234450b67811944641217af51270dcfc86a45200",
     "src/lib/__tests__/public-media.test.ts": "43c5b92446967b6db5d318d3deec9c08e0f719e9",
     "src/lib/public-media.ts": "5aaa4de1b6472ed3012aa01209d0e59ba21f7da0",
-    "src/lib/release/inputs.ts": "b9f21e8ef06e376f6254606a9bb900b083babc9f",
+    "src/lib/release/inputs.ts": "cac8d41be61502bd325bee33cf308b68965c8a37",
     "src/server/http-compat-api.test.ts": "1cda0de58f04ba44ab52cbe64e512b7c0a3351ea",
     "src/server/public-media-watermark-assets.test.ts": "e2544c82793a1ea188db07101a0ad6205c97c78d",
     "src/server/public-media-watermark.test.ts": "c291e26cda237383021a43da7fc77be0a5aafca2",
@@ -83,7 +83,7 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "b9f21e8ef06e376f6254606a9bb900b083babc9f",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "Release input freezing preserves complete same-version v1/v2 watermark pairs from legacy snapshots and closes only new/current candidates with v3 siblings"
         },
         {

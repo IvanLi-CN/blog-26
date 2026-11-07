@@ -12,7 +12,7 @@
     "tests/lib/assistant-discussion-migration.test.ts": "b0d18d3978b15fe8591db2ed26e5101d22d3befb",
     "tests/server/system-share-api.test.ts": "737e9f8f4cedf53ffddc4a4a47abf96a3aba7b4c",
     "docs/runbooks/site-assistant-discussion-migration.md": "79e001e1df68182b6951b9e6f62ed1d51e818531",
-    "package.json": "3d0e64c848f06801f9746e3d3cea091ff9929b73"
+    "package.json": "361c4aa76567a8fe6cdb2870088e50e98188f406"
   },
   "change": {
     "description": "Add a resumable, offline migration for current and legacy Pi clipping discussions into the T1 assistant conversation store, with deterministic source hashes, raw quarantine records, backup manifests, interruption-safe progress, and opt-in verified cleanup.",
@@ -85,12 +85,12 @@
         },
         {
           "path": "package.json",
-          "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
           "command": "bun run check; bun run check:admin-ui; bunx biome check <changed files>; git diff --check (all pass; repository-wide Biome reports 26 existing warnings and 13 infos)"
         },
         {
           "path": "package.json",
-          "blob": "3d0e64c848f06801f9746e3d3cea091ff9929b73",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
           "command": "bun run test (1432 pass, 67 skip, 0 fail, 6200 expectations)"
         }
       ]

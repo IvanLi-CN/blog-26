@@ -2,6 +2,12 @@ import { execFileSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
+import {
+  configurationDigest,
+  prepareBundle,
+  requireNativePlatform,
+  verifyBundle,
+} from "../../../scripts/runtime-bundle";
 import { verifyPublicArtifactBudget } from "./artifact-budget";
 import { fileDigest, sealDirectory, verifyDirectory } from "./artifacts";
 import { buildCommand, packageFrozenMedia, restoreInputs } from "./inputs";
@@ -74,6 +80,11 @@ async function buildStaticProduct(
   staticSha256: string;
 }> {
   const config = await restoreInputs(entry, inputs);
+  if (config.schemaVersion !== 2)
+    throw new Error(
+      "Historical v1 products must be rebuilt only by their original frozen source recipe; restore existing artifacts instead"
+    );
+  await requireNativePlatform();
   const staticBuildVersion = `${config.buildDate.slice(0, 10).replaceAll("-", "")}-${config.sourceSha.slice(0, 8)}-static`;
   const env = buildEnvironment(entry, config, staticBuildVersion, inputs);
   await mkdir(archiveRoot, { recursive: true });
@@ -182,11 +193,16 @@ export async function buildProducts(
   preflightRoot: string
 ): Promise<void> {
   const config = await restoreInputs(entry, inputs);
+  if (config.schemaVersion !== 2)
+    throw new Error("Cannot rebuild a v1 identity using the native runtime recipe");
   const preflight = await readFrozenMediaPreflight(entry, preflightRoot);
   const staticBuildVersion = preflight.staticBuildVersion;
   await mkdir(root, { recursive: true });
   await cp(join(preflightRoot, preflight.archiveName), join(root, preflight.archiveName));
   const imageBuildVersion = staticBuildVersion.replace(/-static$/, "-image");
+  if (!entry.mergeSha)
+    throw new Error("Merged source SHA is required for native runtime packaging");
+  const sourceSha = entry.mergeSha;
   const env = buildEnvironment(entry, config, staticBuildVersion, inputs);
   await mkdir(root, { recursive: true });
   // Package the already-validated outputs; only runtime metadata has its own build identity.
@@ -195,6 +211,18 @@ export async function buildProducts(
     BUILD_VERSION: imageBuildVersion,
   });
   await buildCommand(["bun", "run", "backend:dist"], env);
+  const bundleRoot = resolve(root, "runtime-bundle");
+  const imageEnv = { ...process.env, ...env, BUILD_VERSION: imageBuildVersion };
+  const expectation = {
+    sourceSha,
+    profile: "release" as const,
+    configDigest: configurationDigest(imageEnv),
+    productVersion: entry.version,
+    buildVersion: imageBuildVersion,
+    baseImages: { runtime: config.baseImages.runtime, bun: config.baseImages.build },
+  };
+  await prepareBundle({ output: bundleRoot, ...expectation, reuseBuild: true, env: imageEnv });
+  await verifyBundle(bundleRoot, expectation);
   const metadata = resolve(root, "image-build.json");
   await buildCommand(
     [
@@ -207,11 +235,11 @@ export async function buildProducts(
       "app-image-prebuilt",
       "--provenance=false",
       "--build-arg",
-      `BUN_BUILD_IMAGE=${config.baseImages.build}`,
+      `BUN_DONOR_IMAGE=${config.baseImages.build}`,
       "--build-arg",
-      `BUN_RUNTIME_IMAGE=${config.baseImages.runtime}`,
+      `RUNTIME_IMAGE=${config.baseImages.runtime}`,
       "--build-arg",
-      `PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${config.env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT || "true"}`,
+      `PUBLIC_ASSISTANT_LAUNCHER_DEFAULT=${env.PUBLIC_ASSISTANT_LAUNCHER_DEFAULT || "true"}`,
       "--label",
       `org.opencontainers.image.version=${entry.version}`,
       "--label",
@@ -220,10 +248,12 @@ export async function buildProducts(
       `type=oci,dest=${resolve(root, "image.oci.tar")}`,
       "--metadata-file",
       metadata,
-      ".",
+      bundleRoot,
     ],
     env
   );
+  // The prepared tree is a local packaging input, not an extra 90-day release artifact.
+  await rm(bundleRoot, { recursive: true, force: true });
   const built = z
     .object({ "containerimage.digest": z.string().regex(/^sha256:[a-f0-9]{64}$/) })
     .parse(JSON.parse(await readFile(metadata, "utf8")));

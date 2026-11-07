@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "2a5e0cc7792ce64fc19fc9edc91d47f09b4f5a5f",
   "covered_files": {
-    ".github/workflows/ci.yml": "e64b81833b14841257120a5bad19f07c8ae393df",
+    ".github/workflows/ci.yml": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
     "docs/adr/0021-embedded-tantivy-search.md": "05c9dff6296fd23eefa966d67f5db65f556e18b5",
     "docs/adr/0023-search-legacy-compatibility.md": "a1cd7e7f28d3b1ddebddf6b85d7ac067c853e06d",
     "docs/solutions/search/sqlite-fts5-fallback.md": "12d6ac08ede207d96d44acda075b97ecd416f6c8",
@@ -15,7 +15,7 @@
     "docs/specs/search-relevance/validation/product/empirical-search-model-nonthinking.txt": "9b2dcb5e8a69a3ea7796831dfc3d96323ccad02a",
     "lefthook.yml": "f4efb8182ef70cc48f63c374ebb77dd453869578",
     "native/search/src/lib.rs": "0557f9b419d2332a2ac415dfc575af71de97e72b",
-    "package.json": "b597bb4bd8104023e160bd76740c54774d90e922",
+    "package.json": "361c4aa76567a8fe6cdb2870088e50e98188f406",
     "scripts/run-precommit-tests.ts": null,
     "scripts/run-test-suite.ts": "5c5f93a47213070eb6c28ca0d8497b43c524cde0",
     "scripts/verify-native-search.ts": "77233b601836c68817a3a50ae16828c6c92c4c51",

@@ -73,7 +73,7 @@ Actions MUST 以同平台和配方的聚合包复用单图缓存，不新增 pro
 
 ## Related ADRs
 
-None
+- [0042 原生产物与薄运行镜像](../../adr/0042-native-runtime-bundle-and-thin-image.md)
 
 ## References
 

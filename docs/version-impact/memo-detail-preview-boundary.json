@@ -12,7 +12,7 @@
     "docs/adr/0024-memo-detail-preview-boundary.md": "181d067980d444f265ac62443fc3d824077f7e61",
     "docs/specs/memo-admin-inline-view/SPEC.md": "4500d02d44f3f5cd72db314f49adad6cfb55c549",
     "GLOSSARY.md": "9df28e51dafe94aadad4d8de7fa968d8333c07e8",
-    "package.json": "b70913ecc7e6f53c2e1a77658e1bee9e7ca072b4",
+    "package.json": "361c4aa76567a8fe6cdb2870088e50e98188f406",
     "scripts/build-web-demo.ts": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
     "scripts/preview-web-demo.ts": "5d92e6c3d65147497a6a215fe27393571f6f43b3",
     "site/components/pages/memo.tsx": "c34789742f1b7c03cbc3db72f097979f80714b6d",

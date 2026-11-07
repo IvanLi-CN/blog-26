@@ -166,13 +166,13 @@ describe("playbook deployment boundaries", () => {
     }
   });
   test("image builders accept an exact Playbook edition as an immutable input", async () => {
+    // The native build consumes the immutable edition; Docker only packages its bytes.
+    const bundle = await readFile("scripts/runtime-bundle.ts", "utf8");
+    expect(bundle).toContain("PLAYBOOK_REQUIRED");
+    expect(bundle).toContain('run("bun", ["run", "build:compiled"], repo, env)');
     const dockerfile = await readFile("Dockerfile", "utf8");
-    expect(dockerfile).toContain("ARG PLAYBOOK_REQUIRED=false");
-    expect(dockerfile).toContain("ARG PLAYBOOK_EDITION_INPUT_PATH=");
-    expect(dockerfile).toContain("ENV PLAYBOOK_REQUIRED=$" + "{PLAYBOOK_REQUIRED}");
-    expect(dockerfile).toContain(
-      "ENV PLAYBOOK_EDITION_INPUT_PATH=$" + "{PLAYBOOK_EDITION_INPUT_PATH}"
-    );
+    expect(dockerfile).toContain("COPY --chown=0:0 app/ ./");
+    expect(dockerfile).not.toContain("RUN bun");
 
     const prepare = await readFile("scripts/prepare-playbook-edition.ts", "utf8");
     expect(prepare).toContain("PLAYBOOK_EDITION_INPUT_PATH");

@@ -5,12 +5,12 @@
   "covered_files": {
     ".github/release-contract.json": "fe8185c3c18a4f334df17242e9dd3604d17a7f49",
     ".github/workflows/abandon-cancelled-release.yml": "7e20b45b52a25c324b9bc07fe9f4daa2af8c024e",
-    ".github/workflows/product-release.yml": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
+    ".github/workflows/product-release.yml": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
     "docs/runbooks/manual-version-release.md": "a8ee22cb7a88e36c0934c470379ec7d465d73596",
     "docs/specs/manual-version-release/IMPLEMENTATION.md": "8f730f2627c43f4eca0780220036b3bfa732340c",
     "docs/specs/manual-version-release/SPEC.md": "73a26106dae908a2974a27965fda6553f24120cb",
     "scripts/product-release.ts": "ec6d4bb0c7df05493be98e694f25fb232b371c91",
-    "src/lib/release/inputs.ts": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+    "src/lib/release/inputs.ts": "cac8d41be61502bd325bee33cf308b68965c8a37",
     "src/lib/release/ledger.ts": "a11289245293c0214d17b9522f200757a619a396",
     "src/lib/release/policy.ts": "b3abb4cacedebc506e2bfc5e9361700f8f63ab51",
     "src/lib/release/completion.ts": "c62a8584ae694a830d6efc7a3f46118b41cf7f71",
@@ -45,12 +45,12 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "bunx biome check src/lib/release/inputs.ts src/lib/release/policy.ts tests/lib/manual-release-inputs.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "de3208edcf506dfc0ee07427e2cd75e93af202b6",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "bun test tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -86,7 +86,7 @@
         },
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "bunx biome check src/lib/release/inputs.ts src/lib/release/policy.ts tests/lib/manual-release-inputs.test.ts tests/ci/product-prerelease-workflow.test.ts"
         },
         {
@@ -115,7 +115,7 @@
       "evidence": [
         {
           "path": "src/lib/release/inputs.ts",
-          "blob": "b01d0984945b1f38f6784b2409747ecc2e0c5ae6",
+          "blob": "cac8d41be61502bd325bee33cf308b68965c8a37",
           "command": "The public snapshot URL, response payload, frozen input schema, and runtime media facade are unchanged"
         }
       ]

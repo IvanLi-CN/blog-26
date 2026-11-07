@@ -3,10 +3,10 @@
   "kind": "version-impact-record",
   "base_sha": "e1211479779c5c8b19823d1b60874968aefe6d6b",
   "covered_files": {
-    "Dockerfile": "d7b48d22e76236a2e951fe2474ba9186ebe07e17",
+    "Dockerfile": "c5dad9292748fdce8f11887caaef83b9fb347c9c",
     ".github/workflows/abandon-failed-inputs-release.yml": "6e038873501b5491634758b85191f20068876c4b",
     ".github/workflows/notify-release-failure.yml": "efc0e3fd93fc696637002bc09402d6da7db879e8",
-    ".github/workflows/product-release.yml": "189103f4f41f6e94f8b6b599764c6254964d8794",
+    ".github/workflows/product-release.yml": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
     ".github/workflows/retry-product-release.yml": "5d6be9679872974e4fec3384214fd6d6c6a73e88",
     "docs/adr/0029-release-recovery-and-frozen-media-preflight.md": "6fdd0b91ef16df7de7f2313daef42ddbe4c7ebb6",
     "docs/runbooks/manual-version-release.md": "c2cc85993a7d2ecaf800c7c56845058484ce9688",
@@ -18,7 +18,7 @@
     "src/lib/release/failure.ts": "db94f1eaf4bd9959256c204dba003eb85f948e05",
     "src/lib/release/github.ts": "24167d59daea86cc8419730c0ebe4d2ad6214bc6",
     "src/lib/release/ledger.ts": "999cbb7cf69a3b5a9cdba30e917569a1620d2e03",
-    "src/lib/release/products.ts": "d87fe2a85c3f3e32394fa52b697741ea158ed346",
+    "src/lib/release/products.ts": "2354ab0e9526178bb9329bd26ae519e62b2738f1",
     "src/lib/release/publication.ts": "f4a58c48b1a19eb27bc2a4a504627fbcae06c629",
     "tests/ci/notify-release-failure-workflow.test.ts": "6547c9cb7acc1c01668678d306f9406a33c3d550",
     "tests/ci/product-prerelease-workflow.test.ts": "ace267dfa7edb6441ad7a21e64840a2cc38a67f8",
@@ -84,7 +84,7 @@
         },
         {
           "path": ".github/workflows/product-release.yml",
-          "blob": "189103f4f41f6e94f8b6b599764c6254964d8794",
+          "blob": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
           "command": "actionlint .github/workflows/product-release.yml"
         }
       ]
