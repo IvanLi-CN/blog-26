@@ -208,7 +208,7 @@ export async function prepareInventory(root: string): Promise<BundleManifest["fi
   const files = await inventory(root);
   for (const file of files) {
     if (file.link !== undefined) continue;
-    const mode = file.mode | 0o444;
+    const mode = file.mode | 0o444 | (file.mode & 0o111 ? 0o111 : 0);
     await chmod(join(root, file.path), mode);
     file.mode = mode;
   }

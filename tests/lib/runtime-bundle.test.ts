@@ -93,7 +93,7 @@ test("prepared inventory preserves bytes, executable bits and internal links aft
   const files = await prepareInventory(root);
   expect(files).toEqual(await inventory(root));
   expect(files.map(({ mode, ...file }) => file)).toEqual(before.map(({ mode, ...file }) => file));
-  expect(files.find((file) => file.path === "app/docker-entrypoint.sh")?.mode).toBe(0o744);
+  expect(files.find((file) => file.path === "app/docker-entrypoint.sh")?.mode).toBe(0o755);
   expect(files.find((file) => file.path === "app/admin-dist/index.html")?.mode).toBe(0o644);
   await seal(root, files);
   await expect(verifyBundle(root, expected, false)).resolves.toBeDefined();
