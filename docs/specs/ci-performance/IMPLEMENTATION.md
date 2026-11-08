@@ -28,3 +28,9 @@
 Build、浏览器 E2E 和 Web Demo 通过共享 composite action 恢复聚合缓存；MCP 无图片生成，不恢复该缓存。Docker 将同一生成器与输入放进 `project-media` 阶段，应用源码和构建身份保留在 builder；宿主缓存不进入上下文。
 
 验证由 `tests/lib/project-media-cache.test.ts`、既有图片套件、全量 required checks，以及现有 CI/CD Pipeline 的显式性能实验输入承担。冷暖性能与 Docker 失效证据保存在绑定候选 SHA 的 Actions 日志和 PR 中，不把运行结果回写成源代码变更。实验不增加常规 job、生产者依赖、artifact 或 retention。
+
+## 性能诊断入口
+
+`bun scripts/ci-performance-report.ts IvanLi-CN/blog-26 <ci-run-id> <e2e-run-id>` 只读获取同一源码 SHA 的 Actions job/step 时间和 artifact 大小、过期时间，合并 runner total 与完整工作负载墙钟。不同 SHA 拒绝聚合，未完成作业的耗时保持未知；跳过的 job 不计入执行数量。报告只统计当前 run attempt，重试成本需另行列账。缓存传输字节无法从 artifact API 推断，报告明确标记未知，须结合 cache/BuildKit 日志分析。工具不修改 CI 调度、测试覆盖、缓存权限或构建产物。
+
+合并后 `5aee9a19` 的实测入口为 CI `42323381685` 与 E2E `42323381714`：完整墙钟 520 秒、runner total 2382 秒。Docker job 中原生搜索冷编译约 104 秒、bundle 准备校验约 141 秒、打包与 load 约 87 秒、smoke 约 9 秒。此前 7:15 与暖运行中位数 3:49 均来自原生构建实现，属于冷暖对比，不代表迁移前后的性能收益。PR 缓存向 main 的复用仍须遵循 GitHub 缓存可见性，不能只改 scope 就宣称已解决。
