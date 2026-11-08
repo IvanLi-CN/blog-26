@@ -6,7 +6,7 @@
     ".github/actions/setup-native-search/action.yml": "3bea35a5877493de431ca88d8de9c8245c8345c1",
     "scripts/native-search-cache-platform.ts": "b6c0e74131b834c12e8a40b67f6d0ff03f041eaf",
     "tests/ci/native-search-cache-platform.test.ts": "048b84c474175dd3908ad3450ec3e140f2d3dfbd",
-    "docs/specs/ci-performance/IMPLEMENTATION.md": "e1ea0c42ef58b99f6cd961b2edd32e4e6de8ffae"
+    "docs/specs/ci-performance/IMPLEMENTATION.md": "ee183b02a85ffd7a48e76c99aecc12a37443b657"
   },
   "change": {
     "description": "原生搜索缓存以发行版、架构、glibc、编译工具与运行库身份替代 hosted runner 镜像发布编号，保留精确配方和每次运行验证。",
@@ -36,7 +36,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "e1ea0c42ef58b99f6cd961b2edd32e4e6de8ffae",
+          "blob": "ee183b02a85ffd7a48e76c99aecc12a37443b657",
           "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
         }
       ]
@@ -63,7 +63,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "e1ea0c42ef58b99f6cd961b2edd32e4e6de8ffae",
+          "blob": "ee183b02a85ffd7a48e76c99aecc12a37443b657",
           "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
         }
       ],
@@ -94,7 +94,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "e1ea0c42ef58b99f6cd961b2edd32e4e6de8ffae",
+          "blob": "ee183b02a85ffd7a48e76c99aecc12a37443b657",
           "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
         }
       ]
@@ -137,7 +137,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "e1ea0c42ef58b99f6cd961b2edd32e4e6de8ffae",
+          "blob": "ee183b02a85ffd7a48e76c99aecc12a37443b657",
           "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
         }
       ]
@@ -166,7 +166,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "e1ea0c42ef58b99f6cd961b2edd32e4e6de8ffae",
+          "blob": "ee183b02a85ffd7a48e76c99aecc12a37443b657",
           "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
         }
       ]

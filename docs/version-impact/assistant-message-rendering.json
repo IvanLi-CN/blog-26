@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "fffc1e28dc525285ddde46bb04ccca9f0fb5b875",
   "covered_files": {
-    ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+    ".github/workflows/e2e.yml": "caf80bc71ea512fde3d08eefc24bdf044d71a12f",
     "GLOSSARY.md": "8eb1f3de85f5b2f2942e6750ca58614e39949012",
     "docs/adr/0040-assistant-content-and-media-trust-boundary.md": "a7b0171ed17a5da4386ec24e27368b01067327aa",
     "docs/specs/README.md": "466ba8fddb7bc171203ec2c6763ab0683b403501",

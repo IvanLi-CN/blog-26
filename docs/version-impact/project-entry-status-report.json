@@ -49,7 +49,7 @@
     "src/lib/ai/vectorization.ts": "ae0d6c9f20061ce32d65f88e62fc8110e8daf470",
     "scripts/run-test-suite.ts": "4331c4a5de0e6ac1ae32be5435966227538662f3",
     "scripts/start-console.ts": "1dbe1f4897f204f9829918701b9efd0f8aa9b25f",
-    ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+    ".github/workflows/e2e.yml": "caf80bc71ea512fde3d08eefc24bdf044d71a12f",
     "tests/e2e/web-demo/playwright.config.ts": "7ea28022a065a2e7806175b85fc25f018a3d6db8",
     "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
     "src/server/routers/admin/project-status.ts": "1d4190a83a493148ccdbe02effb8b544146158f1",
@@ -66,7 +66,10 @@
   "change": {
     "description": "Add a shared project entry catalog, persisted external-entry status checks, six-hour scheduling, protected Admin APIs, and a grouped project-status report with Web Demo fixtures.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": ["public-api", "persistent-state"]
+    "affected_contracts": [
+      "public-api",
+      "persistent-state"
+    ]
   },
   "classification": {
     "planned": {

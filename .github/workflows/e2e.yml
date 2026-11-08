@@ -69,7 +69,12 @@ jobs:
         run: bash scripts/prepare-ci-apt-mirror.sh
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y lsof
+        run: |
+          if command -v lsof >/dev/null 2>&1; then
+            echo "Using runner-provided lsof"
+          else
+            sudo apt-get update && sudo apt-get install -y lsof
+          fi
 
       - name: Install Playwright browsers
         if: matrix.project != 'mcp'
