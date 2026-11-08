@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "f726db08e4046cd4f905a6d680e3aa37247321bc",
   "covered_files": {
-    ".github/workflows/e2e.yml": "caf80bc71ea512fde3d08eefc24bdf044d71a12f",
+    ".github/workflows/e2e.yml": "552546228c6623febcbde2b94e1bba67b6b5dcda",
     "GLOSSARY.md": "9df28e51dafe94aadad4d8de7fa968d8333c07e8",
     "apps/admin/src/components/rag-coverage.stories.tsx": "d21358e8a5075fd039245ba3a75db1eae29a481d",
     "apps/admin/src/demo/mock-admin-api.ts": "15d244249b2d83414ed9e54749c3647f69532713",
