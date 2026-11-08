@@ -4,14 +4,14 @@
   "base_sha": "aba866f31d3d789ee7e614a92ecad4eb317177f5",
   "covered_files": {
     ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
-    "docs/specs/ci-performance/IMPLEMENTATION.md": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+    "docs/specs/ci-performance/IMPLEMENTATION.md": "dabebbdc73a3a0f9be25d35a4604f8e2a13c2094",
     "tests/e2e/README.md": "94040584f8fcccafd0b60a3652bb992b9d90202e",
     "tests/e2e/web-demo/assistant.spec.ts": "8210098abbd685951bd698dd9fd93301366f6186",
     "tests/e2e/web-demo/public-cover-media.spec.ts": "eb0a115d6d68a7d700c5b7bad247e74d40cac7ad",
     "tests/e2e/web-demo/search-modes.spec.ts": "490e03d14932a503437914bc854f3f08bb526bc0",
     "tests/e2e/web-demo/system-share.spec.ts": "955eea9abb7a97e5047af31d479d94ba44e27d5f",
     "tests/e2e/web-demo/ci.config.ts": "442cf53ce20b44554e41a113dc64fd9c75d6ebf7",
-    "tests/ci/web-demo-ci-coverage.test.ts": "dfde44fe59c9bef902e1926958f8fae35b4d379b"
+    "tests/ci/web-demo-ci-coverage.test.ts": "2f03186b0358109c61b04f91859fb4c18f9fefdb"
   },
   "change": {
     "description": "Web Demo 合并测试入口并去除已完整自带 viewport 场景的重复执行，保留全部独特断言、两 worker 上限、重试及失败传播。",
@@ -31,7 +31,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "dabebbdc73a3a0f9be25d35a4604f8e2a13c2094",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         },
         {
@@ -66,7 +66,7 @@
         },
         {
           "path": "tests/ci/web-demo-ci-coverage.test.ts",
-          "blob": "dfde44fe59c9bef902e1926958f8fae35b4d379b",
+          "blob": "2f03186b0358109c61b04f91859fb4c18f9fefdb",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         }
       ]
@@ -83,7 +83,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "dabebbdc73a3a0f9be25d35a4604f8e2a13c2094",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         },
         {
@@ -118,7 +118,7 @@
         },
         {
           "path": "tests/ci/web-demo-ci-coverage.test.ts",
-          "blob": "dfde44fe59c9bef902e1926958f8fae35b4d379b",
+          "blob": "2f03186b0358109c61b04f91859fb4c18f9fefdb",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         }
       ],
@@ -139,7 +139,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "dabebbdc73a3a0f9be25d35a4604f8e2a13c2094",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         },
         {
@@ -174,7 +174,7 @@
         },
         {
           "path": "tests/ci/web-demo-ci-coverage.test.ts",
-          "blob": "dfde44fe59c9bef902e1926958f8fae35b4d379b",
+          "blob": "2f03186b0358109c61b04f91859fb4c18f9fefdb",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         }
       ]
@@ -207,7 +207,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "dabebbdc73a3a0f9be25d35a4604f8e2a13c2094",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         },
         {
@@ -242,7 +242,7 @@
         },
         {
           "path": "tests/ci/web-demo-ci-coverage.test.ts",
-          "blob": "dfde44fe59c9bef902e1926958f8fae35b4d379b",
+          "blob": "2f03186b0358109c61b04f91859fb4c18f9fefdb",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         }
       ]
@@ -261,7 +261,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "dabebbdc73a3a0f9be25d35a4604f8e2a13c2094",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         },
         {
@@ -296,7 +296,7 @@
         },
         {
           "path": "tests/ci/web-demo-ci-coverage.test.ts",
-          "blob": "dfde44fe59c9bef902e1926958f8fae35b4d379b",
+          "blob": "2f03186b0358109c61b04f91859fb4c18f9fefdb",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         }
       ]

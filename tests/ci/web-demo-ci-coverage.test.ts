@@ -1,5 +1,26 @@
 import { expect, test } from "bun:test";
-import config, { consoleFiles, publicFiles } from "../e2e/web-demo/ci.config";
+import config from "../e2e/web-demo/ci.config";
+
+// Independent inventory of the five original workflow invocations. Never derive
+// this baseline from ci.config: an accidental removal must not change both sides.
+const consoleFiles = [
+  "console-memo-boundary.spec.ts",
+  "console-comments.spec.ts",
+  "content-sync.spec.ts",
+  "project-status.spec.ts",
+  "system-share.spec.ts",
+  "ai-usage.spec.ts",
+  "dashboard.spec.ts",
+];
+const publicFiles = [
+  "public-csr.spec.ts",
+  "public-comments.spec.ts",
+  "project-runtime-motion.spec.ts",
+  "search-modes.spec.ts",
+  "github-admin-binding.spec.ts",
+  "public-cover-media.spec.ts",
+  "assistant.spec.ts",
+];
 
 type Spec = { file: string; title: string; tags: string[]; tests: unknown[] };
 type Suite = { specs?: Spec[]; suites?: Suite[] };
