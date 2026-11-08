@@ -222,30 +222,22 @@ test.describe("Console Memo Web Demo", () => {
     await expect(clipping).toBeVisible();
     const panel = clipping.locator(".clipping-memo-card:visible").last();
     await expect
-      .poll(async () =>
+      .poll(() =>
         panel.evaluate((element) => {
+          if (!element.isConnected) return null;
           const style = getComputedStyle(element);
-          return `${style.backgroundImage !== "none"}:${style.borderTopStyle}:${style.borderTopWidth}`;
+          return {
+            hasBackground: style.backgroundImage !== "none",
+            borderTopStyle: style.borderTopStyle,
+            borderTopWidth: style.borderTopWidth,
+          };
         })
       )
-      .toBe(isMobileViewport ? "false:none:0px" : "true:solid:1px");
-    const panelStyle = await panel.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return {
-        backgroundImage: style.backgroundImage,
-        borderTopStyle: style.borderTopStyle,
-        borderTopWidth: style.borderTopWidth,
-      };
-    });
-    if (isMobileViewport) {
-      expect(panelStyle.backgroundImage).toBe("none");
-      expect(panelStyle.borderTopStyle).toBe("none");
-      expect(panelStyle.borderTopWidth).toBe("0px");
-    } else {
-      expect(panelStyle.backgroundImage).not.toBe("none");
-      expect(panelStyle.borderTopStyle).toBe("solid");
-      expect(panelStyle.borderTopWidth).toBe("1px");
-    }
+      .toEqual(
+        isMobileViewport
+          ? { hasBackground: false, borderTopStyle: "none", borderTopWidth: "0px" }
+          : { hasBackground: true, borderTopStyle: "solid", borderTopWidth: "1px" }
+      );
     await expect(
       page.locator('[data-testid="clipping-article-source"]:visible').last()
     ).toContainText("Durable article workflows");

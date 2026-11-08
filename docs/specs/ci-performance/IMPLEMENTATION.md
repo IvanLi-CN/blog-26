@@ -52,3 +52,9 @@ Web Demo CI 在同一 job 中保持 public/console 两个正式预览，以桌�
 Bun 1.4.2 在 stderr 为管道且等待同步子进程期间发生 GC 时，存在回收 pipe writer 后丢失子进程输出/退出通知的可复现路径；普通文件重定向不会覆盖这一条件。复现与 [Bun 上游 #47257](https://github.com/oven-sh/bun/issues/47257) 描述的私有 event loop 问题一致，不据此断言历史故障只有这一种原因。
 
 `memo-paths` 的 16 个环境隔离子进程用例改用测试专属 `runBun` helper，继承当前固定 Bun 可执行文件，并同时异步收集退出码和两条输出管道。原有全部用例、脚本、断言和超时保持不变，不升级工具链。新增 `bun-subprocess-gc` 回归在独立子进程内建立管道与 GC 条件，再通过同一 helper 调用真实 memo 模块，检查退出码和完整输出；故障注入不污染父测试进程。回归拒绝子进程失败和输出丢失，外层进程有独立终止边界。
+
+## Bootstrap 快照复制与 Web Demo 样式等待
+
+Bootstrap smoke 使用单个 Python 进程复制 Git 选择的文件，避免为每个文件重复启动 dirname、mkdir 和 cp。选择范围仍是 tracked 与未忽略的 untracked 文件；保留文件字节、可执行权限、umask、已有目标权限和 plain cp 的文件链接解引用行为。源文件缺失、Git 读取或复制失败继续使 smoke 失败，源与目标重叠在写入前被拒绝。`worktree-snapshot-copy` 日志只记录文件数、字节数与耗时；全部 bootstrap 场景保持执行。
+
+Console memo 的响应式样式断言在同一次已连接元素的采样中轮询背景、边框样式和边框宽度，避免首次轮询成功后元素被替换而在第二次取样读取到空样式。桌面和移动的三个预期属性保持不变，不修改产品样式、用例集合、重试、超时或 worker。局部复制基准和竞态修复不能替代完整 CI 的性能验收：runner sum 与排除启动等待的关键执行路径必须同时下降。

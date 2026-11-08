@@ -18,7 +18,7 @@
     "src/server/public-api/search-stream.test.ts": "ff1de0bcd7e5c977d0cd1d19e52f0f3b1d50dc28",
     "src/server/services/content-search.test.ts": "cade4feddab2000da1c6dffdf6a85acb7b257da3",
     "src/server/services/content-search.ts": "293ea34f9681757eb668361912e183e5abd6d3fa",
-    "scripts/test-worktree-bootstrap.sh": "a0173f9703aa343fb42ab4e5b224b5c2896c2039",
+    "scripts/test-worktree-bootstrap.sh": "b8eca9573961051feef829389089b6858da8593a",
     "tests/lib/web-demo-fetch.test.ts": "265f238944f19292e0c2722bc10558374b717eaa"
   },
   "change": {
@@ -92,7 +92,7 @@
         },
         {
           "path": "scripts/test-worktree-bootstrap.sh",
-          "blob": "a0173f9703aa343fb42ab4e5b224b5c2896c2039",
+          "blob": "b8eca9573961051feef829389089b6858da8593a",
           "command": "TMPDIR=$(mktemp -d) bash ./scripts/test-worktree-bootstrap.sh"
         }
       ]

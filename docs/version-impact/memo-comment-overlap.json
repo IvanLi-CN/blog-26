@@ -7,7 +7,7 @@
     "docs/specs/memo-admin-inline-view/assets/memo-long-code-mobile.png": "35326f461613c795ccf92d3b097f37ed8655076a",
     "site/styles/public-pages.css": "c43e1bbe28b916faae15ddf4f164938113989f40",
     "src/lib/console-web-demo.ts": "d5219922ffea9f6229b47a4cd47b6b085724d269",
-    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "a3ea83a8d8bad87803642489d196f1715099b816"
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "bdb15a3d99c578029972a079fc5778e25e9ca836"
   },
   "change": {
     "description": "Constrain the Console Memo reading column to its grid track, preserving internal code scrolling and the existing responsive comments layout. Compatible presentation defect repair; no API or persistence changes.",
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "a3ea83a8d8bad87803642489d196f1715099b816",
+          "blob": "bdb15a3d99c578029972a079fc5778e25e9ca836",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38360 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts (13 passed; long-code geometry at 1362, 1280, 1279, 393px)"
         },
         {
@@ -39,7 +39,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "a3ea83a8d8bad87803642489d196f1715099b816",
+          "blob": "bdb15a3d99c578029972a079fc5778e25e9ca836",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38360 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts (13 passed; long-code geometry at 1362, 1280, 1279, 393px)"
         },
         {
@@ -60,7 +60,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "a3ea83a8d8bad87803642489d196f1715099b816",
+          "blob": "bdb15a3d99c578029972a079fc5778e25e9ca836",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38360 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts (13 passed; long-code geometry at 1362, 1280, 1279, 393px)"
         },
         {
@@ -126,7 +126,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "a3ea83a8d8bad87803642489d196f1715099b816",
+          "blob": "bdb15a3d99c578029972a079fc5778e25e9ca836",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38360 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts (13 passed; long-code geometry at 1362, 1280, 1279, 393px)"
         },
         {
@@ -145,7 +145,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
-          "blob": "a3ea83a8d8bad87803642489d196f1715099b816",
+          "blob": "bdb15a3d99c578029972a079fc5778e25e9ca836",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:38360 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/console-memo-boundary.spec.ts (13 passed; long-code geometry at 1362, 1280, 1279, 393px)"
         },
         {

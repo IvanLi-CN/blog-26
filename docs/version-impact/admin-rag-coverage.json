@@ -12,7 +12,7 @@
     "site/styles/public-pages.css": "c43e1bbe28b916faae15ddf4f164938113989f40",
     "src/lib/console-web-demo.ts": "d5219922ffea9f6229b47a4cd47b6b085724d269",
     "src/server/services/content-sync-status.ts": "3d23875a80aa784551527ae89c676ce463febd61",
-    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "a3ea83a8d8bad87803642489d196f1715099b816",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "bdb15a3d99c578029972a079fc5778e25e9ca836",
     "tests/e2e/web-demo/content-sync.spec.ts": "04153b6481014fb9e9cc99584a829cbaa2bc7be0",
     "tests/lib/rag-index-restart-fixture.ts": "c301949f703d70fab67a2f74b6c5e4420b68ffc0",
     "tests/lib/rag-index-restart.test.ts": "8118c0381e7dda297d2f3f3ab07a9c9179515061",

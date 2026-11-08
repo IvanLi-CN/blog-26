@@ -84,7 +84,7 @@
     "tests/components/ClippingDetail.test.tsx": "bc3316c4e19039d199eec388ad389e0e2b7dbe42",
     "tests/components/WebDemoIdentity.test.tsx": "ce278f71fa67a54d60a6d3c22aa61f749fb91a3e",
     "tests/e2e/web-demo/console-comments.spec.ts": "8048db539f003f09f9f1d96adac027460a9fa3a3",
-    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "5396c2b20f8e96e0da64c0a1a2c054d67e5d1041",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "bdb15a3d99c578029972a079fc5778e25e9ca836",
     "tests/e2e/web-demo/github-admin-binding.spec.ts": "ac8d81b8a7ce8bd234c529d430207e6746b63bd2",
     "tests/e2e/web-demo/public-comments.spec.ts": "169c416e6aea368e92da0cf02687f5c20f5d8507",
     "tests/lib/web-demo-inspector-layout.test.ts": "fe23eede051d89aac3ee669b070887578072ae4f",
