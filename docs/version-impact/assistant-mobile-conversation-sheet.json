@@ -13,7 +13,7 @@
     "src/styles/globals.css": "320c00c16bf09c94bd1cecb3417446ae2e06578b",
     "src/styles/nature-restored.css": "d7921dde3dbb500dbd3e65e191d5b3eb4961f64b",
     "tests/components/KnowledgeAssistant.test.tsx": "a372b60f9e7cf003a908af1dc87edbfadaa83525",
-    "tests/e2e/web-demo/assistant.spec.ts": "9d3043ace7857602ad33c3eb90e53cb0688e7df3"
+    "tests/e2e/web-demo/assistant.spec.ts": "8210098abbd685951bd698dd9fd93301366f6186"
   },
   "change": {
     "description": "Add the responsive mobile assistant conversation modal sheet, reuse the public header on mobile without extra entry points, and keep the new-conversation action visible as the final sheet item without changing assistant APIs or persistent state.",
@@ -59,7 +59,7 @@
         },
         {
           "path": "tests/e2e/web-demo/assistant.spec.ts",
-          "blob": "9d3043ace7857602ad33c3eb90e53cb0688e7df3",
+          "blob": "8210098abbd685951bd698dd9fd93301366f6186",
           "command": "Official Web Demo coverage checks desktop preservation, mobile public navigation, portal sheet geometry, focus return, and guest chat-first behavior"
         }
       ]
@@ -71,7 +71,7 @@
       "evidence": [
         {
           "path": "tests/e2e/web-demo/assistant.spec.ts",
-          "blob": "9d3043ace7857602ad33c3eb90e53cb0688e7df3",
+          "blob": "8210098abbd685951bd698dd9fd93301366f6186",
           "command": "WEB_DEMO_TEST_URL=http://127.0.0.1:10410 bunx playwright test assistant.spec.ts --config=playwright.config.ts (10 assistant tests pass locally; desktop and mobile branches are covered)"
         },
         {

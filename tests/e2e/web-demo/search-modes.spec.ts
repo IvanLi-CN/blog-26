@@ -135,9 +135,9 @@ test("delayed obsolete searches cannot overwrite the latest mode", async ({ page
   await expect(results).not.toContainText("SQLite3：嵌入式数据库实践");
   expect(new URL(page.url()).searchParams.get("mode")).toBe("keyword");
 });
-test("mobile mode controls remain keyboard accessible without horizontal overflow", async ({
-  page,
-}) => {
+test("mobile mode controls remain keyboard accessible without horizontal overflow", {
+  tag: "@own-viewport",
+}, async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/search/?q=SQLite&mode=keyword&d_theme=dark&d_delay=normal");
   // Wait for the initial autofocus before testing a deliberate keyboard focus change.

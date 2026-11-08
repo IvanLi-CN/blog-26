@@ -19,7 +19,7 @@
     "src/lib/release/completion.ts": "469464dbec3c74725ac5382c8144c80df5d1a306",
     "src/lib/release/products.ts": "2354ab0e9526178bb9329bd26ae519e62b2738f1",
     "src/lib/release/publication.ts": "582eec5435f13ce7b47d1e115e096dc6215b1dc9",
-    "tests/e2e/web-demo/search-modes.spec.ts": "cf421454c8e2e8b8849fd67dd26826b403984aba",
+    "tests/e2e/web-demo/search-modes.spec.ts": "490e03d14932a503437914bc854f3f08bb526bc0",
     "tests/lib/manual-release-publication.test.ts": "b38c70f7e341e22e0435c1da3637973ac7bf4327",
     "tests/lib/manual-release-recovery.test.ts": "f703276102077db7ed3ebb2d66340fcd8d5dd5f6",
     "tests/lib/playbook-contract.test.ts": "88f2f469498b7b62670816e828e7746d92394980",

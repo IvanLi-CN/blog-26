@@ -83,3 +83,5 @@ Prefer tagging at the smallest scope that matches the intent. If an entire file 
 `mcp` 保留 Playwright runner 和 canonical check 名称，但用例通过真实 HTTP 调用生产 gateway，不依赖浏览器、前端构建或媒体 sidecar；准备仍执行数据库迁移、seed、内容初始化与版本生成，就绪地址为 `/api/version`。
 
 API 参数、SQLite 会话与 Demo 业务状态由 `src/server/dev-api/auth.test.ts`、`apps/admin/src/demo/business-contracts.test.tsx` 承接。真实交互继续留在 E2E；逐项映射见 [CI 性能实现边界](../../docs/specs/ci-performance/IMPLEMENTATION.md#测试意图迁移映射)。`project-runtime-motion.spec.ts` 固定自身 viewport 并内部覆盖移动尺寸，只需跑一次，不能因外层移动命令不再重复它而删除其中的移动场景。
+
+Web Demo CI 使用 `tests/e2e/web-demo/ci.config.ts`，桌面和移动各执行一次，public 与 console 预览必须同时可用。三个 project 共用最多两个 worker，分别保留各自的 baseURL、重试和并行语义；单独调试仍使用原 `playwright.config.ts`。`@own-viewport` 用例在首次导航前自行设置尺寸，仅在 CI 桌面轮次执行一次，内部移动、桌面和触摸断言完整保留，标签不影响单独调试。用 `bun test tests/ci/web-demo-ci-coverage.test.ts` 核验收集与调度边界。

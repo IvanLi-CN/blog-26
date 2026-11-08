@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
   "covered_files": {
-    ".github/workflows/e2e.yml": "5561ad3ea7b797bbf599fbd409bbd5826b33bbc6",
+    ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
     "docs/adr/0031-public-cover-media-without-watermark.md": "0cc1ee7f78e88130e09d3d7ba84ef43cdf0e1067",
     "docs/specs/public-media-assets-facade/SPEC.md": "0be545a65011a4bc61d5a844b9cd616c355ca420",
     "scripts/generate-test-data.ts": "6d33465238dac613886188cd9f6843c603f4a865",
@@ -27,7 +27,7 @@
     "tests/e2e/guest/public-csr-navigation.spec.ts": "93e7de8a9516a2199930d29535e696c47431c407",
     "tests/e2e/guest/posts-cover-fallback.spec.ts": "7895f43d07da998ebf4dd0326bfe205dadfffc15",
     "tests/e2e/web-demo/public-csr.spec.ts": "0372e5791f80a1cffb578e334e518b289b828ec2",
-    "tests/e2e/web-demo/public-cover-media.spec.ts": "00500676b04a2c8491d314f9224ebacf2e219a52",
+    "tests/e2e/web-demo/public-cover-media.spec.ts": "eb0a115d6d68a7d700c5b7bad247e74d40cac7ad",
     "scripts/verify-pages-build.ts": "ac5ad7d90edf9c49f1bdae654e5ea5769907dcb0"
   },
   "change": {
@@ -70,7 +70,7 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "00500676b04a2c8491d314f9224ebacf2e219a52",
+          "blob": "eb0a115d6d68a7d700c5b7bad247e74d40cac7ad",
           "command": "bun run web-demo:build && (WEB_DEMO_MODE=public WEB_DEMO_PORT=51460 bun scripts/preview-web-demo.ts >/tmp/blog-26-public-cover-media-web-demo.log 2>&1 & demo_pid=$!; trap 'kill $demo_pid 2>/dev/null || true' EXIT; ready=0; for attempt in $(seq 1 60); do if curl --fail --silent http://127.0.0.1:51460/posts/ >/dev/null; then ready=1; break; fi; sleep 1; done; test $ready = 1; WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts)"
         },
         {
@@ -111,7 +111,7 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "00500676b04a2c8491d314f9224ebacf2e219a52",
+          "blob": "eb0a115d6d68a7d700c5b7bad247e74d40cac7ad",
           "command": "bun run web-demo:build && (WEB_DEMO_MODE=public WEB_DEMO_PORT=51460 bun scripts/preview-web-demo.ts >/tmp/blog-26-public-cover-media-web-demo.log 2>&1 & demo_pid=$!; trap 'kill $demo_pid 2>/dev/null || true' EXIT; ready=0; for attempt in $(seq 1 60); do if curl --fail --silent http://127.0.0.1:51460/posts/ >/dev/null; then ready=1; break; fi; sleep 1; done; test $ready = 1; WEB_DEMO_TEST_URL=http://127.0.0.1:51460 bunx playwright test --config tests/e2e/web-demo/playwright.config.ts tests/e2e/web-demo/public-cover-media.spec.ts)"
         },
         {

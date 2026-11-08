@@ -58,7 +58,7 @@
     "src/server/services/search-model.test.ts": "07a7b8422296ae7c8137a20354fa4c045de3fb1b",
     "src/server/services/search-model.ts": "0b0fcf734f5d63cb97283ab74870d8dea1c6448b",
     "src/server/services/search-semantic-projection.ts": "fc53ba2c181bb67fe7f985897aea2bca775c872e",
-    "tests/e2e/web-demo/search-modes.spec.ts": "efa94452dfc0162ed5aa1966102972a77d8cdeb4",
+    "tests/e2e/web-demo/search-modes.spec.ts": "490e03d14932a503437914bc854f3f08bb526bc0",
     "tests/lib/public-csr-route.test.ts": "3b37883bed30e54f2afd3d5dd212b951ea2930ac",
     "tests/lib/playbook-contract.test.ts": "0b66684c10afbc0bdf0fe524d32f9a5ef1f9794f",
     "tests/lib/playbook-workflows.test.ts": "5e5a784a47d6a4b2277b3b19ffab4d0c30a6fc3c"

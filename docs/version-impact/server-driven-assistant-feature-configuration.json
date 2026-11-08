@@ -49,7 +49,7 @@
     "src/server/services/site-features.ts": "79dd67410f6565c64451d3ba9ced54d2c3e46a3d",
     "src/server/site-features.test.ts": "a7e40728d382a284ccda748d6dc082c20ecd5205",
     "tests/ci/prepare-release-fixture.ts": "fcc4c2dff7bdbed1177ab139098ebc42d877f831",
-    "tests/e2e/web-demo/assistant.spec.ts": "b1478f4d016727f578a3192378a896c74e9c43fd",
+    "tests/e2e/web-demo/assistant.spec.ts": "8210098abbd685951bd698dd9fd93301366f6186",
     "tests/lib/web-demo-fetch.test.ts": "de9e46ad0c31bea0331ade07d6db11cbc10583a2",
     "tests/lib/web-demo-boundary.test.ts": "caafb27ce0ade599520901f385df821f8b2ab438",
     "tests/server/system-share-api.test.ts": "cb4fa25e7812ded134f0326828371cb8899ca8ca"
@@ -120,7 +120,7 @@
         },
         {
           "path": "tests/e2e/web-demo/assistant.spec.ts",
-          "blob": "b1478f4d016727f578a3192378a896c74e9c43fd",
+          "blob": "8210098abbd685951bd698dd9fd93301366f6186",
           "command": "Web Demo browser flow: Admin feature settings propagate to public launcher visibility and disabled assistant API behavior"
         },
         {

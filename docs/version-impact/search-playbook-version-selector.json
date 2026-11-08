@@ -20,7 +20,7 @@
     "src/server/services/content-search-input.test.ts": "0671a1ce2fc0c26fee4098b845b1f03dbce85585",
     "src/server/services/content-search.test.ts": "d168e5ad1660afe047f58e65bbb40638e4747642",
     "src/server/services/content-search.ts": "6e97e14f3477808a299f3b597ed5e4f33a32ea8e",
-    "tests/e2e/web-demo/search-modes.spec.ts": "a457fcd7e83fc01609edd37810a90f64b19dd9af"
+    "tests/e2e/web-demo/search-modes.spec.ts": "490e03d14932a503437914bc854f3f08bb526bc0"
   },
   "change": {
     "description": "Remove Playbook edition selectors from modern search requests while accepting legacy URL and API fields for compatibility, locking each request to the current adopted snapshot and preserving versioned reading and internal RAG identity boundaries.",

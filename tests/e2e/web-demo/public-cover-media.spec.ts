@@ -181,7 +181,9 @@ test.describe("public cover media in Web Demo", () => {
     await assertRenderedObjectCover(page, image, 300);
   });
 
-  test("keeps detail and related media watermarked separately", async ({ page }) => {
+  test("keeps detail and related media watermarked separately", { tag: "@own-viewport" }, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await page.goto("/posts/hello-world/", { waitUntil: "networkidle" });
 

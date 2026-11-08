@@ -30,3 +30,11 @@ Build、浏览器 E2E 和 Web Demo 通过共享 composite action 恢复聚合缓
 验证由 `tests/lib/project-media-cache.test.ts`、既有图片套件、全量 required checks，以及现有 CI/CD Pipeline 的显式性能实验输入承担。冷暖性能与 Docker 失效证据保存在绑定候选 SHA 的 Actions 日志和 PR 中，不把运行结果回写成源代码变更。实验不增加常规 job、生产者依赖、artifact 或 retention。
 
 原生搜索使用 `native-search-v2` 精确缓存键，不使用跨平台或跨配方回退键。平台信息采集失败直接阻断构建，不能降级为宽泛缓存键；冷缓存编译与缓存命中后都继续执行完整搜索 conformance。GitHub 原生分支缓存可见性不变，PR 首次运行与合并后首次运行仍可能冷启动。该优化只避免无关 runner 镜像发布使兼容输入失效，不把一次冷暖差异当作全流程收益。
+
+## Web Demo 测试工作复用
+
+Web Demo CI 在同一 job 中保持 public/console 两个正式预览，以桌面、移动两次 Playwright 调用覆盖原有五个测试入口。三个 project 分别绑定 Markdown、公有站和 Console，统一受两个 worker 上限约束；Markdown 保持文件内顺序，其他套件保留 fully-parallel，Console 重试仍为 2，其他套件仍为 0。预览启动或任一测试失败继续阻断所属检查，两份预览均在 always 收尾中关闭。
+
+`@own-viewport` 只标注在首次导航前自行设置全部所需 viewport 的用例，在桌面轮次完整执行，移动轮次不再重复。覆盖映射为：system-share 的 compact publish、wrap、edge-to-edge、native touch 四项；assistant 的 desktop header、mobile navigation、modal sheet、guest mobile 四项；public-cover-media 的 detail/related watermark；search-modes 的 mobile keyboard。它们原有全部尺寸、交互和断言不变。其余默认 viewport 用例继续分别覆盖桌面与移动；project-runtime-motion 原有自带尺寸矩阵仍只执行一次。
+
+验证使用实际 Playwright collection：桌面保留 155 项，移动由 105 项变为 95 项，差集只能是上述 10 项在桌面已覆盖的重复执行。`tests/ci/web-demo-ci-coverage.test.ts` 校验唯一场景集合、允许去重的清单、每项单次收集、worker 上限和每套件重试/路由合同。性能验收绑定同口径完整 workload 的暖缓存前后运行，必须同时降低墙钟与 runner total；单个 job 或冷暖差异不作为整体通过证据。

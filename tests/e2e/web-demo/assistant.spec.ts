@@ -324,9 +324,9 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(page.getByTestId("assistant-message-assistant")).toHaveCount(0);
   });
 
-  test("preserves the original desktop header while switching to the public header on mobile", async ({
-    page,
-  }) => {
+  test("preserves the original desktop header while switching to the public header on mobile", {
+    tag: "@own-viewport",
+  }, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/chat?d_persona=guest&d_scene=assistant-ready&d_theme=light");
     await hideInspector(page);
@@ -355,9 +355,9 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(desktopHeader.getByRole("combobox", { name: /主题：/ })).toBeVisible();
   });
 
-  test("uses the main public navigation on mobile without adding extra entries", async ({
-    page,
-  }) => {
+  test("uses the main public navigation on mobile without adding extra entries", {
+    tag: "@own-viewport",
+  }, async ({ page }) => {
     for (const width of [393, 360, 320]) {
       await page.setViewportSize({ width, height: 852 });
       await page.goto("/chat?d_persona=guest&d_scene=assistant-ready&d_theme=light");
@@ -417,9 +417,9 @@ test.describe("Knowledge Assistant Web Demo", () => {
     }
   });
 
-  test("opens the mobile conversation list as a modal sheet above the chat surface", async ({
-    page,
-  }) => {
+  test("opens the mobile conversation list as a modal sheet above the chat surface", {
+    tag: "@own-viewport",
+  }, async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await page.goto("/chat?d_persona=user&d_scene=assistant-ready&d_theme=light");
     await hideInspector(page);
@@ -456,9 +456,9 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
   });
 
-  test("keeps the guest mobile surface focused on chat instead of an inline list", async ({
-    page,
-  }) => {
+  test("keeps the guest mobile surface focused on chat instead of an inline list", {
+    tag: "@own-viewport",
+  }, async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await page.goto("/chat?d_persona=guest&d_scene=assistant-ready&d_theme=light");
     await hideInspector(page);
