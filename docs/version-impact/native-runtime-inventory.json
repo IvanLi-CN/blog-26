@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "9d8a008d620f93ad4a9207044e170be9cfdffd87",
+  "covered_files": {
+    "scripts/runtime-bundle.ts": "ce89161bdbbe6aa7a168163db8248a529ddca3de",
+    "tests/lib/runtime-bundle.test.ts": "05d9e507f81b9ae3432939a1dcf2715118bd3fda",
+    "docs/specs/ci-performance/IMPLEMENTATION.md": "5b6202c638854f4dfe0946d93a26c455859afeb0"
+  },
+  "change": {
+    "description": "复用原生 bundle 权限准备时已扫描的摘要，保留发布及消费前独立完整性复核，并增加分段计时。",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "仅减少一次重复摘要扫描；产物字节、权限、manifest、ABI、冻结配方及产品行为保持兼容。",
+      "assessed_at": "2026-11-08T07:23:47.995056+00:00",
+      "evidence": [
+        {
+          "path": "scripts/runtime-bundle.ts",
+          "blob": "ce89161bdbbe6aa7a168163db8248a529ddca3de",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/lib/runtime-bundle.test.ts",
+          "blob": "05d9e507f81b9ae3432939a1dcf2715118bd3fda",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "5b6202c638854f4dfe0946d93a26c455859afeb0",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "仅减少一次重复摘要扫描；产物字节、权限、manifest、ABI、冻结配方及产品行为保持兼容。",
+      "assessed_at": "2026-11-08T07:23:47.995244+00:00",
+      "evidence": [
+        {
+          "path": "scripts/runtime-bundle.ts",
+          "blob": "ce89161bdbbe6aa7a168163db8248a529ddca3de",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/lib/runtime-bundle.test.ts",
+          "blob": "05d9e507f81b9ae3432939a1dcf2715118bd3fda",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "5b6202c638854f4dfe0946d93a26c455859afeb0",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "原生 runtime bundle 与薄镜像只改变构建和发布产物边界；产品 API、持久化、图片交付及 required 覆盖保持兼容。"
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "仅减少一次重复摘要扫描；产物字节、权限、manifest、ABI、冻结配方及产品行为保持兼容。",
+      "assessed_at": "2026-11-08T07:23:47.995253+00:00",
+      "evidence": [
+        {
+          "path": "scripts/runtime-bundle.ts",
+          "blob": "ce89161bdbbe6aa7a168163db8248a529ddca3de",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/lib/runtime-bundle.test.ts",
+          "blob": "05d9e507f81b9ae3432939a1dcf2715118bd3fda",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "5b6202c638854f4dfe0946d93a26c455859afeb0",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.1.10",
+        "4.1.11"
+      ],
+      "evidence": [
+        {
+          "path": ".github/actions/setup-native-search/action.yml",
+          "blob": "3bea35a5877493de431ca88d8de9c8245c8345c1",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "scripts/native-search-cache-platform.ts",
+          "blob": "b6c0e74131b834c12e8a40b67f6d0ff03f041eaf",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "tests/ci/native-search-cache-platform.test.ts",
+          "blob": "048b84c474175dd3908ad3450ec3e140f2d3dfbd",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "5b6202c638854f4dfe0946d93a26c455859afeb0",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "应用数据库、内容格式与浏览器持久化均未改变。",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": ".github/actions/setup-native-search/action.yml",
+          "blob": "3bea35a5877493de431ca88d8de9c8245c8345c1",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "scripts/native-search-cache-platform.ts",
+          "blob": "b6c0e74131b834c12e8a40b67f6d0ff03f041eaf",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "tests/ci/native-search-cache-platform.test.ts",
+          "blob": "048b84c474175dd3908ad3450ec3e140f2d3dfbd",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "5b6202c638854f4dfe0946d93a26c455859afeb0",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        }
+      ]
+    }
+  }
+}

@@ -38,3 +38,11 @@ Web Demo CI 在同一 job 中保持 public/console 两个正式预览，以桌�
 `@own-viewport` 只标注在首次导航前自行设置全部所需 viewport 的用例，在桌面轮次完整执行，移动轮次不再重复。覆盖映射为：system-share 的 compact publish、wrap、edge-to-edge、native touch 四项；assistant 的 desktop header、mobile navigation、modal sheet、guest mobile 四项；public-cover-media 的 detail/related watermark；search-modes 的 mobile keyboard。它们原有全部尺寸、交互和断言不变。其余默认 viewport 用例继续分别覆盖桌面与移动；project-runtime-motion 原有自带尺寸矩阵仍只执行一次。
 
 验证使用实际 Playwright collection：桌面保留 155 项，移动由 105 项变为 95 项，差集只能是上述 10 项在桌面已覆盖的重复执行。`tests/ci/web-demo-ci-coverage.test.ts` 校验唯一场景集合、允许去重的清单、每项单次收集、worker 上限和每套件重试/路由合同。性能验收绑定同口径完整 workload 的暖缓存前后运行，必须同时降低墙钟与 runner total；单个 job 或冷暖差异不作为整体通过证据。
+
+## 原生 bundle 扫描复用与分段计时
+
+准备阶段保留首次完整扫描的摘要、字节数和稳定路径顺序，补充读取权限后只更新内存中的 mode 字段，直接用于 manifest；不再为生成 manifest 重读同一份文件。发布前 `verifyBundle` 仍独立重扫并校验全部路径、摘要、权限、链接、必需资源、身份与 ABI，消费端的独立验证也保留。该实现延续 ADR 0042 的产物及安全边界，不改变 runtime 配方、manifest 格式或冻结发布身份。
+
+`native-image-phase` 日志区分 `copy-application`、`prepare-inventory`、`verify-inventory`、`verify-runtime` 与包含后两项的 `verify-before-publish`，记录耗时及成功状态；父子阶段不能重复相加。既有 `native-image-stage` 继续记录编译及生产依赖安装。异常原样传播并保留临时目录清理，不输出环境变量或凭据。
+
+回归验证覆盖补充读取权限、保留可执行位和内部链接、清单字节兼容，以及首次扫描后内容、权限、文件集合或链接变化仍被最终复核拒绝。该优化只减少一次全量摘要扫描，不能消除 BuildKit 远端层下载、解压、镜像 load 或 runner 调度波动；整体性能结论继续要求相同工作负载、缓存状态和排除启动等待的口径。

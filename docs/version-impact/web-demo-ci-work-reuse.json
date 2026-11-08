@@ -4,7 +4,7 @@
   "base_sha": "aba866f31d3d789ee7e614a92ecad4eb317177f5",
   "covered_files": {
     ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
-    "docs/specs/ci-performance/IMPLEMENTATION.md": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+    "docs/specs/ci-performance/IMPLEMENTATION.md": "5b6202c638854f4dfe0946d93a26c455859afeb0",
     "tests/e2e/README.md": "94040584f8fcccafd0b60a3652bb992b9d90202e",
     "tests/e2e/web-demo/assistant.spec.ts": "8210098abbd685951bd698dd9fd93301366f6186",
     "tests/e2e/web-demo/public-cover-media.spec.ts": "eb0a115d6d68a7d700c5b7bad247e74d40cac7ad",
@@ -31,7 +31,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "5b6202c638854f4dfe0946d93a26c455859afeb0",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         },
         {
@@ -83,7 +83,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "5b6202c638854f4dfe0946d93a26c455859afeb0",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         },
         {
@@ -139,7 +139,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "5b6202c638854f4dfe0946d93a26c455859afeb0",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         },
         {
@@ -207,7 +207,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "5b6202c638854f4dfe0946d93a26c455859afeb0",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         },
         {
@@ -261,7 +261,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "5b6202c638854f4dfe0946d93a26c455859afeb0",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         },
         {
