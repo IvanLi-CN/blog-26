@@ -24,7 +24,7 @@
     "src/lib/playbook/tech-stack.ts": "9a3ef78f299ab10780ce76d2c919d8e8c0800ff0",
     "src/lib/playbook/web-demo-fixture.ts": "3fafa57e7421e5ee986dda7f10e4322d6cbcc437",
     "src/lib/search/web-demo-fixtures.ts": "7138647d74c36935833183a88b4ffc6e048fbd0b",
-    "tests/e2e/web-demo/search-modes.spec.ts": "efa94452dfc0162ed5aa1966102972a77d8cdeb4",
+    "tests/e2e/web-demo/search-modes.spec.ts": "490e03d14932a503437914bc854f3f08bb526bc0",
     "tests/lib/playbook-fixture.ts": "f2848852e07c474bcf349dde63b4498a7718189d",
     "tests/lib/playbook-tech-stack.test.ts": "4887b21a20471a5e8b3c3af271597390e066bfbe",
     "tests/lib/playbook-web-demo-fixture.test.ts": "0cef5636efac20275d9d26e2fa542ff070810cc3",

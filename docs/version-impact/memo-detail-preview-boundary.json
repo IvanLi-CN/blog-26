@@ -4,7 +4,7 @@
   "base_sha": "f726db08e4046cd4f905a6d680e3aa37247321bc",
   "covered_files": {
     ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
-    ".github/workflows/e2e.yml": "1d7d44ddf153a4c470faf837daeb63c5e139dbd2",
+    ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
     ".gitignore": "ce64803d3963e4668cd644c7ef465dd36e266eba",
     "apps/admin/src/demo/mock-admin-api.ts": "15d244249b2d83414ed9e54749c3647f69532713",
     "apps/admin/src/pages/preview.tsx": "a2f09e3a0559da1d8369412f9037a172550d7719",
@@ -126,7 +126,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "1d7d44ddf153a4c470faf837daeb63c5e139dbd2",
+          "blob": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
           "command": "Required Web Demo CI job builds the official artifacts, runs 24 Console boundary cases at desktop/mobile, and runs 36 public/project/search route cases against the public artifact"
         },
         {
@@ -182,7 +182,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "1d7d44ddf153a4c470faf837daeb63c5e139dbd2",
+          "blob": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
           "command": "Required Web Demo CI job builds the official artifacts, runs 24 Console boundary cases at desktop/mobile, and runs 36 public/project/search route cases against the public artifact"
         },
         {

@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "fffc1e28dc525285ddde46bb04ccca9f0fb5b875",
   "covered_files": {
-    ".github/workflows/e2e.yml": "7cf3f961a260675a925d4878f5d23a3780996052",
+    ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
     "GLOSSARY.md": "8eb1f3de85f5b2f2942e6750ca58614e39949012",
     "docs/adr/0040-assistant-content-and-media-trust-boundary.md": "a7b0171ed17a5da4386ec24e27368b01067327aa",
     "docs/specs/README.md": "466ba8fddb7bc171203ec2c6763ab0683b403501",
@@ -68,7 +68,7 @@
     "tests/components/CommentLogout.test.tsx": "01270fc8a679bd4495f7a71d219ee327002b83cc",
     "tests/components/KnowledgeAssistant.test.tsx": "777618eb2a3895588f6f53a07988467bfde4650b",
     "tests/e2e/web-demo/assistant-markdown.spec.ts": "4060c18bfd6f554f80cc7c2e5e1148bb1bf6a98b",
-    "tests/e2e/web-demo/assistant.spec.ts": "d52a7d346db16d66934dd00e2b098b62428e4857",
+    "tests/e2e/web-demo/assistant.spec.ts": "8210098abbd685951bd698dd9fd93301366f6186",
     "tests/fixtures/assistant-markdown/README.md": "7024cec9ad3164fedc632a1960558d97d73778d5",
     "tests/fixtures/assistant-markdown/contract-helper.test.ts": "cc53ae25d071ffa121d7479aca631cc4a3bca21b",
     "tests/fixtures/assistant-markdown/index.ts": "021628fc25d6a923fd652808150619e80664df44",

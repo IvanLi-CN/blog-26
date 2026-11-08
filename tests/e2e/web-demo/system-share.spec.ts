@@ -449,7 +449,9 @@ test.describe("Console system share Web Demo", () => {
     await replacement.close();
   });
 
-  test("keeps compact mobile publish controls in the first viewport", async ({ page }) => {
+  test("keeps compact mobile publish controls in the first viewport", {
+    tag: "@own-viewport",
+  }, async ({ page }) => {
     for (const size of [
       { width: 360, height: 740 },
       { width: 393, height: 852 },
@@ -511,7 +513,9 @@ test.describe("Console system share Web Demo", () => {
     await expect(page).toHaveTitle("Ivan's Blog");
   });
 
-  test("wraps publish controls only below the compact mobile width", async ({ page }) => {
+  test("wraps publish controls only below the compact mobile width", {
+    tag: "@own-viewport",
+  }, async ({ page }) => {
     for (const [width, shouldWrap] of [
       [320, true],
       [360, false],
@@ -533,7 +537,9 @@ test.describe("Console system share Web Demo", () => {
     }
   });
 
-  test("uses the mobile edge-to-edge surface without horizontal overflow", async ({ page }) => {
+  test("uses the mobile edge-to-edge surface without horizontal overflow", {
+    tag: "@own-viewport",
+  }, async ({ page }) => {
     for (const width of [320, 360, 375, 393, 639]) {
       await page.setViewportSize({ width, height: 852 });
       await clearPendingShare(page);
@@ -590,9 +596,9 @@ test.describe("Console system share Web Demo", () => {
     }
   });
 
-  test("scrolls the document from attachment controls with a native touch gesture", async ({
-    page,
-  }) => {
+  test("scrolls the document from attachment controls with a native touch gesture", {
+    tag: "@own-viewport",
+  }, async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 568 });
     await clearPendingShare(page);
     await page.goto(`/share?d_persona=admin&d_share=file&d_submission=${randomUUID()}`, {

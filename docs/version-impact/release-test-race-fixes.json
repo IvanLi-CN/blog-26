@@ -4,7 +4,7 @@
   "base_sha": "e894b395f7690a7c5166b053164f407c6cb60f90",
   "covered_files": {
     "src/server/routers/memos.ts": "c76f98c4a4c2d90d5b701b7c9f6f0cc2243212d9",
-    "tests/e2e/web-demo/public-cover-media.spec.ts": "68e59da12567b0755f8ce6f4a28104396cf88ecb"
+    "tests/e2e/web-demo/public-cover-media.spec.ts": "eb0a115d6d68a7d700c5b7bad247e74d40cac7ad"
   },
   "change": {
     "description": "Stabilize release quality gates by awaiting test-environment content synchronization and decoding public cover images before pixel assertions.",
@@ -24,7 +24,7 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "68e59da12567b0755f8ce6f4a28104396cf88ecb",
+          "blob": "eb0a115d6d68a7d700c5b7bad247e74d40cac7ad",
           "command": "Review the image decode wait before the pixel-level cover assertion"
         }
       ]
@@ -41,7 +41,7 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "68e59da12567b0755f8ce6f4a28104396cf88ecb",
+          "blob": "eb0a115d6d68a7d700c5b7bad247e74d40cac7ad",
           "command": "Targeted mobile public-cover Web Demo assertion passes after image decode"
         }
       ],
@@ -62,7 +62,7 @@
         },
         {
           "path": "tests/e2e/web-demo/public-cover-media.spec.ts",
-          "blob": "68e59da12567b0755f8ce6f4a28104396cf88ecb",
+          "blob": "eb0a115d6d68a7d700c5b7bad247e74d40cac7ad",
           "command": "Targeted mobile public-cover Web Demo test passes with the decode readiness wait"
         },
         {
