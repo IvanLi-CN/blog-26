@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "9d8a008d620f93ad4a9207044e170be9cfdffd87",
+  "base_sha": "aba866f31d3d789ee7e614a92ecad4eb317177f5",
   "covered_files": {
     "scripts/runtime-bundle.ts": "3fb781937106fb5cec7845263535ac4751c9c0f8",
     "tests/lib/runtime-bundle.test.ts": "e28baa7c802ed97a3239422b7a722e3df4467e15",
