@@ -4,12 +4,12 @@
   "base_sha": "aba866f31d3d789ee7e614a92ecad4eb317177f5",
   "covered_files": {
     ".github/actions/setup-project-media/action.yml": "78c91323f5d495e61feecacaf5ba157c38519789",
-    ".github/workflows/ci.yml": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
-    ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+    ".github/workflows/ci.yml": "b79d156950d03bbfccae2628fc61f19554a4ede3",
+    ".github/workflows/e2e.yml": "552546228c6623febcbde2b94e1bba67b6b5dcda",
     ".gitignore": "b91faefead45cb68edbf0d80398b5a40acd38a5c",
     "Dockerfile": "c5dad9292748fdce8f11887caaef83b9fb347c9c",
     "docs/specs/ci-performance/HISTORY.md": "f1cf0b9ece1d37cef8c918f2944f52666ee56d4a",
-    "docs/specs/ci-performance/IMPLEMENTATION.md": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+    "docs/specs/ci-performance/IMPLEMENTATION.md": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
     "docs/specs/ci-performance/SPEC.md": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
     "scripts/README.md": "f4015fa5b4418665575939b4e698f447030e7863",
     "scripts/benchmark-project-media-cache.ts": "78fa3db87aa455ca80af279d87a25d95a64e895c",
@@ -41,12 +41,12 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
+          "blob": "b79d156950d03bbfccae2628fc61f19554a4ede3",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+          "blob": "552546228c6623febcbde2b94e1bba67b6b5dcda",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -66,7 +66,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -138,12 +138,12 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
+          "blob": "b79d156950d03bbfccae2628fc61f19554a4ede3",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+          "blob": "552546228c6623febcbde2b94e1bba67b6b5dcda",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -163,7 +163,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -239,12 +239,12 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
+          "blob": "b79d156950d03bbfccae2628fc61f19554a4ede3",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+          "blob": "552546228c6623febcbde2b94e1bba67b6b5dcda",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -264,7 +264,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -387,12 +387,12 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
+          "blob": "b79d156950d03bbfccae2628fc61f19554a4ede3",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+          "blob": "552546228c6623febcbde2b94e1bba67b6b5dcda",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -412,7 +412,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -486,12 +486,12 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
+          "blob": "b79d156950d03bbfccae2628fc61f19554a4ede3",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+          "blob": "552546228c6623febcbde2b94e1bba67b6b5dcda",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {
@@ -511,7 +511,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "5a60fade1ba2d78884d177ecc747a0ef43f1af8c",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
           "command": "bun run check; bun test tests/lib/project-media-cache.test.ts tests/lib/project-poster-assets.test.ts tests/lib/project-social-preview-assets.test.ts tests/ci; complete required Actions checks; opt-in media cache performance and Docker invalidation proof"
         },
         {

@@ -1,0 +1,447 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "aba866f31d3d789ee7e614a92ecad4eb317177f5",
+  "covered_files": {
+    "tests/e2e/timing-reporter.ts": "0a18bb9e6e6a78aceba7c477177ece2fde78ec68",
+    "tests/ci/e2e-timing-reporter.test.ts": "f483a18e4c398fdf632f28f71f254d3a2cdbbabc",
+    "playwright.config.ts": "929c2bd7419cdc70b067e52039740c03fbe6423d",
+    "tests/e2e/web-demo/playwright.config.ts": "07f37537caf2575c5372abe4a28df07d07933c1f",
+    "tests/e2e/README.md": "58b72b1a479b46d57a114c908287bff4eb054d5f",
+    "scripts/runtime-bundle.ts": "3fb781937106fb5cec7845263535ac4751c9c0f8",
+    "tests/lib/runtime-bundle.test.ts": "e28baa7c802ed97a3239422b7a722e3df4467e15",
+    "docs/specs/ci-performance/IMPLEMENTATION.md": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
+    "src/lib/__tests__/memo-paths.test.ts": "8c919bda455c23820fb3fd376db28b5a0417127f",
+    "tests/helpers/run-bun.ts": "51a84607f229bba041a624c547cb4bef0ff27371",
+    "tests/ci/bun-subprocess-gc.test.ts": "93c8e0f85b5533d298b25c39bc562047804692f1",
+    "scripts/test-worktree-bootstrap.sh": "b8eca9573961051feef829389089b6858da8593a",
+    "scripts/lib/copy-worktree-snapshot.py": "79a16350b91ef96e4e76512399622f43ab6812b0",
+    "tests/ci/worktree-snapshot-copy.test.ts": "9f607a83dc31b40c4423ba1bf791943597584036",
+    "tests/e2e/web-demo/console-memo-boundary.spec.ts": "bdb15a3d99c578029972a079fc5778e25e9ca836",
+    ".github/workflows/e2e.yml": "552546228c6623febcbde2b94e1bba67b6b5dcda",
+    "tests/ci/e2e-system-dependencies.test.ts": "ae14950a4ae2f4cedca7e990a25c3d919e0178b8",
+    ".github/workflows/ci.yml": "b79d156950d03bbfccae2628fc61f19554a4ede3",
+    ".github/actions/setup-ci-node/action.yml": "aa1cd75f2c488bd87c93cc6883badae22bd61a2d",
+    "scripts/prepare-ci-node.py": "a8cad772e180066c84d0d068d31c18e51a27db12",
+    "tests/ci/ci-node-archive.test.ts": "796ea0b79f04b3a48de593acf1957f13d5324642"
+  },
+  "change": {
+    "description": "复用原生 bundle 摘要并细分计时；以异步等待规避固定 Bun 的同步子进程输出丢失，保留完整性复核及原有测试断言，并批量复制 Bootstrap 快照、原子轮询 Web Demo 样式，并在 E2E 初始化复用已安装的 lsof，以摘要校验的官方 Node 归档缓存稳定普通 CI 初始化。",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "减少重复摘要扫描并修复测试子进程等待；产物权限、manifest、ABI、冻结配方、原有测试断言和产品行为保持兼容。",
+      "assessed_at": "2026-11-08T09:37:06.990068+00:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/timing-reporter.ts",
+          "blob": "0a18bb9e6e6a78aceba7c477177ece2fde78ec68",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/e2e-timing-reporter.test.ts",
+          "blob": "f483a18e4c398fdf632f28f71f254d3a2cdbbabc",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "playwright.config.ts",
+          "blob": "929c2bd7419cdc70b067e52039740c03fbe6423d",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/e2e/web-demo/playwright.config.ts",
+          "blob": "07f37537caf2575c5372abe4a28df07d07933c1f",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/e2e/README.md",
+          "blob": "58b72b1a479b46d57a114c908287bff4eb054d5f",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/runtime-bundle.ts",
+          "blob": "3fb781937106fb5cec7845263535ac4751c9c0f8",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/lib/runtime-bundle.test.ts",
+          "blob": "e28baa7c802ed97a3239422b7a722e3df4467e15",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "src/lib/__tests__/memo-paths.test.ts",
+          "blob": "8c919bda455c23820fb3fd376db28b5a0417127f",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/helpers/run-bun.ts",
+          "blob": "51a84607f229bba041a624c547cb4bef0ff27371",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/bun-subprocess-gc.test.ts",
+          "blob": "93c8e0f85b5533d298b25c39bc562047804692f1",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/test-worktree-bootstrap.sh",
+          "blob": "b8eca9573961051feef829389089b6858da8593a",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/lib/copy-worktree-snapshot.py",
+          "blob": "79a16350b91ef96e4e76512399622f43ab6812b0",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/worktree-snapshot-copy.test.ts",
+          "blob": "9f607a83dc31b40c4423ba1bf791943597584036",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "bdb15a3d99c578029972a079fc5778e25e9ca836",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "552546228c6623febcbde2b94e1bba67b6b5dcda",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/e2e-system-dependencies.test.ts",
+          "blob": "ae14950a4ae2f4cedca7e990a25c3d919e0178b8",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "blob": "b79d156950d03bbfccae2628fc61f19554a4ede3",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": ".github/actions/setup-ci-node/action.yml",
+          "blob": "aa1cd75f2c488bd87c93cc6883badae22bd61a2d",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/prepare-ci-node.py",
+          "blob": "a8cad772e180066c84d0d068d31c18e51a27db12",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/ci-node-archive.test.ts",
+          "blob": "796ea0b79f04b3a48de593acf1957f13d5324642",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "减少重复摘要扫描并修复测试子进程等待；产物权限、manifest、ABI、冻结配方、原有测试断言和产品行为保持兼容。",
+      "assessed_at": "2026-11-08T09:37:06.990239+00:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/timing-reporter.ts",
+          "blob": "0a18bb9e6e6a78aceba7c477177ece2fde78ec68",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/e2e-timing-reporter.test.ts",
+          "blob": "f483a18e4c398fdf632f28f71f254d3a2cdbbabc",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "playwright.config.ts",
+          "blob": "929c2bd7419cdc70b067e52039740c03fbe6423d",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/e2e/web-demo/playwright.config.ts",
+          "blob": "07f37537caf2575c5372abe4a28df07d07933c1f",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/e2e/README.md",
+          "blob": "58b72b1a479b46d57a114c908287bff4eb054d5f",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/runtime-bundle.ts",
+          "blob": "3fb781937106fb5cec7845263535ac4751c9c0f8",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/lib/runtime-bundle.test.ts",
+          "blob": "e28baa7c802ed97a3239422b7a722e3df4467e15",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "src/lib/__tests__/memo-paths.test.ts",
+          "blob": "8c919bda455c23820fb3fd376db28b5a0417127f",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/helpers/run-bun.ts",
+          "blob": "51a84607f229bba041a624c547cb4bef0ff27371",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/bun-subprocess-gc.test.ts",
+          "blob": "93c8e0f85b5533d298b25c39bc562047804692f1",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/test-worktree-bootstrap.sh",
+          "blob": "b8eca9573961051feef829389089b6858da8593a",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/lib/copy-worktree-snapshot.py",
+          "blob": "79a16350b91ef96e4e76512399622f43ab6812b0",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/worktree-snapshot-copy.test.ts",
+          "blob": "9f607a83dc31b40c4423ba1bf791943597584036",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "bdb15a3d99c578029972a079fc5778e25e9ca836",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "552546228c6623febcbde2b94e1bba67b6b5dcda",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/e2e-system-dependencies.test.ts",
+          "blob": "ae14950a4ae2f4cedca7e990a25c3d919e0178b8",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "blob": "b79d156950d03bbfccae2628fc61f19554a4ede3",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": ".github/actions/setup-ci-node/action.yml",
+          "blob": "aa1cd75f2c488bd87c93cc6883badae22bd61a2d",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/prepare-ci-node.py",
+          "blob": "a8cad772e180066c84d0d068d31c18e51a27db12",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/ci-node-archive.test.ts",
+          "blob": "796ea0b79f04b3a48de593acf1957f13d5324642",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "原生 runtime bundle 与薄镜像只改变构建和发布产物边界；产品 API、持久化、图片交付及 required 覆盖保持兼容。"
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "减少重复摘要扫描并修复测试子进程等待；产物权限、manifest、ABI、冻结配方、原有测试断言和产品行为保持兼容。",
+      "assessed_at": "2026-11-08T09:37:06.990263+00:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/timing-reporter.ts",
+          "blob": "0a18bb9e6e6a78aceba7c477177ece2fde78ec68",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/e2e-timing-reporter.test.ts",
+          "blob": "f483a18e4c398fdf632f28f71f254d3a2cdbbabc",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "playwright.config.ts",
+          "blob": "929c2bd7419cdc70b067e52039740c03fbe6423d",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/e2e/web-demo/playwright.config.ts",
+          "blob": "07f37537caf2575c5372abe4a28df07d07933c1f",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/e2e/README.md",
+          "blob": "58b72b1a479b46d57a114c908287bff4eb054d5f",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/runtime-bundle.ts",
+          "blob": "3fb781937106fb5cec7845263535ac4751c9c0f8",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/lib/runtime-bundle.test.ts",
+          "blob": "e28baa7c802ed97a3239422b7a722e3df4467e15",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "src/lib/__tests__/memo-paths.test.ts",
+          "blob": "8c919bda455c23820fb3fd376db28b5a0417127f",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/helpers/run-bun.ts",
+          "blob": "51a84607f229bba041a624c547cb4bef0ff27371",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/bun-subprocess-gc.test.ts",
+          "blob": "93c8e0f85b5533d298b25c39bc562047804692f1",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/test-worktree-bootstrap.sh",
+          "blob": "b8eca9573961051feef829389089b6858da8593a",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/lib/copy-worktree-snapshot.py",
+          "blob": "79a16350b91ef96e4e76512399622f43ab6812b0",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/worktree-snapshot-copy.test.ts",
+          "blob": "9f607a83dc31b40c4423ba1bf791943597584036",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/e2e/web-demo/console-memo-boundary.spec.ts",
+          "blob": "bdb15a3d99c578029972a079fc5778e25e9ca836",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": ".github/workflows/e2e.yml",
+          "blob": "552546228c6623febcbde2b94e1bba67b6b5dcda",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/e2e-system-dependencies.test.ts",
+          "blob": "ae14950a4ae2f4cedca7e990a25c3d919e0178b8",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "blob": "b79d156950d03bbfccae2628fc61f19554a4ede3",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": ".github/actions/setup-ci-node/action.yml",
+          "blob": "aa1cd75f2c488bd87c93cc6883badae22bd61a2d",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "scripts/prepare-ci-node.py",
+          "blob": "a8cad772e180066c84d0d068d31c18e51a27db12",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        },
+        {
+          "path": "tests/ci/ci-node-archive.test.ts",
+          "blob": "796ea0b79f04b3a48de593acf1957f13d5324642",
+          "command": "bun run check; bun test tests/lib/runtime-bundle.test.ts tests/ci/native-image-workflow.test.ts tests/lib/playbook-workflows.test.ts; automatic native image build and smoke"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "2.7.0",
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.1.10",
+        "4.1.11"
+      ],
+      "evidence": [
+        {
+          "path": ".github/actions/setup-native-search/action.yml",
+          "blob": "3bea35a5877493de431ca88d8de9c8245c8345c1",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "scripts/native-search-cache-platform.ts",
+          "blob": "b6c0e74131b834c12e8a40b67f6d0ff03f041eaf",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "tests/ci/native-search-cache-platform.test.ts",
+          "blob": "048b84c474175dd3908ad3450ec3e140f2d3dfbd",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "应用数据库、内容格式与浏览器持久化均未改变。",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": ".github/actions/setup-native-search/action.yml",
+          "blob": "3bea35a5877493de431ca88d8de9c8245c8345c1",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "scripts/native-search-cache-platform.ts",
+          "blob": "b6c0e74131b834c12e8a40b67f6d0ff03f041eaf",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "tests/ci/native-search-cache-platform.test.ts",
+          "blob": "048b84c474175dd3908ad3450ec3e140f2d3dfbd",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        },
+        {
+          "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
+          "command": "bun run check; bun test tests/ci/native-search-cache-platform.test.ts tests/ci/native-image-workflow.test.ts tests/ci/performance-probe.test.ts"
+        }
+      ]
+    }
+  }
+}

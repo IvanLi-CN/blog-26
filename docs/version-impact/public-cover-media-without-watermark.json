@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "e6790c24a4ac8bd1d5cfd5165e4e71e7e58fc3af",
   "covered_files": {
-    ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+    ".github/workflows/e2e.yml": "552546228c6623febcbde2b94e1bba67b6b5dcda",
     "docs/adr/0031-public-cover-media-without-watermark.md": "0cc1ee7f78e88130e09d3d7ba84ef43cdf0e1067",
     "docs/specs/public-media-assets-facade/SPEC.md": "0be545a65011a4bc61d5a844b9cd616c355ca420",
     "scripts/generate-test-data.ts": "6d33465238dac613886188cd9f6843c603f4a865",

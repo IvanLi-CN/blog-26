@@ -14,7 +14,7 @@
     "docs/specs/style-playbook-integration/HISTORY.md": "bc8cb4002a104f3a2a51936db642879db5e493a7",
     "docs/specs/system-share-memos/IMPLEMENTATION.md": "b5579736f7d1fa61b63391f0f7fd760c1c21e8b1",
     "package.json": "361c4aa76567a8fe6cdb2870088e50e98188f406",
-    "playwright.config.ts": "07b92d97932bd812ac9e12ca8ac8f166748cd026",
+    "playwright.config.ts": "929c2bd7419cdc70b067e52039740c03fbe6423d",
     "scripts/build-project-tags-demo.ts": "5bb003441f7c91c9b7289c15efabff3a9c8eba6c",
     "scripts/build-web-demo.ts": "1cdc7ae7aa639e96dba368513e78a8710892a2eb",
     "scripts/preview-web-demo.ts": "66535077f6762dbf9e2056b09858143a8d453076",

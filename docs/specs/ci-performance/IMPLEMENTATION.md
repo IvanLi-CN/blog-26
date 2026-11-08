@@ -38,3 +38,35 @@ Web Demo CI 在同一 job 中保持 public/console 两个正式预览，以桌�
 `@own-viewport` 只标注在首次导航前自行设置全部所需 viewport 的用例，在桌面轮次完整执行，移动轮次不再重复。覆盖映射为：system-share 的 compact publish、wrap、edge-to-edge、native touch 四项；assistant 的 desktop header、mobile navigation、modal sheet、guest mobile 四项；public-cover-media 的 detail/related watermark；search-modes 的 mobile keyboard。它们原有全部尺寸、交互和断言不变。其余默认 viewport 用例继续分别覆盖桌面与移动；project-runtime-motion 原有自带尺寸矩阵仍只执行一次。
 
 验证使用实际 Playwright collection：桌面保留 155 项，移动由 105 项变为 95 项，差集只能是上述 10 项在桌面已覆盖的重复执行。`tests/ci/web-demo-ci-coverage.test.ts` 校验唯一场景集合、允许去重的清单、每项单次收集、worker 上限和每套件重试/路由合同。性能验收绑定同口径完整 workload 的暖缓存前后运行，必须同时降低墙钟与 runner total；单个 job 或冷暖差异不作为整体通过证据。
+
+## 原生 bundle 扫描复用与分段计时
+
+准备阶段保留首次完整扫描的摘要、字节数和稳定路径顺序，沿用原有规则补充读取权限、为任何可执行文件补齐三个执行位后，只更新内存中的 mode 字段，直接用于 manifest；不再为生成 manifest 重读同一份文件。发布前 `verifyBundle` 仍独立重扫并校验全部路径、摘要、权限、链接、必需资源、身份与 ABI，消费端的独立验证也保留。该实现延续 ADR 0042 的产物及安全边界，不改变 runtime 配方、manifest 格式或冻结发布身份。
+
+`native-image-phase` 日志区分 `copy-application`、`prepare-inventory`、`verify-inventory`、`verify-runtime` 与包含后两项的 `verify-before-publish`，记录耗时及成功状态；父子阶段不能重复相加。既有 `native-image-stage` 继续记录编译及生产依赖安装。异常原样传播并保留临时目录清理，不输出环境变量或凭据。
+
+回归验证覆盖补充读取权限、保留可执行位和内部链接、清单字节兼容，以及首次扫描后内容、权限、文件集合或链接变化仍被最终复核拒绝。该优化只减少一次全量摘要扫描，不能消除 BuildKit 远端层下载、解压、镜像 load 或 runner 调度波动；整体性能结论继续要求相同工作负载、缓存状态和排除启动等待的口径。
+
+## Bun 子进程等待与复现
+
+Bun 1.4.2 在 stderr 为管道且等待同步子进程期间发生 GC 时，存在回收 pipe writer 后丢失子进程输出/退出通知的可复现路径；普通文件重定向不会覆盖这一条件。复现与 [Bun 上游 #47257](https://github.com/oven-sh/bun/issues/47257) 描述的私有 event loop 问题一致，不据此断言历史故障只有这一种原因。
+
+`memo-paths` 的 16 个环境隔离子进程用例改用测试专属 `runBun` helper，继承当前固定 Bun 可执行文件，并同时异步收集退出码和两条输出管道。原有全部用例、脚本、断言和超时保持不变，不升级工具链。新增 `bun-subprocess-gc` 回归在独立子进程内建立管道与 GC 条件，再通过同一 helper 调用真实 memo 模块，检查退出码和完整输出；故障注入不污染父测试进程。回归拒绝子进程失败和输出丢失，外层进程有独立终止边界。
+
+## Bootstrap 快照复制与 Web Demo 样式等待
+
+Bootstrap smoke 使用单个 Python 进程复制 Git 选择的文件，避免为每个文件重复启动 dirname、mkdir 和 cp。选择范围仍是 tracked 与未忽略的 untracked 文件；保留文件字节、可执行权限、umask、已有目标权限和 plain cp 的文件链接解引用行为。源文件缺失、Git 读取或复制失败继续使 smoke 失败，源与目标重叠在写入前被拒绝。`worktree-snapshot-copy` 日志只记录文件数、字节数与耗时；全部 bootstrap 场景保持执行。
+
+Console memo 的响应式样式断言在同一次已连接元素的采样中轮询背景、边框样式和边框宽度，避免首次轮询成功后元素被替换而在第二次取样读取到空样式。桌面和移动的三个预期属性保持不变，不修改产品样式、用例集合、重试、超时或 worker。局部复制基准和竞态修复不能替代完整 CI 的性能验收：runner sum 与排除启动等待的关键执行路径必须同时下降。
+
+## E2E runner 依赖探测
+
+矩阵 E2E 初始化先探测 runner 是否已提供 `lsof`，存在时直接使用，避免为已安装工具重复刷新 apt 索引和安装。缺件时仍执行原有的 update 与 install，两者任一失败继续阻断 job。Playwright 的完整系统依赖、浏览器安装及全部测试命令不变，不新增缓存、job、重试、超时或并行配置。回归直接执行工作流中的真实 shell，在隔离 PATH 下验证已有工具时不调用 apt、缺件安装以及失败传播；整体收益继续使用完整自动 workload 的双指标验收。
+
+普通 Build、Docker 和矩阵/Web Demo E2E 共享固定 Node 22.23.2 的官方 Linux x64 压缩发行包缓存。键包含平台、版本和完整 SHA-256，无回退键；只缓存压缩归档，不共享完整依赖树或应用产物。归档来自 `https://nodejs.org/dist/v22.23.2/`，摘要固定于对应 `SHASUMS256.txt`；每次恢复先验证摘要，损坏或符号链接条目重新下载并验证，失败不解包、不执行。安装在标准 runner tool cache 内的临时目录完成，核验实际 Node 版本后发布目录及完成标记，最后继续运行原 `setup-node` 的版本验证。已有完整 runner tool cache 继续复用，不覆盖不完整目录。冻结产品矩阵及发布工作流保持原安装路径，既有冻结配方、工具链版本和产品身份不变。该边界针对安装阶段已观测到的 GitHub 发行包 504 与重试，不把排除网络故障后的估算时间当作真实 CI 收益；首次并行冷启动的下载与缓存保存成本必须计入当前 run。
+
+## 浏览器执行分段诊断
+
+canonical E2E 和 Web Demo 沿用原 reporter，并增加只读的 `e2e-timing` 汇总。它从实际 Playwright step 事件按 navigation、action、assertion、wait、other 记录每个文件的毫秒数、attempt 数及最慢十个用例的文件名和行号，不改测试、调度、超时、重试或失败结果。断言包含的 API 重试归属于外层断言，不重复累计；同类并发区间合并，`observed_union_ms` 进一步合并跨类别重叠。不同类别仍可能重叠，不能直接相加为墙钟；跨用例合计也不等于 job 关键路径。
+
+诊断只输出固定分类、文件名、行号、重试序号和耗时，不输出用例标题、URL、selector、参数、请求/响应、环境变量或错误正文，不新增截图或上传。成功运行也保留摘要，以区分导航资源等待、操作/断言等待和少数长用例占据测试尾部；在确认分段证据前不根据整条用例耗时猜测原因。回归通过真实无浏览器 Playwright runner 验证 reporter 被调用、失败退出保持和敏感值不进入诊断摘要。

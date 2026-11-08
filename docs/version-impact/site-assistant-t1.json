@@ -3,8 +3,8 @@
   "kind": "version-impact-record",
   "base_sha": "1507549b0d088472bf22a691bec2b08cda49f2d5",
   "covered_files": {
-    ".github/workflows/ci.yml": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
-    ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+    ".github/workflows/ci.yml": "b79d156950d03bbfccae2628fc61f19554a4ede3",
+    ".github/workflows/e2e.yml": "552546228c6623febcbde2b94e1bba67b6b5dcda",
     "GLOSSARY.md": "efb890146870ba8a26e7f6b5384810ad7dd08447",
     "docs/adr/0032-temporary-assistant-conversations-and-usage-retention.md": "b545e0c10f42c2e4a9a6256ccdb9d65a4b431f4b",
     "docs/adr/0033-unified-frontend-user-identity.md": "1095be24932806e8f3d2f64e108b85b67748c9d4",
@@ -105,12 +105,12 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
+          "blob": "b79d156950d03bbfccae2628fc61f19554a4ede3",
           "command": "Existing CI jobs now trigger for pull requests targeting th/site-knowledge-assistant"
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+          "blob": "552546228c6623febcbde2b94e1bba67b6b5dcda",
           "command": "Existing E2E jobs now trigger for pull requests targeting th/site-knowledge-assistant"
         }
       ],
@@ -176,7 +176,7 @@
         },
         {
           "path": ".github/workflows/ci.yml",
-          "blob": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
+          "blob": "b79d156950d03bbfccae2628fc61f19554a4ede3",
           "command": "bun run check; git diff --check"
         }
       ]

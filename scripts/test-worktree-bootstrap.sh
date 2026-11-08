@@ -199,12 +199,7 @@ PY
 
 copy_root_contents() {
   local destination="$1"
-  while IFS= read -r relative_path; do
-    local source_path="$ROOT_DIR/$relative_path"
-    local target_path="$destination/$relative_path"
-    mkdir -p "$(dirname "$target_path")"
-    cp "$source_path" "$target_path"
-  done < <(git -C "$ROOT_DIR" ls-files --cached --others --exclude-standard)
+  python3 "$ROOT_DIR/scripts/lib/copy-worktree-snapshot.py" "$ROOT_DIR" "$destination"
 }
 
 create_snapshot_repo() {

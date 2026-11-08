@@ -4,8 +4,8 @@
   "base_sha": "e06c2b64bc50c65fb4afadde5f7c21eff32dba0e",
   "covered_files": {
     ".github/workflows/bootstrap-release-ledger-recovery.yml": "5c7ff621bf1fab73200625f8953f6f58a889d337",
-    ".github/workflows/ci.yml": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
-    ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+    ".github/workflows/ci.yml": "b79d156950d03bbfccae2628fc61f19554a4ede3",
+    ".github/workflows/e2e.yml": "552546228c6623febcbde2b94e1bba67b6b5dcda",
     "GLOSSARY.md": "71674530a0842d841b7d6e531086d8a6241a5d58",
     "apps/admin/src/components/app-shell.tsx": "abc008107664e815f563914350ffab703bda04d4",
     "apps/admin/src/components/ui.tsx": "afb51e6a8e93be48078ddfb4184e01d36a1760de",

@@ -96,6 +96,25 @@ function run(commandName: string, args: string[], cwd: string, env: NodeJS.Proce
   );
 }
 
+async function stagePhase<T>(phase: string, work: () => Promise<T>): Promise<T> {
+  const started = performance.now();
+  let success = false;
+  try {
+    const result = await work();
+    success = true;
+    return result;
+  } finally {
+    console.log(
+      JSON.stringify({
+        event: "native-image-phase",
+        phase,
+        success,
+        milliseconds: Math.round(performance.now() - started),
+      })
+    );
+  }
+}
+
 export async function requireNativePlatform() {
   const os = await readFile("/etc/os-release", "utf8").catch(() => "");
   if (
@@ -184,6 +203,18 @@ export async function inventory(root: string, directory = ""): Promise<BundleMan
   return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 
+/** Keep the measured bytes; final verification independently scans the published inventory. */
+export async function prepareInventory(root: string): Promise<BundleManifest["files"]> {
+  const files = await inventory(root);
+  for (const file of files) {
+    if (file.link !== undefined) continue;
+    const mode = file.mode | 0o444 | (file.mode & 0o111 ? 0o111 : 0);
+    await chmod(join(root, file.path), mode);
+    file.mode = mode;
+  }
+  return files;
+}
+
 export function verifyElf(bytes: Buffer) {
   if (
     bytes.subarray(0, 4).toString("hex") !== "7f454c46" ||
@@ -246,7 +277,7 @@ export async function verifyBundle(
     if (JSON.stringify(manifest[key as keyof BundleManifest]) !== JSON.stringify(value))
       throw new Error(`Runtime bundle identity mismatch: ${key}`);
   }
-  const files = await inventory(root);
+  const files = await stagePhase("verify-inventory", () => inventory(root));
   if (JSON.stringify(files) !== JSON.stringify(manifest.files))
     throw new Error("Runtime bundle inventory differs from manifest");
   for (const required of [
@@ -275,7 +306,7 @@ export async function verifyBundle(
   )
     throw new Error("Runtime version metadata differs from manifest");
   verifyElf(await readFile(join(root, "app/native/search/search.linux-x64.node")));
-  if (nativeProbe) await runtimeProbe(root);
+  if (nativeProbe) await stagePhase("verify-runtime", () => runtimeProbe(root));
   return manifest;
 }
 
@@ -301,9 +332,11 @@ export async function prepareBundle(options: {
       run("bun", ["run", "prebuild"], repo, env);
       run("bun", ["run", "build:compiled"], repo, env);
     }
-    await cp("backend-dist", join(stage, "app"), { recursive: true });
-    for (const path of ["admin-dist", "console-dist"])
-      await cp(path, join(stage, "app", path), { recursive: true });
+    await stagePhase("copy-application", async () => {
+      await cp("backend-dist", join(stage, "app"), { recursive: true });
+      for (const path of ["admin-dist", "console-dist"])
+        await cp(path, join(stage, "app", path), { recursive: true });
+    });
     await mkdir(join(stage, "deps"));
     for (const path of ["package.json", "bun.lock"]) await cp(path, join(stage, "deps", path));
     run(
@@ -328,10 +361,7 @@ export async function prepareBundle(options: {
         )
     );
     await writeFile(join(stage, ".dockerignore"), "manifest.json\n");
-    for (const file of await inventory(stage)) {
-      if (!file.link)
-        await chmod(join(stage, file.path), file.mode | 0o444 | (file.mode & 0o111 ? 0o111 : 0));
-    }
+    const files = await stagePhase("prepare-inventory", () => prepareInventory(stage));
     const version = JSON.parse(
       await readFile(join(stage, "app/src/generated/version.json"), "utf8")
     );
@@ -347,14 +377,16 @@ export async function prepareBundle(options: {
       platform: NATIVE_PLATFORM,
       toolchain: { bun: "1.4.2", node: "v22.23.2", rust: "1.91.0" },
       baseImages: options.baseImages,
-      files: await inventory(stage),
+      files,
     });
     await writeFile(join(stage, "manifest.json"), `${JSON.stringify(manifest)}\n`);
-    await verifyBundle(stage, {
-      sourceSha: options.sourceSha,
-      profile: options.profile,
-      configDigest: options.configDigest,
-    });
+    await stagePhase("verify-before-publish", () =>
+      verifyBundle(stage, {
+        sourceSha: options.sourceSha,
+        profile: options.profile,
+        configDigest: options.configDigest,
+      })
+    );
     // Never overwrite an existing candidate or accept a half-published output.
     await rename(stage, root);
     console.log(

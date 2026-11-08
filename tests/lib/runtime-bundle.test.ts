@@ -8,6 +8,7 @@ import {
   configurationDigest,
   inventory,
   NATIVE_PLATFORM,
+  prepareInventory,
   RUNTIME_RECIPE,
   verifyBundle,
   verifyElf,
@@ -63,7 +64,7 @@ async function fixture() {
   await seal(root);
   return root;
 }
-async function seal(root: string) {
+async function seal(root: string, files?: Awaited<ReturnType<typeof inventory>>) {
   const manifest = {
     schemaVersion: 1,
     recipe: RUNTIME_RECIPE,
@@ -77,10 +78,44 @@ async function seal(root: string) {
       runtime: `ubuntu@sha256:${"c".repeat(64)}`,
       bun: `oven/bun@sha256:${"d".repeat(64)}`,
     },
-    files: await inventory(root),
+    files: files ?? (await inventory(root)),
   };
   await writeFile(join(root, "manifest.json"), JSON.stringify(manifest));
 }
+test("prepared inventory preserves bytes, executable bits and internal links after chmod", async () => {
+  const root = await fixture();
+  const script = join(root, "app/docker-entrypoint.sh");
+  const data = join(root, "app/admin-dist/index.html");
+  await chmod(script, 0o700);
+  await chmod(data, 0o600);
+  await symlink("sharp", join(root, "deps/node_modules/linked-sharp"));
+  const before = await inventory(root);
+  const files = await prepareInventory(root);
+  expect(files).toEqual(await inventory(root));
+  expect(files.map(({ mode, ...file }) => file)).toEqual(before.map(({ mode, ...file }) => file));
+  expect(files.find((file) => file.path === "app/docker-entrypoint.sh")?.mode).toBe(0o755);
+  expect(files.find((file) => file.path === "app/admin-dist/index.html")?.mode).toBe(0o644);
+  await seal(root, files);
+  await expect(verifyBundle(root, expected, false)).resolves.toBeDefined();
+});
+test("reusing preparation metadata cannot hide changes before final verification", async () => {
+  for (const change of ["bytes", "permissions", "missing", "extra", "link"]) {
+    const root = await fixture();
+    await symlink("sharp", join(root, "deps/node_modules/linked-sharp"));
+    const files = await prepareInventory(root);
+    const path = join(root, "app/admin-dist/index.html");
+    if (change === "bytes") await writeFile(path, "corrupt");
+    if (change === "permissions") await chmod(path, 0o700);
+    if (change === "missing") await rm(path);
+    if (change === "extra") await writeFile(join(root, "app/undeclared"), "unexpected");
+    if (change === "link") {
+      await rm(join(root, "deps/node_modules/linked-sharp"));
+      await symlink("../../../../", join(root, "deps/node_modules/linked-sharp"));
+    }
+    await seal(root, files);
+    await expect(verifyBundle(root, expected, false)).rejects.toThrow();
+  }
+});
 test("portable verification preserves the complete native identity", async () => {
   const root = await fixture();
   const manifest = await verifyBundle(root, expected, false);

@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "08defc534c0c0df15bf3d43b144dc785a44bef05",
   "covered_files": {
-    ".github/workflows/e2e.yml": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+    ".github/workflows/e2e.yml": "552546228c6623febcbde2b94e1bba67b6b5dcda",
     "CONTEXT.md": "4452f9d1abd5f90cd35893ae9e2ae9a39776f7d3",
     "GLOSSARY.md": "c7f8da3a0e4f8e26536103bb64cbeb2efaf1ba3d",
     "apps/admin/src/router.tsx": "9f7c91403099e0bdf8862598df3de7bdb5fec43a",
@@ -92,7 +92,7 @@
         },
         {
           "path": ".github/workflows/e2e.yml",
-          "blob": "16b745c619e5397df9ec7d3d3996815ae82a2e51",
+          "blob": "552546228c6623febcbde2b94e1bba67b6b5dcda",
           "command": "Official console Web Demo system-share coverage"
         }
       ],

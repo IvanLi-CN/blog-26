@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "2a5e0cc7792ce64fc19fc9edc91d47f09b4f5a5f",
   "covered_files": {
-    ".github/workflows/ci.yml": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
+    ".github/workflows/ci.yml": "b79d156950d03bbfccae2628fc61f19554a4ede3",
     "docs/adr/0021-embedded-tantivy-search.md": "05c9dff6296fd23eefa966d67f5db65f556e18b5",
     "docs/adr/0023-search-legacy-compatibility.md": "a1cd7e7f28d3b1ddebddf6b85d7ac067c853e06d",
     "docs/solutions/search/sqlite-fts5-fallback.md": "12d6ac08ede207d96d44acda075b97ecd416f6c8",

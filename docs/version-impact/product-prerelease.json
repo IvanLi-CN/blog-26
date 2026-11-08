@@ -5,7 +5,7 @@
   "covered_files": {
     ".github/quality-gates.json": "1a3e713708baaf265adce051b8b613b3a525bb4f",
     ".github/release-contract.json": "b019adfd2969ca868d58ed7014692c9fade8ee8a",
-    ".github/workflows/ci.yml": "5f68a0e72878c3a4a8504a4ef40738517d1b8678",
+    ".github/workflows/ci.yml": "b79d156950d03bbfccae2628fc61f19554a4ede3",
     ".github/workflows/manual-product-release.yml": "ea9a5c86fe62d31bf5949ee7c9684c507c7aaecd",
     ".github/workflows/product-release.yml": "49abcb6e16d9b4de05ee2e03d247ddcf847673f9",
     "CONTEXT.md": "aa1054a4c7bbee8555ba201c33c4989de49f720e",
