@@ -118,6 +118,7 @@ export default defineConfig({
   grep: explicitTagFilter ? new RegExp(explicitTagFilter.replace("@", "\\@")) : undefined,
   grepInvert: explicitTagFilter ? undefined : E2E_FULL_EXCLUDED_TAG_PATTERN,
   reporter: [
+    ["./tests/e2e/timing-reporter.ts"],
     ["html", { outputFolder: htmlReportDir, open: "never" }],
     ["json", { outputFile: jsonResultFile }],
     ["line"],

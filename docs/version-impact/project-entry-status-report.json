@@ -50,7 +50,7 @@
     "scripts/run-test-suite.ts": "4331c4a5de0e6ac1ae32be5435966227538662f3",
     "scripts/start-console.ts": "1dbe1f4897f204f9829918701b9efd0f8aa9b25f",
     ".github/workflows/e2e.yml": "552546228c6623febcbde2b94e1bba67b6b5dcda",
-    "tests/e2e/web-demo/playwright.config.ts": "7ea28022a065a2e7806175b85fc25f018a3d6db8",
+    "tests/e2e/web-demo/playwright.config.ts": "07f37537caf2575c5372abe4a28df07d07933c1f",
     "src/server/routers/admin/index.ts": "b3e8f76750e4df5798fdbf94cd8a8d2c93e69714",
     "src/server/routers/admin/project-status.ts": "1d4190a83a493148ccdbe02effb8b544146158f1",
     "src/server/routers/admin/project-status.test.ts": "6b813665fe38076d6504aaebf73917cc64cc3ec7",

@@ -9,13 +9,13 @@
     "apps/admin/src/demo/business-contracts.test.tsx": "a9b1a24ab12aaf56cec304dfedae4b52d021e5d4",
     "docs/specs/README.md": "466ba8fddb7bc171203ec2c6763ab0683b403501",
     "docs/specs/ci-performance/HISTORY.md": "f1cf0b9ece1d37cef8c918f2944f52666ee56d4a",
-    "docs/specs/ci-performance/IMPLEMENTATION.md": "dffb6dcd998629c2086ade45f4add331c2b36d16",
+    "docs/specs/ci-performance/IMPLEMENTATION.md": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
     "docs/specs/ci-performance/SPEC.md": "08d5d15a26974086a4ae4d0dcb7301989b306f09",
-    "playwright.config.ts": "1605f246a83edbe61420f76997556f620a7c4037",
+    "playwright.config.ts": "929c2bd7419cdc70b067e52039740c03fbe6423d",
     "scripts/prepare-ci-apt-mirror.sh": "8fed187b4d1a1bcf57e678e0d295d68592ef6c4a",
     "scripts/run-e2e.ts": "74d693b41887f4ca3d8e7ee170a6dd41707d5f75",
     "src/server/dev-api/auth.test.ts": "416655bff5af44ceea017af64b3d023871bb563c",
-    "tests/e2e/README.md": "94040584f8fcccafd0b60a3652bb992b9d90202e",
+    "tests/e2e/README.md": "58b72b1a479b46d57a114c908287bff4eb054d5f",
     "tests/e2e/guest/dev-auth.spec.ts": "f33df7adea40f09d9bd30436c79a0ecd50cbcd8d",
     "tests/e2e/mcp/memo-create.spec.ts": "b52e1bc829887cc73f78613948433860e2022446",
     "tests/e2e/web-demo/ai-usage.spec.ts": "ffb7302eacf774c35224c8e45204c404f071a510",
@@ -66,7 +66,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "dffb6dcd998629c2086ade45f4add331c2b36d16",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -76,7 +76,7 @@
         },
         {
           "path": "playwright.config.ts",
-          "blob": "1605f246a83edbe61420f76997556f620a7c4037",
+          "blob": "929c2bd7419cdc70b067e52039740c03fbe6423d",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -96,7 +96,7 @@
         },
         {
           "path": "tests/e2e/README.md",
-          "blob": "94040584f8fcccafd0b60a3652bb992b9d90202e",
+          "blob": "58b72b1a479b46d57a114c908287bff4eb054d5f",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -163,7 +163,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "dffb6dcd998629c2086ade45f4add331c2b36d16",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -173,7 +173,7 @@
         },
         {
           "path": "playwright.config.ts",
-          "blob": "1605f246a83edbe61420f76997556f620a7c4037",
+          "blob": "929c2bd7419cdc70b067e52039740c03fbe6423d",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -193,7 +193,7 @@
         },
         {
           "path": "tests/e2e/README.md",
-          "blob": "94040584f8fcccafd0b60a3652bb992b9d90202e",
+          "blob": "58b72b1a479b46d57a114c908287bff4eb054d5f",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -264,7 +264,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "dffb6dcd998629c2086ade45f4add331c2b36d16",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -274,7 +274,7 @@
         },
         {
           "path": "playwright.config.ts",
-          "blob": "1605f246a83edbe61420f76997556f620a7c4037",
+          "blob": "929c2bd7419cdc70b067e52039740c03fbe6423d",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -294,7 +294,7 @@
         },
         {
           "path": "tests/e2e/README.md",
-          "blob": "94040584f8fcccafd0b60a3652bb992b9d90202e",
+          "blob": "58b72b1a479b46d57a114c908287bff4eb054d5f",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -412,7 +412,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "dffb6dcd998629c2086ade45f4add331c2b36d16",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -422,7 +422,7 @@
         },
         {
           "path": "playwright.config.ts",
-          "blob": "1605f246a83edbe61420f76997556f620a7c4037",
+          "blob": "929c2bd7419cdc70b067e52039740c03fbe6423d",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -442,7 +442,7 @@
         },
         {
           "path": "tests/e2e/README.md",
-          "blob": "94040584f8fcccafd0b60a3652bb992b9d90202e",
+          "blob": "58b72b1a479b46d57a114c908287bff4eb054d5f",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -511,7 +511,7 @@
         },
         {
           "path": "docs/specs/ci-performance/IMPLEMENTATION.md",
-          "blob": "dffb6dcd998629c2086ade45f4add331c2b36d16",
+          "blob": "76afcd96e8a3107c1dfec018c54b3f476d26d3a4",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -521,7 +521,7 @@
         },
         {
           "path": "playwright.config.ts",
-          "blob": "1605f246a83edbe61420f76997556f620a7c4037",
+          "blob": "929c2bd7419cdc70b067e52039740c03fbe6423d",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {
@@ -541,7 +541,7 @@
         },
         {
           "path": "tests/e2e/README.md",
-          "blob": "94040584f8fcccafd0b60a3652bb992b9d90202e",
+          "blob": "58b72b1a479b46d57a114c908287bff4eb054d5f",
           "command": "bun run check; bun test --isolate src/server/dev-api/auth.test.ts apps/admin/src/demo/business-contracts.test.tsx apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/project-status.test.tsx tests/server/run-e2e.test.ts tests/ci; complete required Actions checks"
         },
         {

@@ -54,6 +54,8 @@ bun run test:e2e:headed
   other E2E projects
 - Reports: per-project HTML/JSON output is written under `test-results/<project>/`
 
+canonical E2E 与 Web Demo 另在日志输出 `[e2e-timing]`：按文件汇总 navigation、action、assertion、wait、other 的执行毫秒数、attempt 数，以及最慢十个用例的文件名和行号。分类区间可能重叠，跨用例也可能并发，不能相加作为 job 墙钟；`observed_union_ms` 只消除同一 attempt 内的重叠。摘要不包含用例标题、URL、selector、参数或错误正文，不改变失败、重试和测试收集行为。
+
 ## Tagging rules
 
 Use Playwright tags in test code as the only source of non-full classification.

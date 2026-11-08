@@ -68,7 +68,7 @@
     "docs/specs/web-demo-global-controls/SPEC.md": "d762e99d1968133145e5496720eb5ffd019a4ea0",
     "docs/specs/web-demo-global-controls/assets/inspector-desktop.png": "fa5fc685751e29f8cb49791023879b20037964d3",
     "docs/specs/web-demo-global-controls/assets/inspector-mobile.png": "4f1048e5aae50ab0a10f75cf747da2a6be8a1992",
-    "playwright.config.ts": "fd5bb1beff25d5b94949fe3988fd9b5c2007b457",
+    "playwright.config.ts": "929c2bd7419cdc70b067e52039740c03fbe6423d",
     "scripts/build-web-demo.ts": "840522042ea0e6a348b05aa0f0ff4c53c35e26b4",
     "scripts/capture-admin-text-editor-evidence.mjs": "12bb8ad506f8836142a4d8ba51f01fd188605978",
     "scripts/generate-version.ts": "540261910827ab73f674c741cc3e7404fc97809e",

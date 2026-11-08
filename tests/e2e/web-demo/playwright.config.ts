@@ -16,6 +16,7 @@ export default defineConfig({
           : { width: 1440, height: 1000 },
   },
   reporter: [
+    ["../timing-reporter.ts"],
     ["list"],
     ["json", { outputFile: process.env.WEB_DEMO_TEST_REPORT ?? "test-results/web-demo-csr.json" }],
   ],
