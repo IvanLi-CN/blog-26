@@ -11,7 +11,7 @@
     "tests/e2e/web-demo/search-modes.spec.ts": "490e03d14932a503437914bc854f3f08bb526bc0",
     "tests/e2e/web-demo/system-share.spec.ts": "955eea9abb7a97e5047af31d479d94ba44e27d5f",
     "tests/e2e/web-demo/ci.config.ts": "442cf53ce20b44554e41a113dc64fd9c75d6ebf7",
-    "tests/ci/web-demo-ci-coverage.test.ts": "984bdfd2ba5794f32e7d829df21d505b9ec018c8"
+    "tests/ci/web-demo-ci-coverage.test.ts": "dfde44fe59c9bef902e1926958f8fae35b4d379b"
   },
   "change": {
     "description": "Web Demo 合并测试入口并去除已完整自带 viewport 场景的重复执行，保留全部独特断言、两 worker 上限、重试及失败传播。",
@@ -66,7 +66,7 @@
         },
         {
           "path": "tests/ci/web-demo-ci-coverage.test.ts",
-          "blob": "984bdfd2ba5794f32e7d829df21d505b9ec018c8",
+          "blob": "dfde44fe59c9bef902e1926958f8fae35b4d379b",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         }
       ]
@@ -118,7 +118,7 @@
         },
         {
           "path": "tests/ci/web-demo-ci-coverage.test.ts",
-          "blob": "984bdfd2ba5794f32e7d829df21d505b9ec018c8",
+          "blob": "dfde44fe59c9bef902e1926958f8fae35b4d379b",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         }
       ],
@@ -174,7 +174,7 @@
         },
         {
           "path": "tests/ci/web-demo-ci-coverage.test.ts",
-          "blob": "984bdfd2ba5794f32e7d829df21d505b9ec018c8",
+          "blob": "dfde44fe59c9bef902e1926958f8fae35b4d379b",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         }
       ]
@@ -242,7 +242,7 @@
         },
         {
           "path": "tests/ci/web-demo-ci-coverage.test.ts",
-          "blob": "984bdfd2ba5794f32e7d829df21d505b9ec018c8",
+          "blob": "dfde44fe59c9bef902e1926958f8fae35b4d379b",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         }
       ]
@@ -296,7 +296,7 @@
         },
         {
           "path": "tests/ci/web-demo-ci-coverage.test.ts",
-          "blob": "984bdfd2ba5794f32e7d829df21d505b9ec018c8",
+          "blob": "dfde44fe59c9bef902e1926958f8fae35b4d379b",
           "command": "bun run check; bun test tests/ci/web-demo-ci-coverage.test.ts; complete warm-workload Actions comparison"
         }
       ]

@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test";
-import { execFileSync } from "node:child_process";
 import config, { consoleFiles, publicFiles } from "../e2e/web-demo/ci.config";
 
 type Spec = { file: string; title: string; tags: string[]; tests: unknown[] };
@@ -19,27 +18,34 @@ const ownViewportTitles = [
   "keeps detail and related media watermarked separately",
   "mobile mode controls remain keyboard accessible without horizontal overflow",
 ];
-const list = (configPath: string, files: string[], mobile = false) => {
-  const result = JSON.parse(
-    execFileSync(
-      "bunx",
-      ["playwright", "test", "--config", configPath, ...files, "--list", "--reporter=json"],
-      {
-        encoding: "utf8",
-        env: { ...process.env, WEB_DEMO_VIEWPORT: mobile ? "mobile" : "desktop" },
-      }
-    )
+const list = async (configPath: string, files: string[], mobile = false) => {
+  // Keep the test runner's event loop active while Playwright collects tests.
+  // Bun 1.4.2 can lose synchronous child exits after GC in an isolated suite.
+  const child = Bun.spawn(
+    ["bunx", "playwright", "test", "--config", configPath, ...files, "--list", "--reporter=json"],
+    {
+      env: { ...process.env, WEB_DEMO_VIEWPORT: mobile ? "mobile" : "desktop" },
+      stdout: "pipe",
+      stderr: "pipe",
+    }
   );
+  const [exitCode, stdout, stderr] = await Promise.all([
+    child.exited,
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
+  expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
+  const result = JSON.parse(stdout);
   expect(result.errors).toEqual([]);
   return collect(result.suites as Suite[]);
 };
 
-test("grouped Web Demo preserves every unique file/title/viewport scenario", () => {
+test("grouped Web Demo preserves every unique file/title/viewport scenario", async () => {
   const standard = "tests/e2e/web-demo/playwright.config.ts";
   const grouped = "tests/e2e/web-demo/ci.config.ts";
   const paths = (names: string[]) => names.map((name) => `tests/e2e/web-demo/${name}`);
   for (const mobile of [false, true]) {
-    const original = list(
+    const original = await list(
       standard,
       paths([
         ...consoleFiles,
@@ -48,7 +54,7 @@ test("grouped Web Demo preserves every unique file/title/viewport scenario", () 
       ]),
       mobile
     );
-    const actual = list(grouped, [], mobile);
+    const actual = await list(grouped, [], mobile);
     const identity = (s: Spec) => `${s.file}:${s.title}`;
     const expected = original.filter((s) => !mobile || !s.tags.includes("own-viewport"));
     expect(actual.map(identity).sort()).toEqual(expected.map(identity).sort());
