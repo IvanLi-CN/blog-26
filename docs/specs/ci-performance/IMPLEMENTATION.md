@@ -1,6 +1,6 @@
 # 实现边界
 
-原生搜索使用精确输入缓存并保留每次运行的 conformance 验证，镜像身份包含 hosted runner 的 ImageOS 和 ImageVersion，构建动作本身也参与输入摘要，防止编译配方变更后复用旧字节。Build 和 Docker 不消费 Unit/Lint 的产物，各自执行并共同参与 required checks。
+原生搜索使用精确输入缓存并保留每次运行的 conformance 验证，平台身份包含发行版及版本、架构、glibc、C 编译器、链接器和 libgcc/libstdc++ 字节摘要，不再因 hosted runner 的 ImageVersion 单独变化失效；固定 Rust/Bun 工具链、平台采集脚本和构建动作本身也参与输入摘要，防止编译配方变更后复用旧字节。Build 和 Docker 不消费 Unit/Lint 的产物，各自执行并共同参与 required checks。
 
 `ci-project` 为 guest/admin 使用两个隔离进程，仍保持每个进程单 worker；user/mcp 使用一个进程。浏览器 project 先 reset、prebuild、构建一次，再复制数据库与内容目录；共享构建的浏览器 API 地址留空，由页面 origin 解析，避免把默认端口固化进分片产物。guest 按运行时间将重型 mobile-reading-surface 矩阵与其余文件分组，admin 按测试级别分片；显式 serial 分组仍由 Playwright 约束。Web Demo 在同一 runner 启用测试级并行并使用两个 worker，以限制浏览器与预览进程的 CPU 争用，保留全部桌面/移动场景。MCP 仅 reset 并复制数据库与内容，启动生产 gateway，以 `/api/version` 就绪；不安装 Chromium、不构建前端、不启动媒体 sidecar，仍保留原 canonical check 和真实 PAT/MCP HTTP 测试。
 
@@ -28,3 +28,5 @@
 Build、浏览器 E2E 和 Web Demo 通过共享 composite action 恢复聚合缓存；MCP 无图片生成，不恢复该缓存。Docker 将同一生成器与输入放进 `project-media` 阶段，应用源码和构建身份保留在 builder；宿主缓存不进入上下文。
 
 验证由 `tests/lib/project-media-cache.test.ts`、既有图片套件、全量 required checks，以及现有 CI/CD Pipeline 的显式性能实验输入承担。冷暖性能与 Docker 失效证据保存在绑定候选 SHA 的 Actions 日志和 PR 中，不把运行结果回写成源代码变更。实验不增加常规 job、生产者依赖、artifact 或 retention。
+
+原生搜索使用 `native-search-v2` 精确缓存键，不使用跨平台或跨配方回退键。平台信息采集失败直接阻断构建，不能降级为宽泛缓存键；冷缓存编译与缓存命中后都继续执行完整搜索 conformance。GitHub 原生分支缓存可见性不变，PR 首次运行与合并后首次运行仍可能冷启动。该优化只避免无关 runner 镜像发布使兼容输入失效，不把一次冷暖差异当作全流程收益。

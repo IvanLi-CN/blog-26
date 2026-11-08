@@ -3,16 +3,18 @@ description: Reuse an exact native search build and verify its runtime contract.
 runs:
   using: composite
   steps:
-    - name: Identify runner image
+    - name: Fingerprint native build platform
       id: platform
       shell: bash
-      run: echo "image=${ImageOS:?Missing hosted runner image family}-${ImageVersion:?Missing hosted runner image version}" >> "$GITHUB_OUTPUT"
+      run: |
+        bun scripts/native-search-cache-platform.ts | tee "$RUNNER_TEMP/native-search-platform.txt"
+        sed -n '/^platform=/p' "$RUNNER_TEMP/native-search-platform.txt" >> "$GITHUB_OUTPUT"
     - name: Restore native search module
       id: native
       uses: actions/cache@v6
       with:
         path: native/search/search.linux-x64.node
-        key: native-search-v1-${{ steps.platform.outputs.image }}-${{ runner.os }}-${{ runner.arch }}-rust-1.91.0-bun-1.4.2-${{ hashFiles('.github/actions/setup-native-search/action.yml', 'native/search/Cargo.toml', 'native/search/Cargo.lock', 'native/search/build.rs', 'native/search/src/**', 'scripts/build-native-search.sh') }}
+        key: native-search-v2-${{ steps.platform.outputs.platform }}-${{ runner.os }}-${{ runner.arch }}-rust-1.91.0-bun-1.4.2-${{ hashFiles('.github/actions/setup-native-search/action.yml', 'scripts/native-search-cache-platform.ts', 'native/search/Cargo.toml', 'native/search/Cargo.lock', 'native/search/build.rs', 'native/search/src/**', 'scripts/build-native-search.sh') }}
     - name: Compile native search on cache miss
       if: steps.native.outputs.cache-hit != 'true'
       shell: bash
