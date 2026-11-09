@@ -2081,6 +2081,17 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
     box-shadow: none;
     backdrop-filter: none;
   }
+
+  .project-detail-sidebar .nature-panel {
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .project-detail-sidebar
+    .nature-panel:not(.nature-hover-lift):is(:hover, :focus-visible, :focus-within) {
+    transform: none;
+    box-shadow: none;
+  }
 }
 
 .project-detail-comments > section {

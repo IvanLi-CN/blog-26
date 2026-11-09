@@ -715,8 +715,8 @@ test.describe("Nature frontend public coverage", () => {
     expect(desktopGeometry.sidebarPanels.length).toBeGreaterThan(0);
     for (const panel of desktopGeometry.sidebarPanels) {
       expect(panel.backgroundImage).toContain("linear-gradient");
-      expect(panel.boxShadow).not.toBe("none");
-      expect(panel.backdropFilter).toContain("blur");
+      expect(panel.boxShadow).toBe("none");
+      expect(panel.backdropFilter).toBe("none");
     }
 
     await page.setViewportSize({ width: 1280, height: 620 });
