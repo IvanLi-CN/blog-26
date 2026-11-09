@@ -749,22 +749,24 @@ function MessageStream({
               )
               .map((message) => (
                 <div
-                  className={`knowledge-assistant-message knowledge-assistant-message--${message.role}`}
+                  className={`knowledge-assistant-message knowledge-assistant-message--${message.role}${message.role === "assistant" && !message.content.trim() ? " knowledge-assistant-message--process-only" : ""}`}
                   data-message-id={message.id}
                   data-message-role={message.role}
                   data-presentation-id={presentationId}
                   data-testid={`assistant-message-${message.role}`}
                   key={message.id}
                 >
-                  <AssistantMessageContent
-                    className="knowledge-assistant-message-content"
-                    messageId={message.id}
-                    presentationId={presentationId}
-                    role={message.role as "user" | "assistant"}
-                    content={message.content}
-                    status={message.status}
-                    renderMarkdown={ConversationMarkdown}
-                  />
+                  {message.content.trim() || message.role === "user" ? (
+                    <AssistantMessageContent
+                      className="knowledge-assistant-message-content"
+                      messageId={message.id}
+                      presentationId={presentationId}
+                      role={message.role as "user" | "assistant"}
+                      content={message.content}
+                      status={message.status}
+                      renderMarkdown={ConversationMarkdown}
+                    />
+                  ) : null}
                   {message.role === "assistant" &&
                   (message.status === "pending" ||
                     message.status === "streaming" ||
