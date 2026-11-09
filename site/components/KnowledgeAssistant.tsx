@@ -686,7 +686,15 @@ function MessageStream({
           </div>
         ) : (
           snapshot.messages
-            .filter((message) => message.role === "user" || message.role === "assistant")
+            .filter(
+              (message) =>
+                (message.role === "user" || message.role === "assistant") &&
+                !(
+                  message.role === "assistant" &&
+                  !message.content.trim() &&
+                  message.status === "cancelled"
+                )
+            )
             .map((message) => (
               <div
                 className={`knowledge-assistant-message knowledge-assistant-message--${message.role}`}
@@ -705,9 +713,21 @@ function MessageStream({
                   status={message.status}
                   renderMarkdown={ConversationMarkdown}
                 />
-                {!message.content && message.status === "streaming" ? (
+                {message.role === "assistant" &&
+                !message.content.trim() &&
+                (message.status === "pending" || message.status === "streaming") ? (
                   <p className="knowledge-assistant-streaming-placeholder" role="status">
                     正在生成……
+                  </p>
+                ) : null}
+                {message.role === "assistant" && message.status === "cancelled" ? (
+                  <p className="knowledge-assistant-status-note" role="status">
+                    已停止生成
+                  </p>
+                ) : null}
+                {message.role === "assistant" && message.status === "failed" ? (
+                  <p className="knowledge-assistant-status-note" role="status">
+                    生成失败，可重试
                   </p>
                 ) : null}
                 {message.status === "failed" && onRetry ? (
@@ -1481,6 +1501,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     const content = draftValue.trim();
     const submittedDraft = contentOverride === undefined ? draftValue : null;
     if (!content || !auth?.authenticated || submittingRef.current) return;
+    if (isGenerating(snapshot) && !(await stop())) return;
     if (context && selectedConversation?.kind === "clipping" && selectedId !== "new") {
       try {
         const current = await readClippingAssistantSnapshot(context.slug);
@@ -1573,7 +1594,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   };
 
   const stop = async () => {
-    if (!selectedId || !snapshot?.activeGenerationJob) return;
+    if (!selectedId || !snapshot?.activeGenerationJob) return false;
     const selectedConversation = conversations.find(
       (conversation) => conversation.id === selectedId
     );
@@ -1593,8 +1614,10 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         });
       }
       await loadSnapshot(selectedId);
+      return true;
     } catch (error) {
       setRequestError(errorMessage(error));
+      return false;
     }
   };
 
@@ -1652,6 +1675,9 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   };
 
   const currentDraft = drafts[draftKey(selectedId, newConversationContextRef.current)] || "";
+  const generating = isGenerating(snapshot);
+  const showComposerStop = generating && !currentDraft.trim();
+  const composerActionDisabled = isSubmitting || (!showComposerStop && !currentDraft.trim());
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: draft changes trigger the DOM measurement.
   useEffect(() => {
@@ -1837,16 +1863,6 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                     <Icon name="tabler:messages" className="h-4 w-4" />
                     <span>切换对话</span>
                   </button>
-                  {isGenerating(snapshot) ? (
-                    <button
-                      type="button"
-                      className="nature-button nature-button-ghost min-h-11 px-3 text-sm"
-                      onClick={() => void stop()}
-                    >
-                      <Icon name="tabler:square" className="h-4 w-4" />
-                      停止
-                    </button>
-                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -1936,11 +1952,16 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                   <button
                     type="button"
                     className="knowledge-assistant-send-button nature-button nature-button-primary text-sm"
-                    onClick={() => void send()}
-                    disabled={!currentDraft.trim() || isGenerating(snapshot) || isSubmitting}
+                    onClick={() => void (showComposerStop ? stop() : send())}
+                    disabled={composerActionDisabled}
+                    aria-label={showComposerStop ? "停止生成" : "发送"}
+                    title={showComposerStop ? "停止生成" : "发送"}
                   >
-                    <Icon name="tabler:send-2" className="h-4 w-4" />
-                    发送
+                    <Icon
+                      name={showComposerStop ? "tabler:square" : "tabler:send-2"}
+                      className="h-4 w-4"
+                    />
+                    {showComposerStop ? "停止" : "发送"}
                   </button>
                 </div>
               </div>
@@ -2033,17 +2054,6 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                 </div>
               )}
               <div className="knowledge-assistant-header-actions">
-                {auth?.authenticated && isGenerating(snapshot) ? (
-                  <button
-                    type="button"
-                    className="knowledge-assistant-icon-button"
-                    onClick={() => void stop()}
-                    aria-label="停止生成"
-                    title="停止生成"
-                  >
-                    <Icon name="tabler:square" className="h-4 w-4" />
-                  </button>
-                ) : null}
                 {auth?.authenticated ? (
                   <div className="knowledge-assistant-help-anchor">
                     <button
