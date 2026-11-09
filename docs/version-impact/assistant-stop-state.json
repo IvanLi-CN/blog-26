@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "132ce9da2b22fecc78630b3b40f1ecd0f8839f7e",
+  "covered_files": {
+    "site/components/KnowledgeAssistant.css": "a0e2dfc6a64af01337d3bf37c0872849041f1b29",
+    "site/components/KnowledgeAssistant.tsx": "c4cf725dfaf700627d91070ddd0f57ad867e79bc",
+    "src/lib/web-demo-fetch.ts": "19c20187c0096631c6fd7f725f6fb86ada47bad5",
+    "tests/components/KnowledgeAssistant.test.tsx": "bdd473ab95dd5109f857ffd7110eef6a27a9e746",
+    "tests/lib/web-demo-fetch.test.ts": "72851c368eda9cb936c015d56256467e3a11ca06"
+  },
+  "change": {
+    "description": "Unify the knowledge assistant composer send and stop states, serialize cancellation before replacement sends, preserve recognizable stopped and failed outcomes, and keep the Web Demo generation fixture deterministic.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This is a compatible user-interface and Web Demo behavior repair. It changes no server endpoint, payload, persistence schema, or message data structure.",
+      "assessed_at": "2026-11-09T16:51:14+08:00",
+      "evidence": [
+        {
+          "path": "tests/components/KnowledgeAssistant.test.tsx",
+          "blob": "bdd473ab95dd5109f857ffd7110eef6a27a9e746",
+          "command": "bun test tests/components/KnowledgeAssistant.test.tsx tests/lib/web-demo-fetch.test.ts"
+        },
+        {
+          "path": "site/components/KnowledgeAssistant.tsx",
+          "blob": "c4cf725dfaf700627d91070ddd0f57ad867e79bc",
+          "command": "bunx biome check site/components/KnowledgeAssistant.tsx site/components/KnowledgeAssistant.css"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate is limited to composer state handling, cancellation polling, standalone stopped feedback, styling, and deterministic Web Demo/test fixtures. Public API and persisted state remain compatible.",
+      "assessed_at": "2026-11-09T16:51:14+08:00",
+      "evidence": [
+        {
+          "path": "tests/components/KnowledgeAssistant.test.tsx",
+          "blob": "bdd473ab95dd5109f857ffd7110eef6a27a9e746",
+          "command": "Current-candidate component tests cover waiting, stop, replacement send serialization, empty cancellation, and failure recovery"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "72851c368eda9cb936c015d56256467e3a11ca06",
+          "command": "Current-candidate Web Demo fixture contract tests pass"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "No API, persistence, release-version, or unrelated product scope drift was found after repair review."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused component and fixture tests, Biome validation, the site build, and browser evidence verify a reversible presentation and interaction correction without API or persistent-state changes.",
+      "assessed_at": "2026-11-09T16:51:14+08:00",
+      "evidence": [
+        {
+          "path": "tests/components/KnowledgeAssistant.test.tsx",
+          "blob": "bdd473ab95dd5109f857ffd7110eef6a27a9e746",
+          "command": "bun test tests/components/KnowledgeAssistant.test.tsx tests/lib/web-demo-fetch.test.ts"
+        },
+        {
+          "path": "site/components/KnowledgeAssistant.css",
+          "blob": "a0e2dfc6a64af01337d3bf37c0872849041f1b29",
+          "command": "Playwright Web Demo desktop/mobile checks confirm composer stop state, empty waiting state, and no header stop control"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["4.2.0"],
+      "evidence": [
+        {
+          "path": "tests/components/KnowledgeAssistant.test.tsx",
+          "blob": "bdd473ab95dd5109f857ffd7110eef6a27a9e746",
+          "command": "Assistant interaction tests pass without changing request or response contracts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No database schema, persisted message format, durable generation protocol, or browser state contract changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "72851c368eda9cb936c015d56256467e3a11ca06",
+          "command": "Web Demo route fixtures continue to use the existing assistant message and generation job shapes"
+        }
+      ]
+    }
+  }
+}

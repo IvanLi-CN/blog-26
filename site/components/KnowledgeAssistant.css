@@ -718,6 +718,11 @@
   margin: 0;
 }
 
+.knowledge-assistant-status-note--standalone {
+  align-self: flex-start;
+  padding: 0 0.15rem;
+}
+
 .knowledge-assistant-streaming-placeholder::before {
   width: 0.45rem;
   height: 0.45rem;
