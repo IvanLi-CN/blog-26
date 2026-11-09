@@ -681,6 +681,15 @@ test.describe("Nature frontend public coverage", () => {
             .getPropertyValue("--public-header-visible-height")
             .trim()
         ),
+        sidebarSurface: (() => {
+          const style = getComputedStyle(sidebar);
+          return {
+            backgroundColor: style.backgroundColor,
+            backgroundImage: style.backgroundImage,
+            boxShadow: style.boxShadow,
+            backdropFilter: style.backdropFilter,
+          };
+        })(),
         sidebarPanels: [...sidebar.querySelectorAll<HTMLElement>(".nature-panel")].map((panel) => {
           const style = getComputedStyle(panel);
           return {
@@ -697,11 +706,17 @@ test.describe("Nature frontend public coverage", () => {
     expect(desktopGeometry.sidebarTop).toBeGreaterThanOrEqual(
       desktopGeometry.visibleHeaderHeight + 15.5
     );
+    expect(desktopGeometry.sidebarSurface).toEqual({
+      backgroundColor: "rgba(0, 0, 0, 0)",
+      backgroundImage: "none",
+      boxShadow: "none",
+      backdropFilter: "none",
+    });
     expect(desktopGeometry.sidebarPanels.length).toBeGreaterThan(0);
     for (const panel of desktopGeometry.sidebarPanels) {
-      expect(panel.backgroundImage).toBe("none");
-      expect(panel.boxShadow).toBe("none");
-      expect(panel.backdropFilter).toBe("none");
+      expect(panel.backgroundImage).toContain("linear-gradient");
+      expect(panel.boxShadow).not.toBe("none");
+      expect(panel.backdropFilter).toContain("blur");
     }
 
     await page.setViewportSize({ width: 1280, height: 620 });

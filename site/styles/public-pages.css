@@ -2076,10 +2076,8 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
     max-height: calc(100dvh - var(--public-header-visible-height, 0px) - 1rem);
     overflow-y: auto;
     overscroll-behavior: contain;
-  }
-
-  .project-detail-sidebar .nature-panel {
     background: transparent;
+    border: 0;
     box-shadow: none;
     backdrop-filter: none;
   }
