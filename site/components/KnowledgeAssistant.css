@@ -718,7 +718,7 @@
 
 .knowledge-assistant-process-toggle {
   display: inline-flex;
-  min-height: 2rem;
+  min-height: 2.75rem;
   align-items: center;
   gap: 0.4rem;
   border-radius: 0.4rem;
