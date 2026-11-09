@@ -4,9 +4,9 @@
   "base_sha": "132ce9da2b22fecc78630b3b40f1ecd0f8839f7e",
   "covered_files": {
     "site/components/KnowledgeAssistant.css": "a0e2dfc6a64af01337d3bf37c0872849041f1b29",
-    "site/components/KnowledgeAssistant.tsx": "c4cf725dfaf700627d91070ddd0f57ad867e79bc",
+    "site/components/KnowledgeAssistant.tsx": "f4fa547eefe70efb85c29224f99d5f7b1992b8cf",
     "src/lib/web-demo-fetch.ts": "19c20187c0096631c6fd7f725f6fb86ada47bad5",
-    "tests/components/KnowledgeAssistant.test.tsx": "bdd473ab95dd5109f857ffd7110eef6a27a9e746",
+    "tests/components/KnowledgeAssistant.test.tsx": "eaaab466cef91b09cd7ea12a3fcea3e46153f7ba",
     "tests/lib/web-demo-fetch.test.ts": "72851c368eda9cb936c015d56256467e3a11ca06"
   },
   "change": {
@@ -22,12 +22,12 @@
       "evidence": [
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
-          "blob": "bdd473ab95dd5109f857ffd7110eef6a27a9e746",
+          "blob": "eaaab466cef91b09cd7ea12a3fcea3e46153f7ba",
           "command": "bun test tests/components/KnowledgeAssistant.test.tsx tests/lib/web-demo-fetch.test.ts"
         },
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "c4cf725dfaf700627d91070ddd0f57ad867e79bc",
+          "blob": "f4fa547eefe70efb85c29224f99d5f7b1992b8cf",
           "command": "bunx biome check site/components/KnowledgeAssistant.tsx site/components/KnowledgeAssistant.css"
         }
       ]
@@ -39,7 +39,7 @@
       "evidence": [
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
-          "blob": "bdd473ab95dd5109f857ffd7110eef6a27a9e746",
+          "blob": "eaaab466cef91b09cd7ea12a3fcea3e46153f7ba",
           "command": "Current-candidate component tests cover waiting, stop, replacement send serialization, empty cancellation, and failure recovery"
         },
         {
@@ -75,7 +75,21 @@
     "public_api": {
       "impact": "patch",
       "change": "unchanged",
-      "supported_consumer_versions": ["4.2.0"],
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.10",
+        "4.1.11",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.2.0"
+      ],
       "evidence": [
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",

@@ -888,6 +888,79 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     );
   });
 
+  test("keeps replacement sends when a background poll overlaps stop confirmation", async () => {
+    const selected = conversation("overlapping-stop-poll", "general", null);
+    const pendingMessage = assistantMessage(selected.id, "pending-assistant", "streaming");
+    const activeJob = generationJob(selected.id, "pending-job", pendingMessage.id);
+    const generatingSnapshot = {
+      conversation: selected,
+      messages: [pendingMessage],
+      generationJobs: [activeJob],
+      activeGenerationJob: activeJob,
+    };
+    const completedSnapshot = snapshot(selected.id);
+    const postRequests: string[] = [];
+    let stopRequested = false;
+    let stopSnapshotStarted = false;
+    let releaseStopSnapshot: (() => void) | undefined;
+    const stopSnapshotGate = new Promise<void>((resolve) => {
+      releaseStopSnapshot = resolve;
+    });
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      const method = init?.method ?? "GET";
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat/stop") {
+        postRequests.push(url.pathname);
+        stopRequested = true;
+        return json({
+          stopped: true,
+          generationJob: { ...activeJob, cancelRequested: true },
+        });
+      }
+      if (url.pathname === "/api/public/chat" && method === "POST") {
+        postRequests.push(url.pathname);
+        return json({
+          status: "queued",
+          conversationId: selected.id,
+          turnId: "new-turn",
+          requestId: "request-id",
+          userMessageId: "new-user",
+          assistantMessageId: "new-assistant",
+          createdConversation: false,
+        });
+      }
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation")) {
+        if (!stopRequested) return json(generatingSnapshot);
+        if (!stopSnapshotStarted) {
+          stopSnapshotStarted = true;
+          await stopSnapshotGate;
+        }
+        return json(completedSnapshot);
+      }
+      if (url.pathname === "/api/public/chat") return json({ conversations: [selected], quota });
+      throw new Error(`Unexpected request: ${url.pathname} ${method}`);
+    }) as typeof fetch;
+
+    window.history.replaceState({}, "", "/chat?conversation=overlapping-stop-poll");
+    const view = render(<KnowledgeAssistant fullPage />);
+    const textarea = await waitFor(() => view.getByLabelText("知识对话问题"));
+    const user = userEvent.setup({ document: window.document });
+    await user.type(textarea, "新的问题");
+
+    const sendPromise = user.click(view.getByRole("button", { name: "发送" }));
+    await waitFor(() => expect(stopRequested).toBe(true));
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 750));
+    releaseStopSnapshot?.();
+    await sendPromise;
+
+    await waitFor(() =>
+      expect(postRequests).toEqual(["/api/public/chat/stop", "/api/public/chat"])
+    );
+  });
+
   test("ignores repeated send actions while stopping the active generation", async () => {
     const selected = conversation("double-send-after-stop", "general", null);
     const pendingMessage = assistantMessage(selected.id, "pending-assistant", "streaming");

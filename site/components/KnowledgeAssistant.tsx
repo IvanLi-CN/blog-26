@@ -1356,6 +1356,10 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     }
     let cancelled = false;
     const poll = async () => {
+      if (stoppingRef.current || submittingRef.current) {
+        pollTimer.current = window.setTimeout(poll, ASSISTANT_STOP_POLL_INTERVAL_MS);
+        return;
+      }
       const next = await loadSnapshot(selectedId);
       if (cancelled) return;
       pollTimer.current = window.setTimeout(poll, isGenerating(next) ? 650 : 2400);
