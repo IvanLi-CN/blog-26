@@ -6,15 +6,15 @@
   <title>PDF preview</title>
   <style>
     :root { color-scheme: dark; }
-    html, body { min-height: 100%; margin: 0; }
+    html, body { margin: 0; }
     body { overflow: auto; background: #10231f; }
     #pages { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; padding: 1rem; }
-    #page-shell { display: grid; place-items: center; min-height: 100%; padding: 1rem; }
+    #page-shell { display: grid; place-items: center; padding: 1rem; }
     .page { display: block; max-width: 100%; height: auto; background: #fff; box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.25); }
     #toolbar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 0.8rem; padding: 0.55rem; color: #d2e7dd; background: rgba(16, 35, 31, 0.94); font: 13px/1.4 system-ui, sans-serif; }
     #toolbar button { min-width: 2.1rem; border: 1px solid #527568; border-radius: 0.35rem; background: transparent; color: inherit; cursor: pointer; }
     #toolbar button:disabled { opacity: 0.4; cursor: default; }
-    #status { display: grid; min-height: 100%; place-items: center; padding: 2rem; color: #b9d7ca; font: 14px/1.5 system-ui, sans-serif; text-align: center; }
+    #status { display: grid; min-height: 360px; place-items: center; padding: 2rem; color: #b9d7ca; font: 14px/1.5 system-ui, sans-serif; text-align: center; }
     #status[hidden], #pages[hidden], #page-shell[hidden], #toolbar[hidden] { display: none; }
   </style>
 </head>
@@ -44,7 +44,10 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
 
     function notifyHeight() {
-      window.parent.postMessage({ type: "project-preview-height", height: document.documentElement.scrollHeight }, "*");
+      const pageHeight = pageCanvas.hidden ? 0 : pageCanvas.getBoundingClientRect().height;
+      const contentHeight = mode === "scroll" ? pages.scrollHeight : pageHeight + 32;
+      const height = Math.max(360, Math.ceil(toolbar.hidden ? contentHeight : contentHeight + toolbar.offsetHeight));
+      window.parent.postMessage({ type: "project-preview-height", height }, "*");
     }
 
     function notifyReady() {

@@ -123,6 +123,7 @@ export function ProjectArtifactTabs({
 
   useEffect(() => {
     if (!activePreviewId) return;
+    setPreviewHeight(420);
     setPreviewStatus(forcedPreviewStatus ?? "loading");
     setPreviewRevision((revision) => revision + 1);
   }, [activePreviewId, forcedPreviewStatus]);
@@ -159,7 +160,7 @@ export function ProjectArtifactTabs({
         return;
       }
       if (event.data?.type !== "project-preview-height") return;
-      const nextHeight = Math.min(760, Math.max(360, Math.ceil(event.data.height ?? 420)));
+      const nextHeight = Math.min(640, Math.max(360, Math.ceil(event.data.height ?? 420)));
       setPreviewHeight((current) =>
         nextHeight >= current || previewOutOfView ? nextHeight : current
       );
