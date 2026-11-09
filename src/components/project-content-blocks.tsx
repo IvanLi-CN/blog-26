@@ -137,13 +137,22 @@ export function ProjectArtifactTabs({
   }, []);
 
   useEffect(() => {
-    const onMessage = (event: MessageEvent<{ type?: string; height?: number }>) => {
+    const onMessage = (
+      event: MessageEvent<{ type?: string; height?: number; deltaY?: number }>
+    ) => {
       const source = event.source;
       if (
         source !== iframeRef.current?.contentWindow &&
         source !== modalIframeRef.current?.contentWindow
       )
         return;
+      if (
+        event.data?.type === "project-preview-wheel" &&
+        source === iframeRef.current?.contentWindow
+      ) {
+        window.scrollBy({ top: event.data.deltaY ?? 0, behavior: "auto" });
+        return;
+      }
       if (event.data?.type === "project-preview-ready" && !forcedPreviewStatus) {
         setPreviewStatus("ready");
         return;
