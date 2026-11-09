@@ -24,7 +24,7 @@
 
     const status = document.getElementById("status");
     let lastPointerType = "mouse";
-    let hasInteracted = false;
+    let zoomHintArmed = false;
     let hintTimer;
     const modifierLabel = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
     const hint = document.createElement("div");
@@ -39,12 +39,21 @@
     const viewerElement = document.getElementById("viewer");
     viewerElement.addEventListener("pointerdown", (event) => {
       lastPointerType = event.pointerType;
-      hasInteracted = true;
+      zoomHintArmed = event.pointerType === "mouse";
+    });
+    viewerElement.addEventListener("pointermove", (event) => {
+      if (event.buttons !== 0) zoomHintArmed = false;
     });
     viewerElement.addEventListener("wheel", (event) => {
       if (event.ctrlKey || event.metaKey) return;
-      if (hasInteracted && lastPointerType === "mouse" && event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+      const mouseWheel =
+        event.deltaMode === WheelEvent.DOM_DELTA_LINE ||
+        (event.deltaMode === WheelEvent.DOM_DELTA_PIXEL &&
+          Number.isInteger(event.deltaY) &&
+          Math.abs(event.deltaY) >= 20);
+      if (zoomHintArmed && lastPointerType === "mouse" && mouseWheel) {
         showZoomHint();
+        zoomHintArmed = false;
       }
       event.preventDefault();
       event.stopImmediatePropagation();
