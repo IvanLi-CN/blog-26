@@ -340,6 +340,35 @@ function demoAssistantRecord(
     completedAt: generating ? null : now - 8_000,
     citations: generating ? [] : demoAssistantCitations(now - 9_000, `${recordId}-assistant`),
   };
+  const completedUserMessage: AssistantMessage = {
+    ...userMessage,
+    id: `${recordId}-user-complete`,
+    sequence: 1,
+    content: "这个站点记录过哪些工程经验？",
+    createdAt: now - 20_000,
+    updatedAt: now - 20_000,
+    completedAt: now - 20_000,
+  };
+  const completedAssistantMessage: AssistantMessage = {
+    ...assistantMessage,
+    id: `${recordId}-assistant-complete`,
+    sequence: 2,
+    content: "这里记录工程实践、项目经验与公开文章，方便之后检索、复用和继续整理。",
+    status: "completed",
+    createdAt: now - 19_000,
+    updatedAt: now - 18_000,
+    completedAt: now - 18_000,
+    citations: demoAssistantCitations(now - 19_000, `${recordId}-assistant-complete`),
+  };
+  if (generating) {
+    userMessage.sequence = 3;
+    assistantMessage.sequence = 4;
+    userMessage.createdAt = now - 10_000;
+    userMessage.updatedAt = now - 10_000;
+    userMessage.completedAt = now - 10_000;
+    assistantMessage.createdAt = now - 9_000;
+    assistantMessage.updatedAt = now - 9_000;
+  }
   const generationJob: AssistantGenerationJob | null = {
     id: `${recordId}-job`,
     conversationId: recordId,
@@ -360,7 +389,11 @@ function demoAssistantRecord(
     scene,
     isSeed: !id,
     conversation,
-    messages: withHistory ? [userMessage, assistantMessage] : [],
+    messages: withHistory
+      ? generating
+        ? [completedUserMessage, completedAssistantMessage, userMessage, assistantMessage]
+        : [userMessage, assistantMessage]
+      : [],
     generationJob: withHistory ? generationJob : null,
   };
   const markdown = withHistory ? assistantMarkdownMessages(scene) : null;

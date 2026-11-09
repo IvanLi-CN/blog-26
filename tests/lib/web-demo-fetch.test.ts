@@ -162,8 +162,13 @@ describe("webDemoFetch", () => {
       await webDemoFetch(`/api/public/chat?conversation=${encodeURIComponent(conversationId)}`)
     ).json();
     const assistant = snapshot.messages.find(
-      (message: { role: string }) => message.role === "assistant"
+      (message: { role: string; status: string }) =>
+        message.role === "assistant" && message.status === "streaming"
     );
+
+    expect(
+      snapshot.messages.filter((message: { role: string }) => message.role === "assistant")
+    ).toHaveLength(2);
 
     expect(assistant).toMatchObject({ status: "streaming", content: "", citations: [] });
   });
