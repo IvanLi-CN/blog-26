@@ -26,12 +26,13 @@
         height: document.documentElement.scrollHeight,
       }, "*");
     };
+    const notifyReady = () => window.parent.postMessage({ type: "project-preview-ready" }, "*");
     const viewer = new OV.EmbeddedViewer(document.getElementById("viewer"), {
       backgroundColor: new OV.RGBAColor(16, 35, 31, 255),
       defaultColor: new OV.RGBColor(126, 178, 160),
       defaultLineColor: new OV.RGBColor(24, 45, 40),
       edgeSettings: new OV.EdgeSettings(true, new OV.RGBColor(35, 64, 56), 15),
-      onModelLoaded: () => { status.hidden = true; notifyHeight(); },
+      onModelLoaded: () => { status.hidden = true; notifyHeight(); notifyReady(); },
       onModelLoadFailed: () => { status.textContent = "3D 模型加载失败，请下载 STEP 文件查看。"; }
     });
     new ResizeObserver(notifyHeight).observe(document.getElementById("viewer"));

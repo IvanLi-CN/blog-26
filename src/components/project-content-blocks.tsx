@@ -2,6 +2,12 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  getWebDemoRuntimeState,
+  isWebDemoBuildEnabled,
+  WEB_DEMO_STATE_EVENT,
+  type WebDemoScene,
+} from "../lib/web-demo-runtime";
 
 export function ProjectFigure({
   src,
@@ -36,6 +42,47 @@ type ProjectArtifact = {
   downloads: ProjectArtifactDownload[];
 };
 
+type PreviewStatus = "loading" | "ready" | "error";
+
+function previewStatusForScene(scene: WebDemoScene | null): PreviewStatus | null {
+  if (scene === "mains-aegis-preview-loading") return "loading";
+  if (scene === "mains-aegis-preview-error") return "error";
+  return null;
+}
+
+function ProjectArtifactStatus({
+  status,
+  title,
+  onRetry,
+}: {
+  status: PreviewStatus;
+  title: string;
+  onRetry: () => void;
+}) {
+  if (status === "ready") return null;
+  const isError = status === "error";
+  return (
+    <div
+      className={`project-artifact-status project-artifact-status-${status}`}
+      role="status"
+      aria-live="polite"
+    >
+      <span className="project-artifact-status-icon" aria-hidden="true">
+        {isError ? "!" : ""}
+      </span>
+      <div>
+        <strong>{isError ? "预览加载失败" : `正在加载 ${title}`}</strong>
+        <p>{isError ? "请重试，或下载原始文件查看。" : "正在准备预览内容，请稍候。"}</p>
+      </div>
+      {isError ? (
+        <button type="button" onClick={onRetry}>
+          重新加载
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function ProjectArtifactTabs({
   title,
   description,
@@ -49,15 +96,35 @@ export function ProjectArtifactTabs({
   const [isExpanded, setIsExpanded] = useState(false);
   const [previewHeight, setPreviewHeight] = useState(420);
   const [previewOutOfView, setPreviewOutOfView] = useState(false);
+  const [previewRevision, setPreviewRevision] = useState(0);
+  const [demoScene, setDemoScene] = useState<WebDemoScene | null>(null);
+  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("loading");
   const previewRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const modalIframeRef = useRef<HTMLIFrameElement>(null);
   const active = items.find((item) => item.id === activeId) ?? items[0];
+  const activePreviewId = active?.id;
+  const forcedPreviewStatus = previewStatusForScene(demoScene);
   const previewUrl = (mode?: "scroll") => {
     if (!active) return "";
     if (mode !== "scroll" || !active.previewUrl.includes("pdf-viewer.html"))
       return active.previewUrl;
     return `${active.previewUrl}${active.previewUrl.includes("?") ? "&" : "?"}mode=scroll`;
   };
+
+  useEffect(() => {
+    if (!isWebDemoBuildEnabled()) return;
+    const syncScene = () => setDemoScene(getWebDemoRuntimeState(window.location).sceneState.scene);
+    syncScene();
+    window.addEventListener(WEB_DEMO_STATE_EVENT, syncScene);
+    return () => window.removeEventListener(WEB_DEMO_STATE_EVENT, syncScene);
+  }, []);
+
+  useEffect(() => {
+    if (!activePreviewId) return;
+    setPreviewStatus(forcedPreviewStatus ?? "loading");
+    setPreviewRevision((revision) => revision + 1);
+  }, [activePreviewId, forcedPreviewStatus]);
 
   useEffect(() => {
     const node = previewRef.current;
@@ -71,11 +138,17 @@ export function ProjectArtifactTabs({
 
   useEffect(() => {
     const onMessage = (event: MessageEvent<{ type?: string; height?: number }>) => {
+      const source = event.source;
       if (
-        event.source !== iframeRef.current?.contentWindow ||
-        event.data?.type !== "project-preview-height"
+        source !== iframeRef.current?.contentWindow &&
+        source !== modalIframeRef.current?.contentWindow
       )
         return;
+      if (event.data?.type === "project-preview-ready" && !forcedPreviewStatus) {
+        setPreviewStatus("ready");
+        return;
+      }
+      if (event.data?.type !== "project-preview-height") return;
       const nextHeight = Math.min(760, Math.max(360, Math.ceil(event.data.height ?? 420)));
       setPreviewHeight((current) =>
         nextHeight >= current || previewOutOfView ? nextHeight : current
@@ -83,12 +156,18 @@ export function ProjectArtifactTabs({
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [previewOutOfView]);
+  }, [forcedPreviewStatus, previewOutOfView]);
 
   useEffect(() => {
     document.body.classList.toggle("project-artifact-modal-open", isExpanded);
     return () => document.body.classList.remove("project-artifact-modal-open");
   }, [isExpanded]);
+
+  useEffect(() => {
+    if (demoScene === "mains-aegis-preview-expanded" && title === "PDF 图纸") {
+      setIsExpanded(true);
+    }
+  }, [demoScene, title]);
 
   if (!active) return null;
 
@@ -137,12 +216,24 @@ export function ProjectArtifactTabs({
           style={{ height: `${previewHeight}px` }}
         >
           <iframe
-            key={active.id}
+            key={`${active.id}-${previewRevision}`}
             ref={iframeRef}
             title={`${active.title} 预览`}
             src={previewUrl()}
             loading="lazy"
+            onLoad={() => {
+              if (!forcedPreviewStatus) setPreviewStatus("ready");
+            }}
+            onError={() => setPreviewStatus("error")}
             sandbox={active.previewKind === "model" ? "allow-scripts allow-same-origin" : undefined}
+          />
+          <ProjectArtifactStatus
+            status={previewStatus}
+            title={active.label}
+            onRetry={() => {
+              setPreviewStatus("loading");
+              setPreviewRevision((revision) => revision + 1);
+            }}
           />
         </div>
         <div className="project-artifact-meta">
@@ -194,12 +285,25 @@ export function ProjectArtifactTabs({
               </aside>
               <div className="project-artifact-modal-viewer">
                 <iframe
-                  key={`expanded-${active.id}`}
+                  key={`expanded-${active.id}-${previewRevision}`}
+                  ref={modalIframeRef}
                   title={`${active.title} 放大预览`}
                   src={previewUrl("scroll")}
+                  onLoad={() => {
+                    if (!forcedPreviewStatus) setPreviewStatus("ready");
+                  }}
+                  onError={() => setPreviewStatus("error")}
                   sandbox={
                     active.previewKind === "model" ? "allow-scripts allow-same-origin" : undefined
                   }
+                />
+                <ProjectArtifactStatus
+                  status={previewStatus}
+                  title={active.label}
+                  onRetry={() => {
+                    setPreviewStatus("loading");
+                    setPreviewRevision((revision) => revision + 1);
+                  }}
                 />
               </div>
             </div>,
