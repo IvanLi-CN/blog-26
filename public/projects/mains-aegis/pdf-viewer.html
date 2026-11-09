@@ -6,7 +6,11 @@
   <title>PDF preview</title>
   <style>
     :root { color-scheme: dark; }
-    html, body { margin: 0; }
+    html, body { margin: 0; scrollbar-color: rgba(126, 178, 160, 0.58) transparent; scrollbar-width: thin; }
+    html::-webkit-scrollbar { width: 0.42rem; }
+    html::-webkit-scrollbar-track { background: transparent; }
+    html::-webkit-scrollbar-thumb { border: 0.12rem solid transparent; border-radius: 999px; background: rgba(126, 178, 160, 0.58); background-clip: padding-box; }
+    html::-webkit-scrollbar-thumb:hover { background: rgba(169, 211, 193, 0.82); background-clip: padding-box; }
     body { overflow: auto; background: #10231f; }
     #pages { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; padding: 1rem; }
     #page-shell { display: grid; place-items: center; padding: 1rem; }
