@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mains Aegis 3D model</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body, #viewer { width: 100%; height: 100%; margin: 0; }
+    body { overflow: hidden; background: #10231f; }
+    #viewer { min-height: 360px; }
+    #viewer > div { display: none; }
+    #zoom-hint { position: fixed; left: 50%; bottom: 1rem; z-index: 2; transform: translate(-50%, 0.5rem); padding: 0.55rem 0.8rem; border: 1px solid rgba(126, 178, 160, 0.5); border-radius: 999px; background: rgba(16, 35, 31, 0.92); color: #d2e7dd; font: 13px/1.2 system-ui, sans-serif; opacity: 0; pointer-events: none; transition: opacity 180ms ease, transform 180ms ease; }
+    #zoom-hint.visible { transform: translate(-50%, 0); opacity: 1; }
+    #status[hidden] { display: none; }
+    #status { position: fixed; inset: 0; display: grid; place-items: center; padding: 1rem; color: #b9d7ca; font: 14px/1.5 system-ui, sans-serif; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="viewer"></div>
+  <div id="status" hidden>正在加载 3D 模型…</div>
+  <script type="module">
+    import * as OV from "https://cdn.jsdelivr.net/npm/online-3d-viewer@0.18.0/+esm";
+
+    const status = document.getElementById("status");
+    let lastPointerType = "mouse";
+    let zoomHintArmed = false;
+    let hintTimer;
+    const modifierLabel = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
+    const hint = document.createElement("div");
+    hint.id = "zoom-hint";
+    hint.textContent = `按住 ${modifierLabel} 后滚动以缩放`;
+    document.body.append(hint);
+    const showZoomHint = () => {
+      hint.classList.add("visible");
+      window.clearTimeout(hintTimer);
+      hintTimer = window.setTimeout(() => hint.classList.remove("visible"), 2600);
+    };
+    const viewerElement = document.getElementById("viewer");
+    viewerElement.addEventListener("pointerdown", (event) => {
+      lastPointerType = event.pointerType;
+      zoomHintArmed = event.pointerType === "mouse";
+    });
+    viewerElement.addEventListener("pointermove", (event) => {
+      if (event.buttons !== 0) zoomHintArmed = false;
+    });
+    viewerElement.addEventListener("wheel", (event) => {
+      if (event.ctrlKey || event.metaKey) return;
+      if (zoomHintArmed && lastPointerType === "mouse") {
+        showZoomHint();
+        zoomHintArmed = false;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      window.parent.postMessage({ type: "project-preview-wheel", deltaY: event.deltaY }, "*");
+    }, { capture: true, passive: false });
+    const notifyHeight = () => {
+      window.parent.postMessage({
+        type: "project-preview-height",
+        height: document.documentElement.scrollHeight,
+      }, "*");
+    };
+    const notifyReady = () => window.parent.postMessage({ type: "project-preview-ready" }, "*");
+    const viewer = new OV.EmbeddedViewer(viewerElement, {
+      backgroundColor: new OV.RGBAColor(16, 35, 31, 255),
+      defaultColor: new OV.RGBColor(126, 178, 160),
+      defaultLineColor: new OV.RGBColor(24, 45, 40),
+      edgeSettings: new OV.EdgeSettings(true, new OV.RGBColor(35, 64, 56), 15),
+      onModelLoaded: () => { status.hidden = true; notifyHeight(); notifyReady(); },
+      onModelLoadFailed: () => { status.textContent = "3D 模型加载失败，请下载 STEP 文件查看。"; }
+    });
+    new ResizeObserver(notifyHeight).observe(document.getElementById("viewer"));
+    window.addEventListener("load", notifyHeight);
+    const model = new URLSearchParams(location.search).get("model");
+    const modelUrl = model === "joystick" ? "/projects/mains-aegis/MainsAegis-Joystick.step" : "/projects/mains-aegis/MainsAegis-Btns.step";
+    viewer.LoadModelFromUrlList([modelUrl]);
+  </script>
+</body>
+</html>

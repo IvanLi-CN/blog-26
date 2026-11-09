@@ -269,6 +269,10 @@ export default function PublicRouter({
       const environmentChanged = changed.some((field) =>
         ["persona", "connection", "delay"].includes(field)
       );
+      // Mains Aegis artifact scenes only alter client-side preview states. Do
+      // not re-run the public route loader, which would reset the reader to
+      // the top while the Inspector is being used lower on the page.
+      if (sceneChanged && window.location.pathname.startsWith("/projects/mains-aegis")) return;
       if (
         sceneChanged ||
         (environmentChanged && (stateRef.current.error || !stateRef.current.payload))
