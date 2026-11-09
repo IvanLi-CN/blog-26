@@ -46,12 +46,7 @@
     });
     viewerElement.addEventListener("wheel", (event) => {
       if (event.ctrlKey || event.metaKey) return;
-      const mouseWheel =
-        event.deltaMode === WheelEvent.DOM_DELTA_LINE ||
-        (event.deltaMode === WheelEvent.DOM_DELTA_PIXEL &&
-          Number.isInteger(event.deltaY) &&
-          Math.abs(event.deltaY) >= 20);
-      if (zoomHintArmed && lastPointerType === "mouse" && mouseWheel) {
+      if (zoomHintArmed && lastPointerType === "mouse") {
         showZoomHint();
         zoomHintArmed = false;
       }
