@@ -74,6 +74,46 @@ function snapshot(id: string) {
   };
 }
 
+function assistantMessage(
+  conversationId: string,
+  id: string,
+  status: "pending" | "streaming" | "completed" | "failed" | "cancelled",
+  content = ""
+) {
+  return {
+    id,
+    conversationId,
+    sequence: 1,
+    role: "assistant" as const,
+    content,
+    status,
+    clientRequestId: null,
+    createdAt: 1,
+    updatedAt: 1,
+    completedAt: status === "pending" || status === "streaming" ? null : 1,
+    citations: [],
+  };
+}
+
+function generationJob(conversationId: string, id: string, assistantMessageId: string) {
+  return {
+    id,
+    conversationId,
+    userMessageId: null,
+    assistantMessageId,
+    requestId: `${id}-request`,
+    status: "running" as const,
+    attempt: 1,
+    leaseUntil: null,
+    cancelRequested: false,
+    startedAt: 1,
+    finishedAt: null,
+    errorCode: null,
+    createdAt: 1,
+    updatedAt: 1,
+  };
+}
+
 function json(value: unknown, status = 200) {
   return Response.json(value, { status });
 }
@@ -743,6 +783,286 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     expect(state.newConversationContextFrozen).toBe(true);
     expect(assignedUrl).toContain("/chat");
     expect(assignedUrl).not.toContain("clipping=");
+  });
+
+  test("moves the stop action to the composer while a response is pending", async () => {
+    const selected = conversation("generating-conversation", "general", null);
+    const pendingMessage = assistantMessage(selected.id, "pending-assistant", "pending");
+    const activeJob = generationJob(selected.id, "pending-job", pendingMessage.id);
+    const generatingSnapshot = {
+      conversation: selected,
+      messages: [pendingMessage],
+      generationJobs: [activeJob],
+      activeGenerationJob: activeJob,
+    };
+
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation"))
+        return json(generatingSnapshot);
+      if (url.pathname === "/api/public/chat") return json({ conversations: [selected], quota });
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    window.history.replaceState({}, "", "/chat?conversation=generating-conversation");
+    const view = render(<KnowledgeAssistant fullPage />);
+
+    const stop = await waitFor(() => view.getByRole("button", { name: "停止生成" }));
+    expect((stop as HTMLButtonElement).disabled).toBe(false);
+    expect(view.getByTestId("assistant-messages").textContent).toContain("正在生成");
+    expect(
+      view.container.querySelector('.knowledge-assistant-header [aria-label="停止生成"]')
+    ).toBeNull();
+  });
+
+  test("stops the active generation before sending a non-empty draft", async () => {
+    const selected = conversation("send-after-stop", "general", null);
+    const pendingMessage = assistantMessage(selected.id, "pending-assistant", "streaming");
+    const activeJob = generationJob(selected.id, "pending-job", pendingMessage.id);
+    const generatingSnapshot = {
+      conversation: selected,
+      messages: [pendingMessage],
+      generationJobs: [activeJob],
+      activeGenerationJob: activeJob,
+    };
+    const completedSnapshot = snapshot(selected.id);
+    let stopped = false;
+    let stopSnapshotReads = 0;
+    const postRequests: string[] = [];
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      const method = init?.method ?? "GET";
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat/stop") {
+        postRequests.push(url.pathname);
+        stopped = true;
+        return json({
+          stopped: true,
+          generationJob: { ...activeJob, cancelRequested: true },
+        });
+      }
+      if (url.pathname === "/api/public/chat" && method === "POST") {
+        postRequests.push(url.pathname);
+        return json({
+          status: "queued",
+          conversationId: selected.id,
+          turnId: "new-turn",
+          requestId: "request-id",
+          userMessageId: "new-user",
+          assistantMessageId: "new-assistant",
+          createdConversation: false,
+        });
+      }
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation")) {
+        if (!stopped) return json(generatingSnapshot);
+        stopSnapshotReads += 1;
+        return json(
+          stopSnapshotReads === 1
+            ? {
+                ...generatingSnapshot,
+                activeGenerationJob: { ...activeJob, cancelRequested: true },
+              }
+            : completedSnapshot
+        );
+      }
+      if (url.pathname === "/api/public/chat") return json({ conversations: [selected], quota });
+      throw new Error(`Unexpected request: ${url.pathname} ${method}`);
+    }) as typeof fetch;
+
+    window.history.replaceState({}, "", "/chat?conversation=send-after-stop");
+    const view = render(<KnowledgeAssistant fullPage />);
+    const textarea = await waitFor(() => view.getByLabelText("知识对话问题"));
+    const user = userEvent.setup({ document: window.document });
+    await user.type(textarea, "新的问题");
+
+    const send = view.getByRole("button", { name: "发送" }) as HTMLButtonElement;
+    expect(send.disabled).toBe(false);
+    await user.click(send);
+
+    await waitFor(() =>
+      expect(postRequests).toEqual(["/api/public/chat/stop", "/api/public/chat"])
+    );
+  });
+
+  test("keeps replacement sends when a background poll overlaps stop confirmation", async () => {
+    const selected = conversation("overlapping-stop-poll", "general", null);
+    const pendingMessage = assistantMessage(selected.id, "pending-assistant", "streaming");
+    const activeJob = generationJob(selected.id, "pending-job", pendingMessage.id);
+    const generatingSnapshot = {
+      conversation: selected,
+      messages: [pendingMessage],
+      generationJobs: [activeJob],
+      activeGenerationJob: activeJob,
+    };
+    const completedSnapshot = snapshot(selected.id);
+    const postRequests: string[] = [];
+    let stopRequested = false;
+    let stopSnapshotStarted = false;
+    let releaseStopSnapshot: (() => void) | undefined;
+    const stopSnapshotGate = new Promise<void>((resolve) => {
+      releaseStopSnapshot = resolve;
+    });
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      const method = init?.method ?? "GET";
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat/stop") {
+        postRequests.push(url.pathname);
+        stopRequested = true;
+        return json({
+          stopped: true,
+          generationJob: { ...activeJob, cancelRequested: true },
+        });
+      }
+      if (url.pathname === "/api/public/chat" && method === "POST") {
+        postRequests.push(url.pathname);
+        return json({
+          status: "queued",
+          conversationId: selected.id,
+          turnId: "new-turn",
+          requestId: "request-id",
+          userMessageId: "new-user",
+          assistantMessageId: "new-assistant",
+          createdConversation: false,
+        });
+      }
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation")) {
+        if (!stopRequested) return json(generatingSnapshot);
+        if (!stopSnapshotStarted) {
+          stopSnapshotStarted = true;
+          await stopSnapshotGate;
+        }
+        return json(completedSnapshot);
+      }
+      if (url.pathname === "/api/public/chat") return json({ conversations: [selected], quota });
+      throw new Error(`Unexpected request: ${url.pathname} ${method}`);
+    }) as typeof fetch;
+
+    window.history.replaceState({}, "", "/chat?conversation=overlapping-stop-poll");
+    const view = render(<KnowledgeAssistant fullPage />);
+    const textarea = await waitFor(() => view.getByLabelText("知识对话问题"));
+    const user = userEvent.setup({ document: window.document });
+    await user.type(textarea, "新的问题");
+
+    const sendPromise = user.click(view.getByRole("button", { name: "发送" }));
+    await waitFor(() => expect(stopRequested).toBe(true));
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 750));
+    releaseStopSnapshot?.();
+    await sendPromise;
+
+    await waitFor(() =>
+      expect(postRequests).toEqual(["/api/public/chat/stop", "/api/public/chat"])
+    );
+  });
+
+  test("ignores repeated send actions while stopping the active generation", async () => {
+    const selected = conversation("double-send-after-stop", "general", null);
+    const pendingMessage = assistantMessage(selected.id, "pending-assistant", "streaming");
+    const activeJob = generationJob(selected.id, "pending-job", pendingMessage.id);
+    const generatingSnapshot = {
+      conversation: selected,
+      messages: [pendingMessage],
+      generationJobs: [activeJob],
+      activeGenerationJob: activeJob,
+    };
+    const completedSnapshot = snapshot(selected.id);
+    let stopped = false;
+    let stopCalls = 0;
+    let submitCalls = 0;
+    let releaseStop: (() => void) | undefined;
+    const stopGate = new Promise<void>((resolve) => {
+      releaseStop = resolve;
+    });
+
+    globalThis.fetch = (async (input, init) => {
+      const url = new URL(String(input), "http://localhost");
+      const method = init?.method ?? "GET";
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat/stop") {
+        stopCalls += 1;
+        await stopGate;
+        stopped = true;
+        return json({ stopped: true, generationJob: null });
+      }
+      if (url.pathname === "/api/public/chat" && method === "POST") {
+        submitCalls += 1;
+        return json({
+          status: "queued",
+          conversationId: selected.id,
+          turnId: "new-turn",
+          requestId: "request-id",
+          userMessageId: "new-user",
+          assistantMessageId: "new-assistant",
+          createdConversation: false,
+        });
+      }
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation"))
+        return json(stopped ? completedSnapshot : generatingSnapshot);
+      if (url.pathname === "/api/public/chat") return json({ conversations: [selected], quota });
+      throw new Error(`Unexpected request: ${url.pathname} ${method}`);
+    }) as typeof fetch;
+
+    window.history.replaceState({}, "", "/chat?conversation=double-send-after-stop");
+    const view = render(<KnowledgeAssistant fullPage />);
+    const textarea = await waitFor(() => view.getByLabelText("知识对话问题"));
+    const user = userEvent.setup({ document: window.document });
+    await user.type(textarea, "新的问题");
+
+    const send = view.getByRole("button", { name: "发送" });
+    fireEvent.click(send);
+    fireEvent.click(send);
+    await waitFor(() => expect(stopCalls).toBe(1));
+    releaseStop?.();
+
+    await waitFor(() => expect(submitCalls).toBe(1));
+    expect(stopCalls).toBe(1);
+  });
+
+  test("does not render an empty cancelled message and shows failure recovery state", async () => {
+    const selected = conversation("terminal-states", "general", null);
+    const cancelled = assistantMessage(selected.id, "cancelled-assistant", "cancelled");
+    const failed = assistantMessage(selected.id, "failed-assistant", "failed", "已生成的部分");
+    const cancelledJob = {
+      ...generationJob(selected.id, "cancelled-job", cancelled.id),
+      status: "cancelled" as const,
+      cancelRequested: true,
+      finishedAt: 1,
+      errorCode: "cancelled-by-user",
+    };
+
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") return json(auth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation"))
+        return json({
+          conversation: selected,
+          messages: [cancelled, failed],
+          generationJobs: [cancelledJob],
+          activeGenerationJob: null,
+        });
+      if (url.pathname === "/api/public/chat") return json({ conversations: [selected], quota });
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    window.history.replaceState({}, "", "/chat?conversation=terminal-states");
+    const view = render(<KnowledgeAssistant fullPage />);
+
+    await waitFor(() =>
+      expect(view.container.querySelector('[data-message-id="failed-assistant"]')).toBeTruthy()
+    );
+    expect((view.getByRole("button", { name: "发送" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(view.container.querySelector('[data-message-id="cancelled-assistant"]')).toBeNull();
+    expect(view.getByTestId("assistant-stop-status").textContent).toContain("已停止生成");
+    expect(view.getByText("生成失败，可重试")).toBeTruthy();
+    expect(view.getByRole("button", { name: "重试" })).toBeTruthy();
   });
 
   test("renders user text literally and assistant markdown inside isolated message bodies", async () => {

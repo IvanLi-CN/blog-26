@@ -57,6 +57,8 @@ const UI_STATE_KEY = "site-knowledge-assistant-ui";
 const UI_LOGIN_HANDOFF_KEY = "site-knowledge-assistant-login-handoff";
 const ASSISTANT_DISPLAY_NAME = "知识对话";
 const PANEL_EXIT_DURATION = 300;
+const ASSISTANT_STOP_POLL_INTERVAL_MS = 120;
+const ASSISTANT_STOP_WAIT_TIMEOUT_MS = 5000;
 
 type AssistantContext = { slug: string; memoId: string | null };
 type PendingRequest = { content: string; requestId: string };
@@ -671,6 +673,18 @@ function MessageStream({
     }
     if (followTail.current) host.scrollTop = host.scrollHeight;
   }, [snapshot, stateKey, scrollHost]);
+  const latestGenerationJob = snapshot?.generationJobs.at(-1) ?? null;
+  const stoppedWithoutContent = Boolean(
+    latestGenerationJob?.status === "cancelled" &&
+      latestGenerationJob.assistantMessageId &&
+      snapshot?.messages.some(
+        (message) =>
+          message.id === latestGenerationJob.assistantMessageId &&
+          message.role === "assistant" &&
+          !message.content.trim() &&
+          message.status === "cancelled"
+      )
+  );
   return (
     <ConversationPresentationContext.Provider value={presentationStore}>
       <div
@@ -685,55 +699,86 @@ function MessageStream({
             <p className="mt-1">可以询问公开文章、项目经验和工作方法。</p>
           </div>
         ) : (
-          snapshot.messages
-            .filter((message) => message.role === "user" || message.role === "assistant")
-            .map((message) => (
-              <div
-                className={`knowledge-assistant-message knowledge-assistant-message--${message.role}`}
-                data-message-id={message.id}
-                data-message-role={message.role}
-                data-presentation-id={presentationId}
-                data-testid={`assistant-message-${message.role}`}
-                key={message.id}
+          <>
+            {snapshot.messages
+              .filter(
+                (message) =>
+                  (message.role === "user" || message.role === "assistant") &&
+                  !(
+                    message.role === "assistant" &&
+                    !message.content.trim() &&
+                    message.status === "cancelled"
+                  )
+              )
+              .map((message) => (
+                <div
+                  className={`knowledge-assistant-message knowledge-assistant-message--${message.role}`}
+                  data-message-id={message.id}
+                  data-message-role={message.role}
+                  data-presentation-id={presentationId}
+                  data-testid={`assistant-message-${message.role}`}
+                  key={message.id}
+                >
+                  <AssistantMessageContent
+                    className="knowledge-assistant-message-content"
+                    messageId={message.id}
+                    presentationId={presentationId}
+                    role={message.role as "user" | "assistant"}
+                    content={message.content}
+                    status={message.status}
+                    renderMarkdown={ConversationMarkdown}
+                  />
+                  {message.role === "assistant" &&
+                  !message.content.trim() &&
+                  (message.status === "pending" || message.status === "streaming") ? (
+                    <p className="knowledge-assistant-streaming-placeholder" role="status">
+                      正在生成……
+                    </p>
+                  ) : null}
+                  {message.role === "assistant" && message.status === "cancelled" ? (
+                    <p className="knowledge-assistant-status-note" role="status">
+                      已停止生成
+                    </p>
+                  ) : null}
+                  {message.role === "assistant" && message.status === "failed" ? (
+                    <p className="knowledge-assistant-status-note" role="status">
+                      生成失败，可重试
+                    </p>
+                  ) : null}
+                  {message.status === "failed" && onRetry ? (
+                    <button
+                      type="button"
+                      className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-md border border-[color:var(--nature-line-strong)] px-2 text-xs font-semibold"
+                      onClick={() => onRetry(message)}
+                    >
+                      <Icon name="tabler:refresh" className="h-3.5 w-3.5" />
+                      重试
+                    </button>
+                  ) : null}
+                  {message.citations.length ? (
+                    <ul className="knowledge-assistant-citations" aria-label="回答来源">
+                      {message.citations.map((citation: AssistantCitation) => (
+                        <li key={citation.id}>
+                          <a href={citation.href} target="_blank" rel="noreferrer">
+                            {citation.title}
+                            {citation.location ? ` · ${citation.location}` : ""}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ))}
+            {stoppedWithoutContent ? (
+              <p
+                className="knowledge-assistant-status-note knowledge-assistant-status-note--standalone"
+                data-testid="assistant-stop-status"
+                role="status"
               >
-                <AssistantMessageContent
-                  className="knowledge-assistant-message-content"
-                  messageId={message.id}
-                  presentationId={presentationId}
-                  role={message.role as "user" | "assistant"}
-                  content={message.content}
-                  status={message.status}
-                  renderMarkdown={ConversationMarkdown}
-                />
-                {!message.content && message.status === "streaming" ? (
-                  <p className="knowledge-assistant-streaming-placeholder" role="status">
-                    正在生成……
-                  </p>
-                ) : null}
-                {message.status === "failed" && onRetry ? (
-                  <button
-                    type="button"
-                    className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-md border border-[color:var(--nature-line-strong)] px-2 text-xs font-semibold"
-                    onClick={() => onRetry(message)}
-                  >
-                    <Icon name="tabler:refresh" className="h-3.5 w-3.5" />
-                    重试
-                  </button>
-                ) : null}
-                {message.citations.length ? (
-                  <ul className="knowledge-assistant-citations" aria-label="回答来源">
-                    {message.citations.map((citation: AssistantCitation) => (
-                      <li key={citation.id}>
-                        <a href={citation.href} target="_blank" rel="noreferrer">
-                          {citation.title}
-                          {citation.location ? ` · ${citation.location}` : ""}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            ))
+                已停止生成
+              </p>
+            ) : null}
+          </>
         )}
       </div>
     </ConversationPresentationContext.Provider>
@@ -858,10 +903,12 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   const [requestError, setRequestError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
   const selectedRef = useRef(selectedId);
   const draftsRef = useRef(drafts);
   const pollTimer = useRef<number | null>(null);
   const submittingRef = useRef(false);
+  const stoppingRef = useRef(false);
   const submissionRequestsRef = useRef(initialUiState.pendingRequests);
   const pendingRequestsRef = useRef(initialUiState.pendingRequests);
   const newConversationContextRef = useRef<AssistantContext | null>(
@@ -1309,6 +1356,10 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     }
     let cancelled = false;
     const poll = async () => {
+      if (stoppingRef.current || submittingRef.current) {
+        pollTimer.current = window.setTimeout(poll, ASSISTANT_STOP_POLL_INTERVAL_MS);
+        return;
+      }
       const next = await loadSnapshot(selectedId);
       if (cancelled) return;
       pollTimer.current = window.setTimeout(poll, isGenerating(next) ? 650 : 2400);
@@ -1481,34 +1532,30 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
     const content = draftValue.trim();
     const submittedDraft = contentOverride === undefined ? draftValue : null;
     if (!content || !auth?.authenticated || submittingRef.current) return;
-    if (context && selectedConversation?.kind === "clipping" && selectedId !== "new") {
-      try {
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    try {
+      if (isGenerating(snapshot) && !(await stop())) return;
+      if (context && selectedConversation?.kind === "clipping" && selectedId !== "new") {
         const current = await readClippingAssistantSnapshot(context.slug);
         if (current.conversationId !== selectedId) {
           setRequestError("这段对话对应旧的剪藏目标，仅支持查看；请从当前文章新建或继续对话。");
           return;
         }
-      } catch (error) {
-        setRequestError(errorMessage(error));
-        return;
       }
-    }
-    submittingRef.current = true;
-    setIsSubmitting(true);
-    setRequestError(null);
-    setOffline(false);
-    const requestSelectedId = selectedId;
-    const existingRequest = submissionRequestsRef.current[key];
-    const requestId =
-      existingRequest?.content === content ? existingRequest.requestId : crypto.randomUUID();
-    submissionRequestsRef.current[key] = { content, requestId };
-    const nextPendingRequests = {
-      ...pendingRequestsRef.current,
-      [key]: { content, requestId },
-    };
-    pendingRequestsRef.current = nextPendingRequests;
-    setPendingRequests(nextPendingRequests);
-    try {
+      setRequestError(null);
+      setOffline(false);
+      const requestSelectedId = selectedId;
+      const existingRequest = submissionRequestsRef.current[key];
+      const requestId =
+        existingRequest?.content === content ? existingRequest.requestId : crypto.randomUUID();
+      submissionRequestsRef.current[key] = { content, requestId };
+      const nextPendingRequests = {
+        ...pendingRequestsRef.current,
+        [key]: { content, requestId },
+      };
+      pendingRequestsRef.current = nextPendingRequests;
+      setPendingRequests(nextPendingRequests);
       const result = context
         ? await submitClippingAssistantMessage({ slug: context.slug, requestId, content })
         : await submitAssistantMessage({
@@ -1573,28 +1620,53 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   };
 
   const stop = async () => {
-    if (!selectedId || !snapshot?.activeGenerationJob) return;
+    const activeJob = snapshot?.activeGenerationJob;
+    if (!selectedId || !activeJob || stoppingRef.current) return false;
     const selectedConversation = conversations.find(
       (conversation) => conversation.id === selectedId
     );
     const context =
       newConversationContextRef.current ??
       contextForConversation(selectedConversation, getClippingContext());
+    const turnId = activeJob.id;
+    stoppingRef.current = true;
+    setIsStopping(true);
     try {
       if (context) {
         await stopClippingAssistantGeneration({
           slug: context.slug,
-          turnId: snapshot.activeGenerationJob.id,
+          turnId,
         });
       } else {
         await stopAssistantGeneration({
           conversationId: selectedId,
-          turnId: snapshot.activeGenerationJob.id,
+          turnId,
         });
       }
-      await loadSnapshot(selectedId);
+      const deadline = Date.now() + ASSISTANT_STOP_WAIT_TIMEOUT_MS;
+      let next = await loadSnapshot(selectedId);
+      while (next?.activeGenerationJob?.id === turnId && isGenerating(next)) {
+        if (Date.now() >= deadline) {
+          setRequestError("停止生成仍在处理中，请稍后再试。");
+          return false;
+        }
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, ASSISTANT_STOP_POLL_INTERVAL_MS);
+        });
+        next = await loadSnapshot(selectedId);
+      }
+      if (!next) return false;
+      if (next.activeGenerationJob && isGenerating(next)) {
+        setRequestError("停止生成仍在处理中，请稍后再试。");
+        return false;
+      }
+      return true;
     } catch (error) {
       setRequestError(errorMessage(error));
+      return false;
+    } finally {
+      stoppingRef.current = false;
+      setIsStopping(false);
     }
   };
 
@@ -1652,6 +1724,10 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   };
 
   const currentDraft = drafts[draftKey(selectedId, newConversationContextRef.current)] || "";
+  const generating = isGenerating(snapshot);
+  const showComposerStop = generating && !currentDraft.trim();
+  const composerActionDisabled =
+    isSubmitting || isStopping || (!showComposerStop && !currentDraft.trim());
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: draft changes trigger the DOM measurement.
   useEffect(() => {
@@ -1837,16 +1913,6 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                     <Icon name="tabler:messages" className="h-4 w-4" />
                     <span>切换对话</span>
                   </button>
-                  {isGenerating(snapshot) ? (
-                    <button
-                      type="button"
-                      className="nature-button nature-button-ghost min-h-11 px-3 text-sm"
-                      onClick={() => void stop()}
-                    >
-                      <Icon name="tabler:square" className="h-4 w-4" />
-                      停止
-                    </button>
-                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -1936,11 +2002,16 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                   <button
                     type="button"
                     className="knowledge-assistant-send-button nature-button nature-button-primary text-sm"
-                    onClick={() => void send()}
-                    disabled={!currentDraft.trim() || isGenerating(snapshot) || isSubmitting}
+                    onClick={() => void (showComposerStop ? stop() : send())}
+                    disabled={composerActionDisabled}
+                    aria-label={showComposerStop ? "停止生成" : "发送"}
+                    title={showComposerStop ? "停止生成" : "发送"}
                   >
-                    <Icon name="tabler:send-2" className="h-4 w-4" />
-                    发送
+                    <Icon
+                      name={showComposerStop ? "tabler:square" : "tabler:send-2"}
+                      className="h-4 w-4"
+                    />
+                    {showComposerStop ? "停止" : "发送"}
                   </button>
                 </div>
               </div>
@@ -2033,17 +2104,6 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                 </div>
               )}
               <div className="knowledge-assistant-header-actions">
-                {auth?.authenticated && isGenerating(snapshot) ? (
-                  <button
-                    type="button"
-                    className="knowledge-assistant-icon-button"
-                    onClick={() => void stop()}
-                    aria-label="停止生成"
-                    title="停止生成"
-                  >
-                    <Icon name="tabler:square" className="h-4 w-4" />
-                  </button>
-                ) : null}
                 {auth?.authenticated ? (
                   <div className="knowledge-assistant-help-anchor">
                     <button

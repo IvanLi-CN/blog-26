@@ -153,6 +153,21 @@ describe("webDemoFetch", () => {
     ).toBe(404);
   });
 
+  it("models the first generating assistant state as empty content", async () => {
+    installBrowser("?d_persona=user&d_scene=assistant-generating&d_connection=online");
+
+    const conversations = await (await webDemoFetch("/api/public/chat")).json();
+    const conversationId = conversations.conversations[0].id;
+    const snapshot = await (
+      await webDemoFetch(`/api/public/chat?conversation=${encodeURIComponent(conversationId)}`)
+    ).json();
+    const assistant = snapshot.messages.find(
+      (message: { role: string }) => message.role === "assistant"
+    );
+
+    expect(assistant).toMatchObject({ status: "streaming", content: "", citations: [] });
+  });
+
   it("keeps created assistant conversations across scenes and exempts demo admins", async () => {
     installBrowser("?d_persona=user&d_scene=clipping-ready&d_connection=online");
     const submitted = await webDemoFetch("/api/public/chat", {

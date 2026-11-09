@@ -329,7 +329,7 @@ function demoAssistantRecord(
     sequence: 2,
     role: "assistant",
     content: generating
-      ? "正在整理公开资料……"
+      ? ""
       : failed
         ? "这次生成没有完成，请重试。"
         : "这是一个记录工程实践、项目经验与公开文章的知识库。",
@@ -338,7 +338,7 @@ function demoAssistantRecord(
     createdAt: now - 9_000,
     updatedAt: now - 9_000,
     completedAt: generating ? null : now - 8_000,
-    citations: demoAssistantCitations(now - 9_000, `${recordId}-assistant`),
+    citations: generating ? [] : demoAssistantCitations(now - 9_000, `${recordId}-assistant`),
   };
   const generationJob: AssistantGenerationJob | null = {
     id: `${recordId}-job`,
@@ -1370,17 +1370,17 @@ function getDemoAssistantResponse(
         assistantStatus === "failed"
           ? "这次生成没有完成，请点击重试。"
           : assistantStatus === "streaming"
-            ? "正在整理公开资料……"
+            ? ""
             : "根据公开知识库，这个问题可以从文章、项目和工程方法三个方向理解。\n\n- **文章**：先确认相关原文和上下文。\n- **项目**：再核对实现边界与验证证据。\n- **方法**：最后沉淀为可复用的工作步骤。",
       status: assistantStatus,
       clientRequestId: null,
       createdAt: now + 1,
       updatedAt: now + 1,
       completedAt: assistantStatus === "streaming" ? null : now + 1,
-      citations: demoAssistantCitations(
-        now + 1,
-        `${record.conversation.id}-assistant-${sequence + 1}`
-      ),
+      citations:
+        assistantStatus === "streaming"
+          ? []
+          : demoAssistantCitations(now + 1, `${record.conversation.id}-assistant-${sequence + 1}`),
     };
     if (isAssistantMarkdownScene(scene)) {
       const snapshot = assistantMarkdownSnapshot(scene, 0);
