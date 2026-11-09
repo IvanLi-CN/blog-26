@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "d3980665e76ae5de88e402c20ddffb777c88c5d4",
+  "covered_files": {
+    "public/projects/diagrams/mains-aegis-hardware-architecture.svg": "725f492bf39b98161d9375f31055913fe775019c",
+    "public/projects/diagrams/mains-aegis-input-charge.svg": "71869995ccada56491ef523ce19070d1d6cda006",
+    "public/projects/diagrams/mains-aegis-output-protection.svg": "06814bc540e67a1b84f74cb5ec0fbcf666658aa0",
+    "public/projects/diagrams/mains-aegis-self-check.svg": "235adbc8646cbd416bd27252da7a0480f02893dc",
+    "public/projects/diagrams/mains-aegis-software-architecture.svg": "a75cf58ea30d9fd41bad186c426fee9db17f4c71",
+    "public/projects/diagrams/mains-aegis-ups-output.svg": "5da2dc428e20d5aaf14c6c87ce52f2f306dd2107",
+    "public/projects/mains-aegis/MainsAegis-Btns.step": "1d437b5a991584db10a2891d0fcae8f39ccbe0da",
+    "public/projects/mains-aegis/MainsAegis-Joystick.step": "132056c2e9a5d5eb6f2061bdb461b114f6f24ddc",
+    "public/projects/mains-aegis/PCB_Main.pdf": "e9d881db14aa7c7ac700f6e6217a0768a6d46b0e",
+    "public/projects/mains-aegis/PCB_Panel.pdf": "7468ac984ce6cf3c0dee8590b4e57fe777973d57",
+    "public/projects/mains-aegis/Panel.pdf": "b0cd831461fe3a375cefdf8b9b179aadb55bc313",
+    "public/projects/mains-aegis/SCH_Main.pdf": "786f9cada47cccb38d002422314e98bb572628d7",
+    "public/projects/mains-aegis/SCH_Panel.pdf": "910859e8851d02476cfb3c5fd19b0aa9b4dea534",
+    "public/projects/mains-aegis/pdf-viewer.html": "4b29cb718bf76801e279d2b459071065dc4762ae",
+    "public/projects/mains-aegis/viewer.html": "ce14bd30be1399d943d1c255a9de03b0da089e52",
+    "site/components/PublicRouter.tsx": "27ea7349aea76a74c5d75cabeccb2ac4e91185cc",
+    "site/content/projects/mains-aegis.mdx": "21be5ca89ca9bae3e11f40dd4d56902a3c4200ae",
+    "site/lib/project-content-utils.ts": "55e911fb6654541d8a4f7b6837fb4bbe39289f04",
+    "src/components/project-content-blocks.tsx": "7ad03aecbd56898e6f91b2398bcf15c464a24c74",
+    "src/lib/web-demo-runtime.ts": "8531cb0cf4edf675134bce0850c97cc94d450f0b",
+    "src/styles/globals.css": "33647cef7f5a6ebdb99743add6a4ba57ae55cd56"
+  },
+  "change": {
+    "description": "为 Mains Aegis 项目页补充六张架构图和 PDF、STEP、Gerber 工程资料预览，并完善预览交互与 Web Demo 场景。",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "仅扩展公开项目详情页的静态内容、工程资料预览和演示场景；不改变 API、数据库或持久化状态。",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/content/projects/mains-aegis.mdx",
+          "blob": "21be5ca89ca9bae3e11f40dd4d56902a3c4200ae",
+          "command": "bun run check; bun run build; CI Web Demo and E2E checks"
+        },
+        {
+          "path": "src/components/project-content-blocks.tsx",
+          "blob": "7ad03aecbd56898e6f91b2398bcf15c464a24c74",
+          "command": "bun run check; bun run build; CI Web Demo and E2E checks"
+        },
+        {
+          "path": "src/lib/web-demo-runtime.ts",
+          "blob": "8531cb0cf4edf675134bce0850c97cc94d450f0b",
+          "command": "bun run check; bun run build; CI Web Demo and E2E checks"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "仅扩展公开项目详情页的静态内容、工程资料预览和演示场景；不改变 API、数据库或持久化状态。",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/content/projects/mains-aegis.mdx",
+          "blob": "21be5ca89ca9bae3e11f40dd4d56902a3c4200ae",
+          "command": "bun run check; bun run build; CI Web Demo and E2E checks"
+        },
+        {
+          "path": "src/components/project-content-blocks.tsx",
+          "blob": "7ad03aecbd56898e6f91b2398bcf15c464a24c74",
+          "command": "bun run check; bun run build; CI Web Demo and E2E checks"
+        },
+        {
+          "path": "src/lib/web-demo-runtime.ts",
+          "blob": "8531cb0cf4edf675134bce0850c97cc94d450f0b",
+          "command": "bun run check; bun run build; CI Web Demo and E2E checks"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "仅扩展公开项目详情页的静态内容、工程资料预览和演示场景；不改变 API、数据库或持久化状态。"
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "仅扩展公开项目详情页的静态内容、工程资料预览和演示场景；不改变 API、数据库或持久化状态。",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/content/projects/mains-aegis.mdx",
+          "blob": "21be5ca89ca9bae3e11f40dd4d56902a3c4200ae",
+          "command": "bun run check; bun run build; CI Web Demo and E2E checks"
+        },
+        {
+          "path": "src/components/project-content-blocks.tsx",
+          "blob": "7ad03aecbd56898e6f91b2398bcf15c464a24c74",
+          "command": "bun run check; bun run build; CI Web Demo and E2E checks"
+        },
+        {
+          "path": "src/lib/web-demo-runtime.ts",
+          "blob": "8531cb0cf4edf675134bce0850c97cc94d450f0b",
+          "command": "bun run check; bun run build; CI Web Demo and E2E checks"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.1.10",
+        "4.1.11",
+        "4.2.0",
+        "4.2.1",
+        "4.2.2"
+      ],
+      "evidence": [
+        {
+          "path": "site/content/projects/mains-aegis.mdx",
+          "blob": "21be5ca89ca9bae3e11f40dd4d56902a3c4200ae",
+          "command": "公开项目页路由和接口保持不变，仅增加静态内容与预览交互"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "未修改 SQLite schema、浏览器持久化或其他持久化状态。",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/web-demo-runtime.ts",
+          "blob": "8531cb0cf4edf675134bce0850c97cc94d450f0b",
+          "command": "运行时场景状态仅保存在 Web Demo 内存中，不写入持久化存储"
+        }
+      ]
+    }
+  }
+}
