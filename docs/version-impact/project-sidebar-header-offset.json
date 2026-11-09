@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "132ce9da2b22fecc78630b3b40f1ecd0f8839f7e",
+  "covered_files": {
+    "site/styles/public-pages.css": "b1824cd5d01a0e39e9f4634d1de891f153181acb",
+    "src/lib/public-header-scroll.ts": "c781ec6fe2665eb05b8f377487f43bc66ae354f4",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "cecce9350c144b79026c0dd961b7a268a0ca0799"
+  },
+  "change": {
+    "description": "Keep the desktop project detail sidebar below the visible public header and preserve normal flow at smaller widths.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The candidate changes only public layout positioning, header height measurement, and focused browser coverage. It does not change routes, APIs, persistence, or authentication.",
+      "assessed_at": "2026-11-09T23:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "b1824cd5d01a0e39e9f4634d1de891f153181acb",
+          "command": "Desktop project sidebar uses the visible public header height plus a 16px clearance"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The implementation remains limited to the project detail layout, public header runtime measurement, and its E2E geometry checks; no API, persistence, or route contract drift is present.",
+      "assessed_at": "2026-11-09T23:00:00+08:00",
+      "evidence": [
+        {
+          "path": "src/lib/public-header-scroll.ts",
+          "blob": "c781ec6fe2665eb05b8f377487f43bc66ae354f4",
+          "command": "Header visibility measurement is exposed through --public-header-visible-height"
+        },
+        {
+          "path": "tests/e2e/guest/nature-front-coverage.spec.ts",
+          "blob": "cecce9350c144b79026c0dd961b7a268a0ca0799",
+          "command": "Desktop, short desktop, and below-breakpoint project layout checks pass"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "No route, API, authentication, database, or durable release input was changed."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Repository checks, console build, focused header tests, and project detail E2E verify a compatible layout-only correction with no persistent-state changes.",
+      "assessed_at": "2026-11-09T23:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "b1824cd5d01a0e39e9f4634d1de891f153181acb",
+          "command": "bun run console:build"
+        },
+        {
+          "path": "src/lib/public-header-scroll.ts",
+          "blob": "c781ec6fe2665eb05b8f377487f43bc66ae354f4",
+          "command": "bun test src/lib/__tests__/public-header-scroll.test.ts"
+        },
+        {
+          "path": "tests/e2e/guest/nature-front-coverage.spec.ts",
+          "blob": "cecce9350c144b79026c0dd961b7a268a0ca0799",
+          "command": "Targeted project sidebar E2E passes at 1440x900, 1280x620, and 1024px"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["2.7.0"],
+      "evidence": [
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "b1824cd5d01a0e39e9f4634d1de891f153181acb",
+          "command": "The change is confined to client-side presentation and does not alter public API payloads"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content format, browser persistence, cache identity, or durable release state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/public-header-scroll.ts",
+          "blob": "c781ec6fe2665eb05b8f377487f43bc66ae354f4",
+          "command": "The runtime CSS variable is transient page state and is not persisted"
+        }
+      ]
+    }
+  }
+}

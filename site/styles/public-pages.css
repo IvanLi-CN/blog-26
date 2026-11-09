@@ -46,7 +46,7 @@
   margin-top: 0;
 }
 
-@media (max-width: 1279px) {
+@media (max-width: 1279.99px) {
   .post-detail-layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2072,8 +2072,8 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
 @media (min-width: 1280px) {
   .project-detail-sidebar {
     position: sticky;
-    top: calc(var(--public-header-visible-height, 0px) + 1rem);
-    max-height: calc(100dvh - var(--public-header-visible-height, 0px) - 1rem);
+    top: calc(var(--public-header-visible-height, 4.5rem) + 1rem);
+    max-height: calc(100dvh - var(--public-header-visible-height, 4.5rem) - 1rem);
     overflow-y: auto;
     overscroll-behavior: contain;
     background: transparent;

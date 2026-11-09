@@ -592,7 +592,6 @@ function attachController(header: HTMLElement) {
 
 function refreshControllers() {
   touchActive = false;
-  observePublicHeaderVisibleHeight();
   for (const [header, controller] of controllers) {
     clearSettleTimers(controller);
     if (header.isConnected && isMobileViewport()) {
@@ -607,12 +606,15 @@ function refreshControllers() {
   }
 
   if (!isMobileViewport()) {
+    observePublicHeaderVisibleHeight();
     return;
   }
 
   for (const header of document.querySelectorAll<HTMLElement>(HEADER_SELECTOR)) {
     attachController(header);
   }
+
+  observePublicHeaderVisibleHeight();
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
