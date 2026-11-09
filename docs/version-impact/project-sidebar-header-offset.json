@@ -78,7 +78,7 @@
     "public_api": {
       "impact": "patch",
       "change": "unchanged",
-      "supported_consumer_versions": ["2.7.0"],
+      "supported_consumer_versions": ["4.2.0"],
       "evidence": [
         {
           "path": "site/styles/public-pages.css",
