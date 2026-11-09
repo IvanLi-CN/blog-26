@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "132ce9da2b22fecc78630b3b40f1ecd0f8839f7e",
+  "base_sha": "5d9bfcae3289903447a7fc533b4dc2958be8b2c6",
   "covered_files": {
     "site/styles/public-pages.css": "be65b47ced78981fe73385ad682ca46f527285ca",
     "src/lib/public-header-scroll.ts": "c781ec6fe2665eb05b8f377487f43bc66ae354f4",
@@ -91,7 +91,8 @@
         "4.1.9",
         "4.1.10",
         "4.1.11",
-        "4.2.0"
+        "4.2.0",
+        "4.2.1"
       ],
       "evidence": [
         {
