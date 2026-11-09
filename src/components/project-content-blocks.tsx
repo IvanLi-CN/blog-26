@@ -250,7 +250,9 @@ export function ProjectArtifactTabs({
         <div className="project-artifact-meta">
           <div>
             <strong>{active.title}</strong>
-            <p>{active.description}</p>
+            <span className="project-artifact-description" data-tooltip={active.description}>
+              <p>{active.description}</p>
+            </span>
           </div>
           <div className="project-artifact-downloads">
             {active.downloads.map((download) => (

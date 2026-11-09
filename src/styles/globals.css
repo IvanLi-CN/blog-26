@@ -2116,7 +2116,7 @@ html[data-ui-theme="dark"] .nature-brand-mark {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  align-items: flex-start;
+  align-items: center;
   padding: 0.9rem 0 0.1rem;
 }
 
@@ -2124,11 +2124,52 @@ html[data-ui-theme="dark"] .nature-brand-mark {
   color: var(--nature-text);
 }
 
-.project-artifact-meta p {
+.project-artifact-description {
+  position: relative;
+  display: block;
+  max-width: min(100%, 28rem);
+  min-width: 0;
+}
+
+.project-artifact-description p {
+  overflow: hidden;
   margin: 0.35rem 0 0;
   color: var(--nature-text-faint);
   font-size: 0.84rem;
   line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-artifact-description::after {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 3;
+  width: max-content;
+  max-width: min(28rem, 70vw);
+  padding: 0.5rem 0.65rem;
+  border: 1px solid rgba(var(--nature-border-rgb), 0.35);
+  border-radius: 0.55rem;
+  background: var(--nature-surface-strong);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+  color: var(--nature-text);
+  content: attr(data-tooltip);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.25rem);
+  transition: opacity 160ms ease, transform 160ms ease, visibility 0s linear 160ms;
+  visibility: hidden;
+  white-space: normal;
+}
+
+.project-artifact-description:hover::after {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0s;
+  visibility: visible;
 }
 
 .project-artifact-downloads {
