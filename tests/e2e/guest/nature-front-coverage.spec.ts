@@ -690,6 +690,14 @@ test.describe("Nature frontend public coverage", () => {
             backdropFilter: style.backdropFilter,
           };
         })(),
+        ambient: (() => {
+          const shell = document.querySelector<HTMLElement>(".nature-app-shell");
+          const ambient = shell?.querySelector<HTMLElement>(".nature-ambient");
+          return {
+            ambientDisplay: ambient ? getComputedStyle(ambient).display : "missing",
+            shellBeforeDisplay: shell ? getComputedStyle(shell, "::before").display : "missing",
+          };
+        })(),
         sidebarPanels: [...sidebar.querySelectorAll<HTMLElement>(".nature-panel")].map((panel) => {
           const style = getComputedStyle(panel);
           return {
@@ -712,11 +720,15 @@ test.describe("Nature frontend public coverage", () => {
       boxShadow: "none",
       backdropFilter: "none",
     });
+    expect(desktopGeometry.ambient).toEqual({
+      ambientDisplay: "none",
+      shellBeforeDisplay: "none",
+    });
     expect(desktopGeometry.sidebarPanels.length).toBeGreaterThan(0);
     for (const panel of desktopGeometry.sidebarPanels) {
       expect(panel.backgroundImage).toContain("linear-gradient");
-      expect(panel.boxShadow).toBe("none");
-      expect(panel.backdropFilter).toBe("none");
+      expect(panel.boxShadow).not.toBe("none");
+      expect(panel.backdropFilter).toContain("blur");
     }
 
     await page.setViewportSize({ width: 1280, height: 620 });
