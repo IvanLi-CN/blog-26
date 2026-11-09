@@ -306,6 +306,7 @@ export function resizeHeaderScrollState(state: HeaderScrollState, headerHeight: 
 }
 
 const HEADER_SELECTOR = "[data-public-header]";
+const PUBLIC_HEADER_VISIBLE_HEIGHT_VAR = "--public-header-visible-height";
 const FOCUSABLE_SELECTOR = [
   "a[href]",
   "area[href]",
@@ -333,6 +334,36 @@ interface RuntimeHeaderController {
 
 const controllers = new Map<HTMLElement, RuntimeHeaderController>();
 let touchActive = false;
+let visibleHeaderHeightObserver: ResizeObserver | null = null;
+
+function syncPublicHeaderVisibleHeight() {
+  const header = document.querySelector<HTMLElement>(HEADER_SELECTOR);
+  if (!header) {
+    document.documentElement.style.removeProperty(PUBLIC_HEADER_VISIBLE_HEIGHT_VAR);
+    return;
+  }
+
+  const rect = header.getBoundingClientRect();
+  const visibleTop = Math.max(rect.top, 0);
+  const visibleBottom = Math.min(rect.bottom, window.innerHeight);
+  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+  document.documentElement.style.setProperty(
+    PUBLIC_HEADER_VISIBLE_HEIGHT_VAR,
+    `${visibleHeight}px`
+  );
+}
+
+function observePublicHeaderVisibleHeight() {
+  if (visibleHeaderHeightObserver === null) {
+    visibleHeaderHeightObserver = new ResizeObserver(syncPublicHeaderVisibleHeight);
+  }
+
+  visibleHeaderHeightObserver.disconnect();
+  for (const header of document.querySelectorAll<HTMLElement>(HEADER_SELECTOR)) {
+    visibleHeaderHeightObserver.observe(header);
+  }
+  syncPublicHeaderVisibleHeight();
+}
 
 function isMobileViewport() {
   return window.matchMedia(MOBILE_MEDIA_QUERY).matches;
@@ -394,6 +425,7 @@ function applyHeaderState(
   header.style.setProperty("--public-header-sticky-top", `${top}px`);
   header.dataset.publicHeaderOffset = `${offset}`;
   header.dataset.publicHeaderHeight = `${state.headerHeight}`;
+  syncPublicHeaderVisibleHeight();
 
   if (phase === "scroll") {
     header.dataset.publicHeaderScrolling = "true";
@@ -574,12 +606,15 @@ function refreshControllers() {
   }
 
   if (!isMobileViewport()) {
+    observePublicHeaderVisibleHeight();
     return;
   }
 
   for (const header of document.querySelectorAll<HTMLElement>(HEADER_SELECTOR)) {
     attachController(header);
   }
+
+  observePublicHeaderVisibleHeight();
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
