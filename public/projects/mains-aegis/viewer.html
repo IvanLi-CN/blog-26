@@ -20,14 +20,22 @@
     import * as OV from "https://cdn.jsdelivr.net/npm/online-3d-viewer@0.18.0/+esm";
 
     const status = document.getElementById("status");
+    const notifyHeight = () => {
+      window.parent.postMessage({
+        type: "project-preview-height",
+        height: document.documentElement.scrollHeight,
+      }, "*");
+    };
     const viewer = new OV.EmbeddedViewer(document.getElementById("viewer"), {
       backgroundColor: new OV.RGBAColor(16, 35, 31, 255),
       defaultColor: new OV.RGBColor(126, 178, 160),
       defaultLineColor: new OV.RGBColor(24, 45, 40),
       edgeSettings: new OV.EdgeSettings(true, new OV.RGBColor(35, 64, 56), 15),
-      onModelLoaded: () => { status.hidden = true; },
+      onModelLoaded: () => { status.hidden = true; notifyHeight(); },
       onModelLoadFailed: () => { status.textContent = "3D 模型加载失败，请下载 STEP 文件查看。"; }
     });
+    new ResizeObserver(notifyHeight).observe(document.getElementById("viewer"));
+    window.addEventListener("load", notifyHeight);
     const model = new URLSearchParams(location.search).get("model");
     const modelUrl = model === "joystick" ? "/projects/mains-aegis/MainsAegis-Joystick.step" : "/projects/mains-aegis/MainsAegis-Btns.step";
     viewer.LoadModelFromUrlList([modelUrl]);

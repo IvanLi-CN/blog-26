@@ -1,6 +1,7 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export function ProjectFigure({
   src,
@@ -45,7 +46,49 @@ export function ProjectArtifactTabs({
   items: ProjectArtifact[];
 }) {
   const [activeId, setActiveId] = useState(items[0]?.id ?? "");
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [previewHeight, setPreviewHeight] = useState(420);
+  const [previewOutOfView, setPreviewOutOfView] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const active = items.find((item) => item.id === activeId) ?? items[0];
+  const previewUrl = (mode?: "scroll") => {
+    if (!active) return "";
+    if (mode !== "scroll" || !active.previewUrl.includes("pdf-viewer.html"))
+      return active.previewUrl;
+    return `${active.previewUrl}${active.previewUrl.includes("?") ? "&" : "?"}mode=scroll`;
+  };
+
+  useEffect(() => {
+    const node = previewRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) =>
+      setPreviewOutOfView(entry.intersectionRatio === 0)
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent<{ type?: string; height?: number }>) => {
+      if (
+        event.source !== iframeRef.current?.contentWindow ||
+        event.data?.type !== "project-preview-height"
+      )
+        return;
+      const nextHeight = Math.min(760, Math.max(360, Math.ceil(event.data.height ?? 420)));
+      setPreviewHeight((current) =>
+        nextHeight >= current || previewOutOfView ? nextHeight : current
+      );
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [previewOutOfView]);
+
+  useEffect(() => {
+    document.body.classList.toggle("project-artifact-modal-open", isExpanded);
+    return () => document.body.classList.remove("project-artifact-modal-open");
+  }, [isExpanded]);
 
   if (!active) return null;
 
@@ -72,6 +115,15 @@ export function ProjectArtifactTabs({
             {item.label}
           </button>
         ))}
+        <button
+          className="project-artifact-expand"
+          type="button"
+          aria-label={`放大预览 ${active.title}`}
+          title="放大预览"
+          onClick={() => setIsExpanded(true)}
+        >
+          ↗
+        </button>
       </div>
       <div
         id={panelId}
@@ -79,11 +131,16 @@ export function ProjectArtifactTabs({
         role="tabpanel"
         aria-labelledby={`project-artifact-tab-${active.id}`}
       >
-        <div className="project-artifact-preview">
+        <div
+          ref={previewRef}
+          className="project-artifact-preview"
+          style={{ height: `${previewHeight}px` }}
+        >
           <iframe
             key={active.id}
+            ref={iframeRef}
             title={`${active.title} 预览`}
-            src={active.previewUrl}
+            src={previewUrl()}
             loading="lazy"
             sandbox={active.previewKind === "model" ? "allow-scripts allow-same-origin" : undefined}
           />
@@ -102,6 +159,53 @@ export function ProjectArtifactTabs({
           </div>
         </div>
       </div>
+      {isExpanded
+        ? createPortal(
+            <div
+              className="project-artifact-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${title}放大预览`}
+            >
+              <aside className="project-artifact-modal-sidebar">
+                <div className="project-artifact-modal-heading">
+                  <strong>{title}</strong>
+                  <button type="button" onClick={() => setIsExpanded(false)} aria-label="关闭预览">
+                    ×
+                  </button>
+                </div>
+                <div
+                  className="project-artifact-modal-files"
+                  role="tablist"
+                  aria-label={`${title}文件列表`}
+                >
+                  {items.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={item.id === active.id}
+                      onClick={() => setActiveId(item.id)}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </aside>
+              <div className="project-artifact-modal-viewer">
+                <iframe
+                  key={`expanded-${active.id}`}
+                  title={`${active.title} 放大预览`}
+                  src={previewUrl("scroll")}
+                  sandbox={
+                    active.previewKind === "model" ? "allow-scripts allow-same-origin" : undefined
+                  }
+                />
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </section>
   );
 }
