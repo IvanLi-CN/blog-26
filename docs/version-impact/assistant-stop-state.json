@@ -60,7 +60,7 @@
       "evidence": [
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
-          "blob": "bdd473ab95dd5109f857ffd7110eef6a27a9e746",
+          "blob": "eaaab466cef91b09cd7ea12a3fcea3e46153f7ba",
           "command": "bun test tests/components/KnowledgeAssistant.test.tsx tests/lib/web-demo-fetch.test.ts"
         },
         {
@@ -93,7 +93,7 @@
       "evidence": [
         {
           "path": "tests/components/KnowledgeAssistant.test.tsx",
-          "blob": "bdd473ab95dd5109f857ffd7110eef6a27a9e746",
+          "blob": "eaaab466cef91b09cd7ea12a3fcea3e46153f7ba",
           "command": "Assistant interaction tests pass without changing request or response contracts"
         }
       ]
