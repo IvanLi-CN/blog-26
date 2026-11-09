@@ -235,6 +235,43 @@ function findRetryUserMessage(snapshot: AssistantSnapshot, failedMessage: Assist
     .find((message) => message.role === "user" && message.content.trim());
 }
 
+function AssistantGenerationProcess({
+  status,
+  citations,
+}: {
+  status: AssistantMessage["status"];
+  citations: AssistantCitation[];
+}) {
+  const [expanded, setExpanded] = useState(status === "pending" || status === "streaming");
+  const active = status === "pending" || status === "streaming";
+  const title = active ? "正在整理回答" : status === "failed" ? "生成过程" : "生成过程";
+
+  return (
+    <div className="knowledge-assistant-process" data-testid="assistant-generation-process">
+      <button
+        type="button"
+        className="knowledge-assistant-process-toggle"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((value) => !value)}
+      >
+        <span
+          className={`knowledge-assistant-process-dot${active ? " is-active" : ""}`}
+          aria-hidden="true"
+        />
+        <span>{title}</span>
+        <Icon name={expanded ? "tabler:chevron-up" : "tabler:chevron-down"} className="h-4 w-4" />
+      </button>
+      {expanded ? (
+        <div className="knowledge-assistant-process-details" role="status" aria-live="polite">
+          <p>{active ? "正在根据当前对话整理可读的回答。" : "已完成本轮回答。"}</p>
+          {citations.length ? <p>已整理 {citations.length} 个可定位来源。</p> : null}
+          {status === "failed" ? <p>过程未完整结束，已有内容仍可继续阅读。</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function errorMessage(error: unknown) {
   if (
     error instanceof AssistantClientError &&
@@ -728,6 +765,16 @@ function MessageStream({
                     status={message.status}
                     renderMarkdown={ConversationMarkdown}
                   />
+                  {message.role === "assistant" &&
+                  (message.status === "pending" ||
+                    message.status === "streaming" ||
+                    message.status === "completed" ||
+                    message.status === "failed") ? (
+                    <AssistantGenerationProcess
+                      status={message.status}
+                      citations={message.citations}
+                    />
+                  ) : null}
                   {message.role === "assistant" &&
                   !message.content.trim() &&
                   (message.status === "pending" || message.status === "streaming") ? (

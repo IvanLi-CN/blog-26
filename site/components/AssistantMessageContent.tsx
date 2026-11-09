@@ -87,7 +87,14 @@ export const AssistantMessageContent = memo(function AssistantMessageContent(
         <LiteralBody content={state.content} />
       ) : (
         <MessageRenderBoundary {...props}>
-          <div data-message-body>
+          <div
+            data-message-body
+            className={
+              status === "streaming" || status === "completed"
+                ? "assistant-message-body-reveal"
+                : undefined
+            }
+          >
             <Markdown
               content={state.content}
               messageId={messageId}

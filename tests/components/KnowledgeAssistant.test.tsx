@@ -1136,5 +1136,10 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     expect(assistantMessage.querySelector("blockquote")).toBeTruthy();
     expect(assistantMessage.querySelectorAll("[data-message-body]")).toHaveLength(1);
     expect(within(assistantMessage).getByRole("list", { name: "回答来源" })).toBeTruthy();
+    const processToggle = within(assistantMessage).getByRole("button", { name: /生成过程/ });
+    expect(processToggle.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(processToggle);
+    expect(processToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(within(assistantMessage).getByText("已整理 1 个可定位来源。")).toBeTruthy();
   });
 });
