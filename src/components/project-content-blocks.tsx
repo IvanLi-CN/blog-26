@@ -69,6 +69,7 @@ export function ProjectArtifactTabs({ items }: { items: ProjectArtifact[] }) {
       >
         <div className="project-artifact-preview">
           <iframe
+            key={active.id}
             title={`${active.title} 预览`}
             src={active.previewUrl}
             loading="lazy"
