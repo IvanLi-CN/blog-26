@@ -68,6 +68,7 @@
         },
         {
           "path": "package.json",
+          "blob": "361c4aa76567a8fe6cdb2870088e50e98188f406",
           "command": "bun run build (CI Build)"
         }
       ]
