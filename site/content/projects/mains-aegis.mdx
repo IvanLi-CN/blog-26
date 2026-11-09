@@ -95,12 +95,14 @@ Mains Aegis 的开源内容覆盖软件、固件、硬件设计、外壳和项�
 项目的复现资料以硬件版本、电池配置、输入输出条件、启动自检和验证记录为主要上下文。BMS 状态、充电器状态、温度、输入输出测量值和串口日志共同构成设备调试信息。
 
 <ProjectArtifactTabs
+  title="PDF 图纸"
+  description="面板、PCB 和原理图文件分别提供预览与原始 PDF 下载。"
   items={[
     {
-      id: "mechanical-pdf",
-      label: "PDF 图纸",
+      id: "panel-pdf",
+      label: "Panel.pdf",
       title: "Panel.pdf",
-      description: "面板图纸预览；同一标签页提供原始 PDF 下载。",
+      description: "前面板机械图纸。",
       previewKind: "pdf",
       previewUrl: "/projects/mains-aegis/pdf-viewer.html?file=%2Fprojects%2Fmains-aegis%2FPanel.pdf",
       downloads: [
@@ -108,51 +110,115 @@ Mains Aegis 的开源内容覆盖软件、固件、硬件设计、外壳和项�
           label: "下载 Panel.pdf",
           href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/mechanical/Panel.pdf",
         },
+      ],
+    },
+    {
+      id: "pcb-main-pdf",
+      label: "PCB_Main.pdf",
+      title: "PCB_Main.pdf",
+      description: "主板 PCB 图纸。",
+      previewKind: "pdf",
+      previewUrl: "/projects/mains-aegis/pdf-viewer.html?file=%2Fprojects%2Fmains-aegis%2FPCB_Main.pdf",
+      downloads: [
         {
           label: "下载 PCB_Main.pdf",
           href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/PCB_Main.pdf",
         },
+      ],
+    },
+    {
+      id: "pcb-panel-pdf",
+      label: "PCB_Panel.pdf",
+      title: "PCB_Panel.pdf",
+      description: "前面板 PCB 图纸。",
+      previewKind: "pdf",
+      previewUrl: "/projects/mains-aegis/pdf-viewer.html?file=%2Fprojects%2Fmains-aegis%2FPCB_Panel.pdf",
+      downloads: [
         {
           label: "下载 PCB_Panel.pdf",
           href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/PCB_Panel.pdf",
         },
+      ],
+    },
+    {
+      id: "sch-main-pdf",
+      label: "SCH_Main.pdf",
+      title: "SCH_Main.pdf",
+      description: "主板原理图。",
+      previewKind: "pdf",
+      previewUrl: "/projects/mains-aegis/pdf-viewer.html?file=%2Fprojects%2Fmains-aegis%2FSCH_Main.pdf",
+      downloads: [
         {
           label: "下载 SCH_Main.pdf",
           href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/SCH_Main.pdf",
         },
+      ],
+    },
+    {
+      id: "sch-panel-pdf",
+      label: "SCH_Panel.pdf",
+      title: "SCH_Panel.pdf",
+      description: "前面板原理图。",
+      previewKind: "pdf",
+      previewUrl: "/projects/mains-aegis/pdf-viewer.html?file=%2Fprojects%2Fmains-aegis%2FSCH_Panel.pdf",
+      downloads: [
         {
           label: "下载 SCH_Panel.pdf",
           href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/SCH_Panel.pdf",
         },
       ],
     },
+  ]}
+/>
+
+<ProjectArtifactTabs
+  title="3D 模型"
+  description="STEP 零件可直接在页面内查看；完整 FreeCAD 装配工程保留下载入口。"
+  items={[
     {
-      id: "mechanical-model",
-      label: "3D 模型",
+      id: "buttons-step",
+      label: "MainsAegis-Btns.step",
       title: "MainsAegis-Btns.step",
-      description: "内嵌预览使用轻量 STEP 零件以减少等待；完整 FreeCAD 装配工程和其他 STEP 零件可直接下载。",
+      description: "按键零件模型。",
       previewKind: "model",
       previewUrl: "/projects/mains-aegis/viewer.html",
       downloads: [
         {
-          label: "下载 MainsAegis.FCStd",
-          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/mechanical/MainsAegis.FCStd",
-        },
-        {
-          label: "下载 Btns.step",
+          label: "下载 MainsAegis-Btns.step",
           href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/mechanical/MainsAegis-Btns.step",
-        },
-        {
-          label: "下载 Joystick.step",
-          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/mechanical/MainsAegis-Joystick.step",
         },
       ],
     },
     {
-      id: "pcb-gerber",
-      label: "Gerber 制造文件",
-      title: "Gerber_Main.zip / Gerber_Panel.zip",
-      description: "预览使用 PCB_Main.pdf 作为板图参考；制造文件提供主板和前面板两套 Gerber ZIP 下载。",
+      id: "joystick-step",
+      label: "MainsAegis-Joystick.step",
+      title: "MainsAegis-Joystick.step",
+      description: "摇杆零件模型。",
+      previewKind: "model",
+      previewUrl: "/projects/mains-aegis/viewer.html?model=joystick",
+      downloads: [
+        {
+          label: "下载 MainsAegis-Joystick.step",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/mechanical/MainsAegis-Joystick.step",
+        },
+        {
+          label: "下载 MainsAegis.FCStd",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/mechanical/MainsAegis.FCStd",
+        },
+      ],
+    },
+  ]}
+/>
+
+<ProjectArtifactTabs
+  title="Gerber 制造文件"
+  description="每套 Gerber 文件对应一份板图 PDF，便于在下载制造文件前核对板级内容。"
+  items={[
+    {
+      id: "gerber-main",
+      label: "Gerber_Main.zip",
+      title: "Gerber_Main.zip",
+      description: "主板 Gerber 制造文件，预览对应 PCB_Main.pdf。",
       previewKind: "pdf",
       previewUrl: "/projects/mains-aegis/pdf-viewer.html?file=%2Fprojects%2Fmains-aegis%2FPCB_Main.pdf",
       downloads: [
@@ -161,12 +227,22 @@ Mains Aegis 的开源内容覆盖软件、固件、硬件设计、外壳和项�
           href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/Gerber_Main.zip",
         },
         {
-          label: "下载 Gerber_Panel.zip",
-          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/Gerber_Panel.zip",
-        },
-        {
           label: "下载 PCB_Main.pdf",
           href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/PCB_Main.pdf",
+        },
+      ],
+    },
+    {
+      id: "gerber-panel",
+      label: "Gerber_Panel.zip",
+      title: "Gerber_Panel.zip",
+      description: "前面板 Gerber 制造文件，预览对应 PCB_Panel.pdf。",
+      previewKind: "pdf",
+      previewUrl: "/projects/mains-aegis/pdf-viewer.html?file=%2Fprojects%2Fmains-aegis%2FPCB_Panel.pdf",
+      downloads: [
+        {
+          label: "下载 Gerber_Panel.zip",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/Gerber_Panel.zip",
         },
         {
           label: "下载 PCB_Panel.pdf",

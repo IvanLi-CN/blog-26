@@ -35,7 +35,15 @@ type ProjectArtifact = {
   downloads: ProjectArtifactDownload[];
 };
 
-export function ProjectArtifactTabs({ items }: { items: ProjectArtifact[] }) {
+export function ProjectArtifactTabs({
+  title,
+  description,
+  items,
+}: {
+  title: string;
+  description: string;
+  items: ProjectArtifact[];
+}) {
   const [activeId, setActiveId] = useState(items[0]?.id ?? "");
   const active = items.find((item) => item.id === activeId) ?? items[0];
 
@@ -44,8 +52,12 @@ export function ProjectArtifactTabs({ items }: { items: ProjectArtifact[] }) {
   const panelId = `project-artifact-panel-${active.id}`;
 
   return (
-    <div className="project-artifact-tabs">
-      <div className="project-artifact-tabs-list" role="tablist" aria-label="工程文件类型">
+    <section className="project-artifact-group">
+      <header className="project-artifact-group-header">
+        <h4>{title}</h4>
+        <p>{description}</p>
+      </header>
+      <div className="project-artifact-tabs-list" role="tablist" aria-label={`${title}文件`}>
         {items.map((item) => (
           <button
             key={item.id}
@@ -90,7 +102,7 @@ export function ProjectArtifactTabs({ items }: { items: ProjectArtifact[] }) {
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 

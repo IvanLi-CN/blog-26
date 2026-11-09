@@ -28,7 +28,9 @@
       onModelLoaded: () => { status.hidden = true; },
       onModelLoadFailed: () => { status.textContent = "3D 模型加载失败，请下载 STEP 文件查看。"; }
     });
-    viewer.LoadModelFromUrlList(["/projects/mains-aegis/MainsAegis-Btns.step"]);
+    const model = new URLSearchParams(location.search).get("model");
+    const modelUrl = model === "joystick" ? "/projects/mains-aegis/MainsAegis-Joystick.step" : "/projects/mains-aegis/MainsAegis-Btns.step";
+    viewer.LoadModelFromUrlList([modelUrl]);
   </script>
 </body>
 </html>
