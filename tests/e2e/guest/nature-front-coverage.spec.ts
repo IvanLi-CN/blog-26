@@ -681,6 +681,14 @@ test.describe("Nature frontend public coverage", () => {
             .getPropertyValue("--public-header-visible-height")
             .trim()
         ),
+        sidebarPanels: [...sidebar.querySelectorAll<HTMLElement>(".nature-panel")].map((panel) => {
+          const style = getComputedStyle(panel);
+          return {
+            backgroundImage: style.backgroundImage,
+            boxShadow: style.boxShadow,
+            backdropFilter: style.backdropFilter,
+          };
+        }),
       };
     });
 
@@ -689,6 +697,12 @@ test.describe("Nature frontend public coverage", () => {
     expect(desktopGeometry.sidebarTop).toBeGreaterThanOrEqual(
       desktopGeometry.visibleHeaderHeight + 15.5
     );
+    expect(desktopGeometry.sidebarPanels.length).toBeGreaterThan(0);
+    for (const panel of desktopGeometry.sidebarPanels) {
+      expect(panel.backgroundImage).toBe("none");
+      expect(panel.boxShadow).toBe("none");
+      expect(panel.backdropFilter).toBe("none");
+    }
 
     await page.setViewportSize({ width: 1280, height: 620 });
     await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");

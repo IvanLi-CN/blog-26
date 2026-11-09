@@ -2077,6 +2077,12 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
     overflow-y: auto;
     overscroll-behavior: contain;
   }
+
+  .project-detail-sidebar .nature-panel {
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
 }
 
 .project-detail-comments > section {
