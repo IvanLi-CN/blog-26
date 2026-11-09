@@ -244,7 +244,7 @@ function AssistantGenerationProcess({
 }) {
   const [expanded, setExpanded] = useState(status === "pending" || status === "streaming");
   const active = status === "pending" || status === "streaming";
-  const title = active ? "正在整理回答" : status === "failed" ? "生成过程" : "生成过程";
+  const title = active ? "正在生成回答" : "生成过程";
 
   return (
     <div className="knowledge-assistant-process" data-testid="assistant-generation-process">
@@ -774,13 +774,6 @@ function MessageStream({
                       status={message.status}
                       citations={message.citations}
                     />
-                  ) : null}
-                  {message.role === "assistant" &&
-                  !message.content.trim() &&
-                  (message.status === "pending" || message.status === "streaming") ? (
-                    <p className="knowledge-assistant-streaming-placeholder" role="status">
-                      正在生成……
-                    </p>
                   ) : null}
                   {message.role === "assistant" && message.status === "cancelled" ? (
                     <p className="knowledge-assistant-status-note" role="status">
