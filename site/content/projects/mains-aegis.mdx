@@ -36,6 +36,8 @@ Mains Aegis 的实现范围包括电源设备的装配、输出配置、电池�
 
 电源链路以 4S1P 电池包为基础。独立的 USB-C PD PHY 负责协议协商，BQ25792 负责输入路径选择与充电管理，BQ40Z50-R2 负责电量计量和电池保护；两路 TPS55288 并联后生成主输出。INA3221 负责输入和输出电压、电流监测，TMP112A 负责温度监测，ESP32-S3 则读取这些状态并决定系统是否可以继续运行。
 
+<ProjectFigure src="/projects/diagrams/mains-aegis-hardware-architecture.svg" alt="Mains Aegis 硬件架构图" caption="硬件架构按输入与充电管理、电池、主输出、接口和控制监测分层；USB-C 与 DC IN 在 BQ25792 的输入管理处汇合，UPS OUT 是唯一的对外输出接口。" />
+
 <ProjectFigure src="/projects/diagrams/mains-aegis-input-charge.svg" alt="Mains Aegis 输入与充电链路图" caption="USB-C 的 PD 协商由独立 PHY 完成，USB-C 与 DC IN 进入 BQ25792 的输入与充电管理路径，电池由 BMS 管理。" />
 
 <ProjectFigure src="/projects/diagrams/mains-aegis-ups-output.svg" alt="Mains Aegis UPS 输出链路图" caption="外部输入与电池稳压输出经过各自的理想二极管路径，汇入唯一的 UPS OUT。" />
@@ -49,6 +51,8 @@ Mains Aegis 的实现范围包括电源设备的装配、输出配置、电池�
 前面板、Web 控制台和串口日志读取同一组运行状态。界面使用 `BYPASS`、`STANDBY`、`ASSIST` 和 `BACKUP` 表达输入、电池与输出的关系，也保留 Battery、Charge 和 Dischg 等观察入口，让操作者能够区分输入在线但没有实际输出、TPS 正在辅助供电以及电池正在承担负载。
 
 触摸、按键和 USB 输入都会经过固件状态机。输入切换、温度告警或电池不可用时，界面显示对应状态，真正的输出状态仍由固件的资格判断和门控结果决定。
+
+<ProjectFigure src="/projects/diagrams/mains-aegis-software-architecture.svg" alt="Mains Aegis 软件架构图" caption="ESP32-S3 固件从驱动层读取硬件状态，在状态与控制层完成自检、充电、输出准入和保护，再向前面板、Web 控制台、USB CDC 和诊断日志提供统一状态。" />
 
 </section>
 
