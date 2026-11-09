@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mains Aegis 3D model</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body, #viewer { width: 100%; height: 100%; margin: 0; }
+    body { overflow: hidden; background: #10231f; }
+    #viewer { min-height: 360px; }
+    #status { position: fixed; inset: 0; display: grid; place-items: center; padding: 1rem; color: #b9d7ca; font: 14px/1.5 system-ui, sans-serif; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="viewer"></div>
+  <div id="status" hidden>正在加载 3D 模型…</div>
+  <script type="module">
+    import * as OV from "https://cdn.jsdelivr.net/npm/online-3d-viewer@0.18.0/+esm";
+
+    const status = document.getElementById("status");
+    const viewer = new OV.EmbeddedViewer(document.getElementById("viewer"), {
+      backgroundColor: new OV.RGBAColor(16, 35, 31, 255),
+      defaultColor: new OV.RGBColor(126, 178, 160),
+      defaultLineColor: new OV.RGBColor(24, 45, 40),
+      edgeSettings: new OV.EdgeSettings(true, new OV.RGBColor(35, 64, 56), 15),
+      onModelLoaded: () => { status.hidden = true; },
+      onModelLoadFailed: () => { status.textContent = "3D 模型加载失败，请下载 STEP 文件查看。"; }
+    });
+    viewer.LoadModelFromUrlList(["/projects/mains-aegis/MainsAegis-Btns.step"]);
+  </script>
+</body>
+</html>

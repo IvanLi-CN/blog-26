@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { type ReactNode, useState } from "react";
 
 export function ProjectFigure({
   src,
@@ -15,6 +17,79 @@ export function ProjectFigure({
       <img src={src} alt={alt} loading="lazy" decoding="async" />
       {caption ? <figcaption>{caption}</figcaption> : null}
     </figure>
+  );
+}
+
+type ProjectArtifactDownload = {
+  label: string;
+  href: string;
+};
+
+type ProjectArtifact = {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+  previewUrl: string;
+  previewKind: "pdf" | "model";
+  downloads: ProjectArtifactDownload[];
+};
+
+export function ProjectArtifactTabs({ items }: { items: ProjectArtifact[] }) {
+  const [activeId, setActiveId] = useState(items[0]?.id ?? "");
+  const active = items.find((item) => item.id === activeId) ?? items[0];
+
+  if (!active) return null;
+
+  const panelId = `project-artifact-panel-${active.id}`;
+
+  return (
+    <div className="project-artifact-tabs">
+      <div className="project-artifact-tabs-list" role="tablist" aria-label="工程文件类型">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            id={`project-artifact-tab-${item.id}`}
+            className="project-artifact-tab"
+            type="button"
+            role="tab"
+            aria-selected={item.id === active.id}
+            aria-controls={panelId}
+            onClick={() => setActiveId(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div
+        id={panelId}
+        className="project-artifact-panel"
+        role="tabpanel"
+        aria-labelledby={`project-artifact-tab-${active.id}`}
+      >
+        <div className="project-artifact-preview">
+          <iframe
+            title={`${active.title} 预览`}
+            src={active.previewUrl}
+            loading="lazy"
+            sandbox={active.previewKind === "model" ? "allow-scripts allow-same-origin" : undefined}
+          />
+        </div>
+        <div className="project-artifact-meta">
+          <div>
+            <strong>{active.title}</strong>
+            <p>{active.description}</p>
+          </div>
+          <div className="project-artifact-downloads">
+            {active.downloads.map((download) => (
+              <a key={download.href} href={download.href} target="_blank" rel="noreferrer" download>
+                {download.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

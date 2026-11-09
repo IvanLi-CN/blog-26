@@ -6,7 +6,7 @@ detailSummary: >-
   内部由串联四节可拆卸的 21700 锂电池储能。设备输出额定 120W，支持 12V-21V 调整。
 ---
 
-import { ProjectFigure } from "../../../src/components/project-content-blocks";
+import { ProjectArtifactTabs, ProjectFigure } from "../../../src/components/project-content-blocks";
 
 <section className="project-mdx-section">
 
@@ -93,6 +93,89 @@ Mains Aegis 的实现范围包括电源设备的装配、输出配置、电池�
 Mains Aegis 的开源内容覆盖软件、固件、硬件设计、外壳和项目文档。项目资料同时支持整机复现、局部硬件制作、控制台运行，以及电源和嵌入式实现研究。
 
 项目的复现资料以硬件版本、电池配置、输入输出条件、启动自检和验证记录为主要上下文。BMS 状态、充电器状态、温度、输入输出测量值和串口日志共同构成设备调试信息。
+
+<ProjectArtifactTabs
+  items={[
+    {
+      id: "mechanical-pdf",
+      label: "PDF 图纸",
+      title: "Panel.pdf",
+      description: "面板图纸预览；同一标签页提供原始 PDF 下载。",
+      previewKind: "pdf",
+      previewUrl: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/mechanical/Panel.pdf",
+      downloads: [
+        {
+          label: "下载 Panel.pdf",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/mechanical/Panel.pdf",
+        },
+        {
+          label: "下载 PCB_Main.pdf",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/PCB_Main.pdf",
+        },
+        {
+          label: "下载 PCB_Panel.pdf",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/PCB_Panel.pdf",
+        },
+        {
+          label: "下载 SCH_Main.pdf",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/SCH_Main.pdf",
+        },
+        {
+          label: "下载 SCH_Panel.pdf",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/SCH_Panel.pdf",
+        },
+      ],
+    },
+    {
+      id: "mechanical-model",
+      label: "3D 模型",
+      title: "MainsAegis-Btns.step",
+      description: "内嵌预览使用轻量 STEP 零件以减少等待；完整 FreeCAD 装配工程和其他 STEP 零件可直接下载。",
+      previewKind: "model",
+      previewUrl: "/projects/mains-aegis/viewer.html",
+      downloads: [
+        {
+          label: "下载 MainsAegis.FCStd",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/mechanical/MainsAegis.FCStd",
+        },
+        {
+          label: "下载 Btns.step",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/mechanical/MainsAegis-Btns.step",
+        },
+        {
+          label: "下载 Joystick.step",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/mechanical/MainsAegis-Joystick.step",
+        },
+      ],
+    },
+    {
+      id: "pcb-gerber",
+      label: "Gerber 制造文件",
+      title: "Gerber_Main.zip / Gerber_Panel.zip",
+      description: "预览使用 PCB_Main.pdf 作为板图参考；制造文件提供主板和前面板两套 Gerber ZIP 下载。",
+      previewKind: "pdf",
+      previewUrl: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/PCB_Main.pdf",
+      downloads: [
+        {
+          label: "下载 Gerber_Main.zip",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/Gerber_Main.zip",
+        },
+        {
+          label: "下载 Gerber_Panel.zip",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/Gerber_Panel.zip",
+        },
+        {
+          label: "下载 PCB_Main.pdf",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/PCB_Main.pdf",
+        },
+        {
+          label: "下载 PCB_Panel.pdf",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/mains-aegis/d6a887f4c7e34729dce66830476b3a12069fd672/hardware/pcb/PCB_Panel.pdf",
+        },
+      ],
+    },
+  ]}
+/>
 
 ### 4.3 项目状态与参与方式
 
