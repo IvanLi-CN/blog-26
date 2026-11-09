@@ -2057,7 +2057,7 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
   padding: 0.55rem 0.8rem;
   font-size: 0.86rem;
 }
-@media (max-width: 1279.99px) {
+@media (max-width: 1279px) {
   .project-detail-layout {
     grid-template-columns: 1fr;
   }
@@ -2069,7 +2069,7 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1279.01px) {
   .project-detail-sidebar {
     position: sticky;
     top: calc(var(--public-header-visible-height, 4.5rem) + 1rem);
