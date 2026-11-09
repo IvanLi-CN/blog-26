@@ -65,6 +65,10 @@
           "path": "tests/e2e/guest/nature-front-coverage.spec.ts",
           "blob": "cecce9350c144b79026c0dd961b7a268a0ca0799",
           "command": "Targeted project sidebar E2E passes at 1440x900, 1280x620, and 1024px"
+        },
+        {
+          "path": "package.json",
+          "command": "bun run build (CI Build)"
         }
       ]
     }
