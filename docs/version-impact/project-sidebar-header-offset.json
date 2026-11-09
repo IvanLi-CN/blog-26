@@ -3,7 +3,7 @@
   "kind": "version-impact-record",
   "base_sha": "132ce9da2b22fecc78630b3b40f1ecd0f8839f7e",
   "covered_files": {
-    "site/styles/public-pages.css": "b1824cd5d01a0e39e9f4634d1de891f153181acb",
+    "site/styles/public-pages.css": "b8695b74a6f1138bc4f69dc540ed2c6644ec4270",
     "src/lib/public-header-scroll.ts": "c781ec6fe2665eb05b8f377487f43bc66ae354f4",
     "tests/e2e/guest/nature-front-coverage.spec.ts": "cecce9350c144b79026c0dd961b7a268a0ca0799"
   },
@@ -20,7 +20,7 @@
       "evidence": [
         {
           "path": "site/styles/public-pages.css",
-          "blob": "b1824cd5d01a0e39e9f4634d1de891f153181acb",
+          "blob": "b8695b74a6f1138bc4f69dc540ed2c6644ec4270",
           "command": "Desktop project sidebar uses the visible public header height plus a 16px clearance; approved card surfaces remain visible without an ambient wrapper"
         }
       ]
@@ -53,7 +53,7 @@
       "evidence": [
         {
           "path": "site/styles/public-pages.css",
-          "blob": "b1824cd5d01a0e39e9f4634d1de891f153181acb",
+          "blob": "b8695b74a6f1138bc4f69dc540ed2c6644ec4270",
           "command": "bun run console:build"
         },
         {
@@ -81,7 +81,7 @@
       "evidence": [
         {
           "path": "site/styles/public-pages.css",
-          "blob": "b1824cd5d01a0e39e9f4634d1de891f153181acb",
+          "blob": "b8695b74a6f1138bc4f69dc540ed2c6644ec4270",
           "command": "The change is confined to client-side presentation and does not alter public API payloads"
         }
       ]
