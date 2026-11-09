@@ -8,7 +8,7 @@
     "tests/e2e/guest/nature-front-coverage.spec.ts": "cecce9350c144b79026c0dd961b7a268a0ca0799"
   },
   "change": {
-    "description": "Keep the desktop project detail sidebar below the visible public header and preserve normal flow at smaller widths.",
+    "description": "Keep the desktop project detail sidebar below the visible public header, preserve its approved card surfaces, and preserve normal flow at smaller widths.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -21,13 +21,13 @@
         {
           "path": "site/styles/public-pages.css",
           "blob": "b1824cd5d01a0e39e9f4634d1de891f153181acb",
-          "command": "Desktop project sidebar uses the visible public header height plus a 16px clearance"
+          "command": "Desktop project sidebar uses the visible public header height plus a 16px clearance; approved card surfaces remain visible without an ambient wrapper"
         }
       ]
     },
     "current": {
       "impact": "patch",
-      "reasoning": "The implementation remains limited to the project detail layout, public header runtime measurement, and its E2E geometry checks; no API, persistence, or route contract drift is present.",
+      "reasoning": "The implementation remains limited to the project detail layout, approved sidebar card surfaces, public header runtime measurement, and its E2E geometry checks; no API, persistence, or route contract drift is present.",
       "assessed_at": "2026-11-09T23:00:00+08:00",
       "evidence": [
         {
@@ -43,7 +43,7 @@
       ],
       "scope_drift": {
         "detected": false,
-        "description": "No route, API, authentication, database, or durable release input was changed."
+        "description": "No route, API, authentication, database, or durable release input was changed; the approved sidebar surface treatment is covered by the project detail visual checks."
       }
     },
     "verified": {

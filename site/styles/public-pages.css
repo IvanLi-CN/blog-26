@@ -46,7 +46,7 @@
   margin-top: 0;
 }
 
-@media (max-width: 1279.99px) {
+@media (max-width: 1279px) {
   .post-detail-layout {
     grid-template-columns: minmax(0, 1fr);
   }
