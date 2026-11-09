@@ -2082,9 +2082,15 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
     backdrop-filter: none;
   }
 
-  .nature-app-shell:has(.project-detail-page)::before,
-  .nature-app-shell:has(.project-detail-page) .nature-ambient {
-    display: none;
+  .project-detail-sidebar .nature-panel {
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .project-detail-sidebar
+    .nature-panel:not(.nature-hover-lift):is(:hover, :focus-visible, :focus-within) {
+    transform: none;
+    box-shadow: none;
   }
 }
 
