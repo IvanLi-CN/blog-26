@@ -59,13 +59,14 @@ function ProjectArtifactStatus({
   title: string;
   onRetry: () => void;
 }) {
-  if (status === "ready") return null;
   const isError = status === "error";
+  const isReady = status === "ready";
   return (
     <div
       className={`project-artifact-status project-artifact-status-${status}`}
       role="status"
       aria-live="polite"
+      aria-hidden={isReady}
     >
       <span className="project-artifact-status-icon" aria-hidden="true">
         {isError ? "!" : ""}

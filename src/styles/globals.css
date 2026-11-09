@@ -2049,6 +2049,18 @@ html[data-ui-theme="dark"] .nature-brand-mark {
   color: var(--nature-text);
   text-align: left;
   backdrop-filter: blur(8px);
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 240ms ease, transform 240ms ease, visibility 0s linear 0s;
+  visibility: visible;
+}
+
+.project-artifact-status-ready {
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(1.015);
+  transition: opacity 240ms ease, transform 240ms ease, visibility 0s linear 240ms;
+  visibility: hidden;
 }
 
 .project-artifact-status-icon {
