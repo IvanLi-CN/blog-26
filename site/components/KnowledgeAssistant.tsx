@@ -16,6 +16,7 @@ import type {
   AssistantCitation,
   AssistantConversation,
   AssistantMessage,
+  AssistantProcessStep,
   FrontendAuthState,
 } from "@/lib/assistant-contracts";
 import {
@@ -233,6 +234,64 @@ function findRetryUserMessage(snapshot: AssistantSnapshot, failedMessage: Assist
   return [...snapshot.messages.slice(0, failedIndex)]
     .reverse()
     .find((message) => message.role === "user" && message.content.trim());
+}
+
+function AssistantGenerationProcess({
+  status,
+  citations,
+  steps = [],
+}: {
+  status: AssistantMessage["status"];
+  citations: AssistantCitation[];
+  steps?: AssistantProcessStep[];
+}) {
+  const [expanded, setExpanded] = useState(status === "pending" || status === "streaming");
+  const active = status === "pending" || status === "streaming";
+  const activeStep = steps.find((step) => step.status === "running") ?? steps.at(-1);
+  const progressLabel = activeStep?.label ?? "正在根据当前对话整理可读的回答";
+  const title = active ? progressLabel : "思考过程";
+  const hasDetails = steps.length > 0 || !active || citations.length > 0 || status === "failed";
+
+  return (
+    <div className="knowledge-assistant-process" data-testid="assistant-generation-process">
+      <button
+        type="button"
+        className="knowledge-assistant-process-toggle"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((value) => !value)}
+      >
+        <span
+          className={`knowledge-assistant-process-dot${active ? " is-active" : ""}`}
+          aria-hidden="true"
+        />
+        <span>{title}</span>
+        <Icon name={expanded ? "tabler:chevron-up" : "tabler:chevron-down"} className="h-4 w-4" />
+      </button>
+      {expanded && hasDetails ? (
+        <div className="knowledge-assistant-process-details" role="status" aria-live="polite">
+          {steps.length ? (
+            <ol className="knowledge-assistant-process-steps">
+              {steps.map((step) => (
+                <li className={`knowledge-assistant-process-step is-${step.status}`} key={step.id}>
+                  <span className="knowledge-assistant-process-step-marker" aria-hidden="true">
+                    {step.kind === "search" ? "⌕" : step.kind === "tool" ? "↗" : "✦"}
+                  </span>
+                  <span className="knowledge-assistant-process-step-copy">
+                    <strong>{step.label}</strong>
+                    <span>{step.detail}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>{active ? "当前思考已进入回答整理阶段" : "已完成本轮回答"}</p>
+          )}
+          {citations.length ? <p>已整理 {citations.length} 个可定位来源。</p> : null}
+          {status === "failed" ? <p>过程未完整结束，已有内容仍可继续阅读。</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function errorMessage(error: unknown) {
@@ -711,62 +770,69 @@ function MessageStream({
                   )
               )
               .map((message) => (
-                <div
-                  className={`knowledge-assistant-message knowledge-assistant-message--${message.role}`}
-                  data-message-id={message.id}
-                  data-message-role={message.role}
-                  data-presentation-id={presentationId}
-                  data-testid={`assistant-message-${message.role}`}
-                  key={message.id}
-                >
-                  <AssistantMessageContent
-                    className="knowledge-assistant-message-content"
-                    messageId={message.id}
-                    presentationId={presentationId}
-                    role={message.role as "user" | "assistant"}
-                    content={message.content}
-                    status={message.status}
-                    renderMarkdown={ConversationMarkdown}
-                  />
+                <div className="knowledge-assistant-turn" key={message.id}>
                   {message.role === "assistant" &&
-                  !message.content.trim() &&
-                  (message.status === "pending" || message.status === "streaming") ? (
-                    <p className="knowledge-assistant-streaming-placeholder" role="status">
-                      正在生成……
-                    </p>
+                  (message.status === "pending" ||
+                    message.status === "streaming" ||
+                    message.status === "completed" ||
+                    message.status === "failed") ? (
+                    <AssistantGenerationProcess
+                      status={message.status}
+                      citations={message.citations}
+                      steps={message.processSteps}
+                    />
                   ) : null}
-                  {message.role === "assistant" && message.status === "cancelled" ? (
-                    <p className="knowledge-assistant-status-note" role="status">
-                      已停止生成
-                    </p>
-                  ) : null}
-                  {message.role === "assistant" && message.status === "failed" ? (
-                    <p className="knowledge-assistant-status-note" role="status">
-                      生成失败，可重试
-                    </p>
-                  ) : null}
-                  {message.status === "failed" && onRetry ? (
-                    <button
-                      type="button"
-                      className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-md border border-[color:var(--nature-line-strong)] px-2 text-xs font-semibold"
-                      onClick={() => onRetry(message)}
-                    >
-                      <Icon name="tabler:refresh" className="h-3.5 w-3.5" />
-                      重试
-                    </button>
-                  ) : null}
-                  {message.citations.length ? (
-                    <ul className="knowledge-assistant-citations" aria-label="回答来源">
-                      {message.citations.map((citation: AssistantCitation) => (
-                        <li key={citation.id}>
-                          <a href={citation.href} target="_blank" rel="noreferrer">
-                            {citation.title}
-                            {citation.location ? ` · ${citation.location}` : ""}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
+                  <div
+                    className={`knowledge-assistant-message knowledge-assistant-message--${message.role}${message.role === "assistant" && !message.content.trim() ? " knowledge-assistant-message--process-only" : ""}`}
+                    data-message-id={message.id}
+                    data-message-role={message.role}
+                    data-presentation-id={presentationId}
+                    data-testid={`assistant-message-${message.role}`}
+                  >
+                    {message.content.trim() || message.role === "user" ? (
+                      <AssistantMessageContent
+                        className="knowledge-assistant-message-content"
+                        messageId={message.id}
+                        presentationId={presentationId}
+                        role={message.role as "user" | "assistant"}
+                        content={message.content}
+                        status={message.status}
+                        renderMarkdown={ConversationMarkdown}
+                      />
+                    ) : null}
+                    {message.role === "assistant" && message.status === "cancelled" ? (
+                      <p className="knowledge-assistant-status-note" role="status">
+                        已停止生成
+                      </p>
+                    ) : null}
+                    {message.role === "assistant" && message.status === "failed" ? (
+                      <p className="knowledge-assistant-status-note" role="status">
+                        生成失败，可重试
+                      </p>
+                    ) : null}
+                    {message.status === "failed" && onRetry ? (
+                      <button
+                        type="button"
+                        className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-md border border-[color:var(--nature-line-strong)] px-2 text-xs font-semibold"
+                        onClick={() => onRetry(message)}
+                      >
+                        <Icon name="tabler:refresh" className="h-3.5 w-3.5" />
+                        重试
+                      </button>
+                    ) : null}
+                    {message.citations.length ? (
+                      <ul className="knowledge-assistant-citations" aria-label="回答来源">
+                        {message.citations.map((citation: AssistantCitation) => (
+                          <li key={citation.id}>
+                            <a href={citation.href} target="_blank" rel="noreferrer">
+                              {citation.title}
+                              {citation.location ? ` · ${citation.location}` : ""}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             {stoppedWithoutContent ? (

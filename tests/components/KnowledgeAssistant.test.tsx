@@ -811,7 +811,9 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
 
     const stop = await waitFor(() => view.getByRole("button", { name: "停止生成" }));
     expect((stop as HTMLButtonElement).disabled).toBe(false);
-    expect(view.getByTestId("assistant-messages").textContent).toContain("正在生成");
+    expect(view.getByTestId("assistant-messages").textContent).toContain(
+      "正在根据当前对话整理可读的回答"
+    );
     expect(
       view.container.querySelector('.knowledge-assistant-header [aria-label="停止生成"]')
     ).toBeNull();
@@ -1136,5 +1138,10 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     expect(assistantMessage.querySelector("blockquote")).toBeTruthy();
     expect(assistantMessage.querySelectorAll("[data-message-body]")).toHaveLength(1);
     expect(within(assistantMessage).getByRole("list", { name: "回答来源" })).toBeTruthy();
+    const processToggle = view.getByRole("button", { name: /思考过程/ });
+    expect(processToggle.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(processToggle);
+    expect(processToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(view.getByText("已整理 1 个可定位来源。")).toBeTruthy();
   });
 });
