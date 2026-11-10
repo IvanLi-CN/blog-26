@@ -8,7 +8,7 @@
     "site/components/KnowledgeAssistant.css": "8ccce469ec7f2e1a5a0fcd5be86725aabdf31e38",
     "site/components/KnowledgeAssistant.tsx": "efc159e2ceebc5da68d718af374bde5633f7741f",
     "src/lib/assistant-contracts.ts": "0a2e2f3875c769be2056ece81200cfd0d19e412f",
-    "src/lib/web-demo-fetch.ts": "4365dd3a7c9234c5e058b468d561a629d737f09e",
+    "src/lib/web-demo-fetch.ts": "839a3b7fc5e249b95915686bb2b80792f2943f4a",
     "tests/components/KnowledgeAssistant.test.tsx": "a2f2474d958079f8e4a1fb42a9d04ea89804a75e",
     "tests/lib/web-demo-fetch.test.ts": "c5063e44f7d4363a644188ea388a044cf6de81ca"
   },
@@ -46,7 +46,7 @@
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "4365dd3a7c9234c5e058b468d561a629d737f09e",
+          "blob": "839a3b7fc5e249b95915686bb2b80792f2943f4a",
           "command": "The deterministic assistant-generating fixture exposes search, tool, and thinking steps"
         }
       ]
@@ -112,7 +112,7 @@
       "evidence": [
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "4365dd3a7c9234c5e058b468d561a629d737f09e",
+          "blob": "839a3b7fc5e249b95915686bb2b80792f2943f4a",
           "command": "Process-step fixture data is in-memory Web Demo state and has no database migration"
         }
       ]

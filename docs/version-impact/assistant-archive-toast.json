@@ -8,7 +8,7 @@
     "site/lib/assistant-client.ts": "a3b989b2580be9bfd243b7ad2716e4367d915f2e",
     "src/lib/assistant-contracts.ts": "0a2e2f3875c769be2056ece81200cfd0d19e412f",
     "src/lib/assistant-storage.ts": "948e75a5c423bc8aebf3637eeeb01ff465d7a728",
-    "src/lib/web-demo-fetch.ts": "4365dd3a7c9234c5e058b468d561a629d737f09e",
+    "src/lib/web-demo-fetch.ts": "839a3b7fc5e249b95915686bb2b80792f2943f4a",
     "src/lib/web-demo-runtime.ts": "b5e6f5adc235216f582b8a13d91aab1520a5d2c9",
     "src/server/assistant/api.ts": "924f54c073a6b0d5d3d7885e26fc5636542bf354",
     "src/server/assistant/service.ts": "396560ed8fe4cd654863b138cd168ca0e7df832d",
@@ -104,7 +104,7 @@
       "evidence": [
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "4365dd3a7c9234c5e058b468d561a629d737f09e",
+          "blob": "839a3b7fc5e249b95915686bb2b80792f2943f4a",
           "command": "Archive and restore fixture state is persisted only in Web Demo sessionStorage."
         }
       ]
