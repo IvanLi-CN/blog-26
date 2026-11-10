@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "866fff3ac7eaff791e92750c528c1e14fed980d7",
+  "covered_files": {
+    "astro.config.mjs": "a1ace1fe8445d35e4ab73e007b8e8027be9eee53",
+    "site/middleware.ts": "e59f9a2902b777ca4f7ae0432298a58c670dda5b",
+    "tests/ci/astro-config.test.ts": "de3a4443ea27c24fbb3f8688be27731fa3191c5d"
+  },
+  "change": {
+    "description": "Allow the console frontend to issue legitimate cross-origin JSON DELETE requests while enforcing the trusted public origin policy for every mutating console API request.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change removes Astro's form-oriented origin rejection at the framework boundary and moves the origin decision to the existing public API allowlist; API response contracts and persistent state remain unchanged.",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/ci/astro-config.test.ts",
+          "blob": "de3a4443ea27c24fbb3f8688be27731fa3191c5d",
+          "command": "bun test tests/ci/astro-config.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "Console API mutations are rejected unless hasTrustedPublicOrigin accepts the request, while safe methods and non-console builds retain their existing behavior.",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "site/middleware.ts",
+          "blob": "e59f9a2902b777ca4f7ae0432298a58c670dda5b",
+          "command": "bun test tests/ci/astro-config.test.ts tests/server/site-middleware.test.ts"
+        },
+        {
+          "path": "astro.config.mjs",
+          "blob": "a1ace1fe8445d35e4ab73e007b8e8027be9eee53",
+          "command": "bun run console:build"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate is limited to Astro origin-check configuration, the console API middleware boundary, and focused regression coverage."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused configuration and middleware tests, the console build, and the repository check pass; the change preserves the existing trusted-origin helper as the single allowlist for mutating console API requests.",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/ci/astro-config.test.ts",
+          "blob": "de3a4443ea27c24fbb3f8688be27731fa3191c5d",
+          "command": "bun test tests/ci/astro-config.test.ts tests/server/site-middleware.test.ts"
+        },
+        {
+          "path": "astro.config.mjs",
+          "blob": "a1ace1fe8445d35e4ab73e007b8e8027be9eee53",
+          "command": "bun run console:build"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": ["4.2.6"],
+      "evidence": [
+        {
+          "path": "site/middleware.ts",
+          "blob": "e59f9a2902b777ca4f7ae0432298a58c670dda5b",
+          "command": "Mutating API requests continue through hasTrustedPublicOrigin; only framework-level rejection is removed."
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No database, filesystem content, snapshot, or migration format changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "astro.config.mjs",
+          "blob": "a1ace1fe8445d35e4ab73e007b8e8027be9eee53",
+          "command": "Configuration-only runtime boundary change; no persistent state is written."
+        }
+      ]
+    }
+  }
+}

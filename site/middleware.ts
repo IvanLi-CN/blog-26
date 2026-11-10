@@ -7,7 +7,7 @@ export const onRequest: MiddlewareHandler = async ({ request, url }, next) => {
   const isApiMutation =
     process.env.BLOG_BUILD_TARGET === "console" &&
     url.pathname.startsWith("/api/") &&
-    !["GET", "HEAD", "OPTIONS"].includes(request.method);
+    !["GET", "HEAD", "OPTIONS"].includes(request?.method ?? "GET");
   if (isApiMutation && !hasTrustedPublicOrigin(request)) {
     return new Response(JSON.stringify({ error: "请求来源不受信任" }), {
       status: 403,

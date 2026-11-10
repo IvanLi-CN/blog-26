@@ -20,6 +20,6 @@ describe("astro.config.mjs", () => {
     const middleware = readFileSync(path.resolve(process.cwd(), "site/middleware.ts"), "utf8");
     expect(middleware).toContain("hasTrustedPublicOrigin");
     expect(middleware).toContain('url.pathname.startsWith("/api/")');
-    expect(middleware).toContain('!["GET", "HEAD", "OPTIONS"].includes(request.method)');
+    expect(middleware).toContain('!["GET", "HEAD", "OPTIONS"].includes(request?.method ?? "GET")');
   });
 });
