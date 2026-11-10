@@ -5,10 +5,10 @@
   "covered_files": {
     "docs/specs/assistant-generation-experience-requirements.md": "51237b89470aebd6a78473ca5f8a11fd92846321",
     "site/components/AssistantMessageContent.tsx": "59cef50b85e090bd09f1efa4703d5fdfeaf6ae13",
-    "site/components/KnowledgeAssistant.css": "dcc0b15ff383e351457b90191d98bfea4792e93d",
-    "site/components/KnowledgeAssistant.tsx": "4be83eb4e7ddf5d0fdec1a2e0134b24a44f9a5f2",
-    "src/lib/assistant-contracts.ts": "de9be0d360987431e25f8f3d4a5f9303af507a3a",
-    "src/lib/web-demo-fetch.ts": "96133fe4bdbaa6bdfe663e5b9f08ae3d1cccb5b7",
+    "site/components/KnowledgeAssistant.css": "8ccce469ec7f2e1a5a0fcd5be86725aabdf31e38",
+    "site/components/KnowledgeAssistant.tsx": "efc159e2ceebc5da68d718af374bde5633f7741f",
+    "src/lib/assistant-contracts.ts": "0a2e2f3875c769be2056ece81200cfd0d19e412f",
+    "src/lib/web-demo-fetch.ts": "4365dd3a7c9234c5e058b468d561a629d737f09e",
     "tests/components/KnowledgeAssistant.test.tsx": "a2f2474d958079f8e4a1fb42a9d04ea89804a75e",
     "tests/lib/web-demo-fetch.test.ts": "c5063e44f7d4363a644188ea388a044cf6de81ca"
   },
@@ -41,12 +41,12 @@
       "evidence": [
         {
           "path": "site/components/KnowledgeAssistant.tsx",
-          "blob": "4be83eb4e7ddf5d0fdec1a2e0134b24a44f9a5f2",
+          "blob": "efc159e2ceebc5da68d718af374bde5633f7741f",
           "command": "Process steps render outside message bubbles and active progress remains directly visible"
         },
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "96133fe4bdbaa6bdfe663e5b9f08ae3d1cccb5b7",
+          "blob": "4365dd3a7c9234c5e058b468d561a629d737f09e",
           "command": "The deterministic assistant-generating fixture exposes search, tool, and thinking steps"
         }
       ]
@@ -68,7 +68,7 @@
         },
         {
           "path": "site/components/KnowledgeAssistant.css",
-          "blob": "dcc0b15ff383e351457b90191d98bfea4792e93d",
+          "blob": "8ccce469ec7f2e1a5a0fcd5be86725aabdf31e38",
           "command": "bunx biome check on changed assistant sources and tests"
         }
       ]
@@ -98,7 +98,7 @@
       "evidence": [
         {
           "path": "src/lib/assistant-contracts.ts",
-          "blob": "de9be0d360987431e25f8f3d4a5f9303af507a3a",
+          "blob": "0a2e2f3875c769be2056ece81200cfd0d19e412f",
           "command": "Assistant processSteps is optional, preserving existing message payload consumers"
         }
       ]
@@ -112,7 +112,7 @@
       "evidence": [
         {
           "path": "src/lib/web-demo-fetch.ts",
-          "blob": "96133fe4bdbaa6bdfe663e5b9f08ae3d1cccb5b7",
+          "blob": "4365dd3a7c9234c5e058b468d561a629d737f09e",
           "command": "Process-step fixture data is in-memory Web Demo state and has no database migration"
         }
       ]
