@@ -147,6 +147,7 @@ describe("Web Demo runtime state", () => {
     ).toEqual(["admin-dashboard", "admin-editor"]);
     expect(getWebDemoSceneOptions("/chat", "public").map((option) => option.value)).toEqual([
       "assistant-ready",
+      "assistant-archived",
       "assistant-generating",
       "assistant-quota-exhausted",
       "assistant-expired",
