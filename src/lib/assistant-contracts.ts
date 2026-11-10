@@ -77,6 +77,14 @@ export const ASSISTANT_MESSAGE_STATUSES = [
 ] as const;
 export type AssistantMessageStatus = (typeof ASSISTANT_MESSAGE_STATUSES)[number];
 
+export type AssistantProcessStep = {
+  id: string;
+  kind: "search" | "tool" | "thinking";
+  label: string;
+  detail: string;
+  status: "pending" | "running" | "completed";
+};
+
 export type AssistantMessage = {
   id: string;
   conversationId: string;
@@ -89,6 +97,7 @@ export type AssistantMessage = {
   updatedAt: number;
   completedAt: number | null;
   citations: AssistantCitation[];
+  processSteps?: AssistantProcessStep[];
 };
 
 export type AssistantCitation = {

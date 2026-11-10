@@ -170,7 +170,16 @@ describe("webDemoFetch", () => {
       snapshot.messages.filter((message: { role: string }) => message.role === "assistant")
     ).toHaveLength(2);
 
-    expect(assistant).toMatchObject({ status: "streaming", content: "", citations: [] });
+    expect(assistant).toMatchObject({
+      status: "streaming",
+      content: "",
+      citations: [],
+      processSteps: [
+        { kind: "search", label: "搜索知识库", status: "completed" },
+        { kind: "tool", label: "调用知识库检索", status: "completed" },
+        { kind: "thinking", label: "整理回答", status: "running" },
+      ],
+    });
   });
 
   it("keeps created assistant conversations across scenes and exempts demo admins", async () => {

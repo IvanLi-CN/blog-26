@@ -10,6 +10,7 @@ import type {
   AssistantConversation,
   AssistantGenerationJob,
   AssistantMessage,
+  AssistantProcessStep,
   FrontendAuthState,
   FrontendPrincipal,
 } from "./assistant-contracts";
@@ -339,6 +340,7 @@ function demoAssistantRecord(
     updatedAt: now - 9_000,
     completedAt: generating ? null : now - 8_000,
     citations: generating ? [] : demoAssistantCitations(now - 9_000, `${recordId}-assistant`),
+    processSteps: demoAssistantProcessSteps(generating, `${recordId}-assistant`),
   };
   const completedUserMessage: AssistantMessage = {
     ...userMessage,
@@ -359,6 +361,7 @@ function demoAssistantRecord(
     updatedAt: now - 18_000,
     completedAt: now - 18_000,
     citations: demoAssistantCitations(now - 19_000, `${recordId}-assistant-complete`),
+    processSteps: demoAssistantProcessSteps(false, `${recordId}-assistant-complete`),
   };
   if (generating) {
     userMessage.sequence = 3;
@@ -525,6 +528,32 @@ function demoAssistantCitations(now: number, messageId: string): AssistantCitati
       location: null,
       snippet: null,
       createdAt: now,
+    },
+  ];
+}
+
+function demoAssistantProcessSteps(active: boolean, id: string): AssistantProcessStep[] {
+  return [
+    {
+      id: `${id}-search`,
+      kind: "search",
+      label: "搜索知识库",
+      detail: "检索工程实践、项目经验与公开文章",
+      status: "completed",
+    },
+    {
+      id: `${id}-tool`,
+      kind: "tool",
+      label: "调用知识库检索",
+      detail: "找到 1 个可定位来源",
+      status: "completed",
+    },
+    {
+      id: `${id}-thinking`,
+      kind: "thinking",
+      label: active ? "整理回答" : "完成回答整理",
+      detail: active ? "正在根据当前对话组织可读内容" : "已生成可读回答",
+      status: active ? "running" : "completed",
     },
   ];
 }

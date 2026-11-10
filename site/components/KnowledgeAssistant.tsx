@@ -16,6 +16,7 @@ import type {
   AssistantCitation,
   AssistantConversation,
   AssistantMessage,
+  AssistantProcessStep,
   FrontendAuthState,
 } from "@/lib/assistant-contracts";
 import {
@@ -238,15 +239,18 @@ function findRetryUserMessage(snapshot: AssistantSnapshot, failedMessage: Assist
 function AssistantGenerationProcess({
   status,
   citations,
+  steps = [],
 }: {
   status: AssistantMessage["status"];
   citations: AssistantCitation[];
+  steps?: AssistantProcessStep[];
 }) {
   const [expanded, setExpanded] = useState(status === "pending" || status === "streaming");
   const active = status === "pending" || status === "streaming";
-  const progressLabel = "正在根据当前对话整理可读的回答";
+  const activeStep = steps.find((step) => step.status === "running") ?? steps.at(-1);
+  const progressLabel = activeStep?.label ?? "正在根据当前对话整理可读的回答";
   const title = active ? progressLabel : "思考过程";
-  const hasDetails = !active || citations.length > 0 || status === "failed";
+  const hasDetails = steps.length > 0 || !active || citations.length > 0 || status === "failed";
 
   return (
     <div className="knowledge-assistant-process" data-testid="assistant-generation-process">
@@ -265,7 +269,23 @@ function AssistantGenerationProcess({
       </button>
       {expanded && hasDetails ? (
         <div className="knowledge-assistant-process-details" role="status" aria-live="polite">
-          <p>{active ? "当前思考已进入回答整理阶段。" : "已完成本轮回答。"}</p>
+          {steps.length ? (
+            <ol className="knowledge-assistant-process-steps">
+              {steps.map((step) => (
+                <li className={`knowledge-assistant-process-step is-${step.status}`} key={step.id}>
+                  <span className="knowledge-assistant-process-step-marker" aria-hidden="true">
+                    {step.kind === "search" ? "⌕" : step.kind === "tool" ? "↗" : "✦"}
+                  </span>
+                  <span className="knowledge-assistant-process-step-copy">
+                    <strong>{step.label}</strong>
+                    <span>{step.detail}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>{active ? "当前思考已进入回答整理阶段" : "已完成本轮回答"}</p>
+          )}
           {citations.length ? <p>已整理 {citations.length} 个可定位来源。</p> : null}
           {status === "failed" ? <p>过程未完整结束，已有内容仍可继续阅读。</p> : null}
         </div>
@@ -759,6 +779,7 @@ function MessageStream({
                     <AssistantGenerationProcess
                       status={message.status}
                       citations={message.citations}
+                      steps={message.processSteps}
                     />
                   ) : null}
                   <div
