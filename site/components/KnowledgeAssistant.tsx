@@ -244,7 +244,9 @@ function AssistantGenerationProcess({
 }) {
   const [expanded, setExpanded] = useState(status === "pending" || status === "streaming");
   const active = status === "pending" || status === "streaming";
-  const title = active ? "正在生成回答" : "生成过程";
+  const progressLabel = "正在根据当前对话整理可读的回答。";
+  const title = active ? progressLabel : "思考过程";
+  const hasDetails = !active || citations.length > 0 || status === "failed";
 
   return (
     <div className="knowledge-assistant-process" data-testid="assistant-generation-process">
@@ -261,9 +263,9 @@ function AssistantGenerationProcess({
         <span>{title}</span>
         <Icon name={expanded ? "tabler:chevron-up" : "tabler:chevron-down"} className="h-4 w-4" />
       </button>
-      {expanded ? (
+      {expanded && hasDetails ? (
         <div className="knowledge-assistant-process-details" role="status" aria-live="polite">
-          <p>{active ? "正在根据当前对话整理可读的回答。" : "已完成本轮回答。"}</p>
+          <p>{active ? "当前思考已进入回答整理阶段。" : "已完成本轮回答。"}</p>
           {citations.length ? <p>已整理 {citations.length} 个可定位来源。</p> : null}
           {status === "failed" ? <p>过程未完整结束，已有内容仍可继续阅读。</p> : null}
         </div>
