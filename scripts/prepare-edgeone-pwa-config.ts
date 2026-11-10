@@ -40,6 +40,7 @@ const HTML_FILE_ROUTE_PATTERNS = [
   "/posts/:slug/",
   "/projects/",
   "/projects/:slug/",
+  "/projects/:slug/:file.html",
   "/playbook/",
   "/playbook/editions/*",
   "/playbook/topics/",

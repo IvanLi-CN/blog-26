@@ -648,6 +648,112 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.locator(".project-mdx-section")).toHaveCount(3);
   });
 
+  test("desktop project sidebar clears the public header and scrolls in short viewports", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Number.parseFloat(
+            getComputedStyle(document.documentElement)
+              .getPropertyValue("--public-header-visible-height")
+              .trim()
+          )
+        )
+      )
+      .toBeGreaterThan(0);
+    await page.evaluate(() => window.scrollTo(0, 320));
+
+    const desktopGeometry = await page.evaluate(() => {
+      const header = document.querySelector<HTMLElement>("[data-public-header]");
+      const sidebar = document.querySelector<HTMLElement>(".project-detail-sidebar");
+      if (!header || !sidebar) throw new Error("Project detail layout is missing");
+
+      const headerRect = header.getBoundingClientRect();
+      const sidebarRect = sidebar.getBoundingClientRect();
+      return {
+        headerBottom: headerRect.bottom,
+        sidebarTop: sidebarRect.top,
+        visibleHeaderHeight: Number.parseFloat(
+          getComputedStyle(document.documentElement)
+            .getPropertyValue("--public-header-visible-height")
+            .trim()
+        ),
+        sidebarSurface: (() => {
+          const style = getComputedStyle(sidebar);
+          return {
+            backgroundColor: style.backgroundColor,
+            backgroundImage: style.backgroundImage,
+            boxShadow: style.boxShadow,
+            backdropFilter: style.backdropFilter,
+          };
+        })(),
+        sidebarPanels: [...sidebar.querySelectorAll<HTMLElement>(".nature-panel")].map((panel) => {
+          const style = getComputedStyle(panel);
+          return {
+            backgroundImage: style.backgroundImage,
+            boxShadow: style.boxShadow,
+            backdropFilter: style.backdropFilter,
+          };
+        }),
+      };
+    });
+
+    expect(desktopGeometry.visibleHeaderHeight).toBeGreaterThan(0);
+    expect(desktopGeometry.sidebarTop).toBeGreaterThanOrEqual(desktopGeometry.headerBottom + 15.5);
+    expect(desktopGeometry.sidebarTop).toBeGreaterThanOrEqual(
+      desktopGeometry.visibleHeaderHeight + 15.5
+    );
+    expect(desktopGeometry.sidebarSurface).toEqual({
+      backgroundColor: "rgba(0, 0, 0, 0)",
+      backgroundImage: "none",
+      boxShadow: "none",
+      backdropFilter: "none",
+    });
+    expect(desktopGeometry.sidebarPanels.length).toBeGreaterThan(0);
+    for (const panel of desktopGeometry.sidebarPanels) {
+      expect(panel.backgroundImage).toContain("linear-gradient");
+      expect(panel.boxShadow).toBe("none");
+      expect(panel.backdropFilter).toBe("none");
+    }
+
+    await page.setViewportSize({ width: 1280, height: 620 });
+    await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Number.parseFloat(
+            getComputedStyle(document.documentElement)
+              .getPropertyValue("--public-header-visible-height")
+              .trim()
+          )
+        )
+      )
+      .toBeGreaterThan(0);
+    await page.evaluate(() => window.scrollTo(0, 600));
+    const shortViewportState = await page.evaluate(() => {
+      const sidebar = document.querySelector<HTMLElement>(".project-detail-sidebar");
+      if (!sidebar) throw new Error("Project detail sidebar is missing");
+      const style = getComputedStyle(sidebar);
+      return {
+        bottom: sidebar.getBoundingClientRect().bottom,
+        viewportHeight: window.innerHeight,
+        overflowY: style.overflowY,
+        canScrollInternally: sidebar.scrollHeight > sidebar.clientHeight,
+      };
+    });
+
+    expect(shortViewportState.bottom).toBeLessThanOrEqual(shortViewportState.viewportHeight + 0.5);
+    expect(shortViewportState.overflowY).toBe("auto");
+    expect(shortViewportState.canScrollInternally).toBe(true);
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
+    await expect(page.locator(".project-detail-sidebar")).toHaveCSS("position", "static");
+  });
+
   test("migrated detail renders project-specific MDX content", async ({ page }) => {
     await gotoWithTheme(page, "/projects/kaisoumail", "light");
 

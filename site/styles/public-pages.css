@@ -2008,8 +2008,7 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
   min-width: 0;
 }
 .project-detail-sidebar {
-  position: sticky;
-  top: 1.5rem;
+  min-width: 0;
 }
 .project-mdx-content > .nature-prose {
   display: grid;
@@ -2065,6 +2064,33 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
   .project-detail-sidebar {
     position: static;
     grid-row: 2;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (min-width: 1279.01px) {
+  .project-detail-sidebar {
+    position: sticky;
+    top: calc(var(--public-header-visible-height, 4.5rem) + 1rem);
+    max-height: calc(100dvh - var(--public-header-visible-height, 4.5rem) - 1rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .project-detail-sidebar .nature-panel {
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .project-detail-sidebar
+    .nature-panel:not(.nature-hover-lift):is(:hover, :focus-visible, :focus-within) {
+    transform: none;
+    box-shadow: none;
   }
 }
 

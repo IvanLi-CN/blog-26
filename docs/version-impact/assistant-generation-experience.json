@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "d3980665e76ae5de88e402c20ddffb777c88c5d4",
+  "covered_files": {
+    "docs/specs/assistant-generation-experience-requirements.md": "51237b89470aebd6a78473ca5f8a11fd92846321",
+    "site/components/AssistantMessageContent.tsx": "59cef50b85e090bd09f1efa4703d5fdfeaf6ae13",
+    "site/components/KnowledgeAssistant.css": "dcc0b15ff383e351457b90191d98bfea4792e93d",
+    "site/components/KnowledgeAssistant.tsx": "4be83eb4e7ddf5d0fdec1a2e0134b24a44f9a5f2",
+    "src/lib/assistant-contracts.ts": "de9be0d360987431e25f8f3d4a5f9303af507a3a",
+    "src/lib/web-demo-fetch.ts": "96133fe4bdbaa6bdfe663e5b9f08ae3d1cccb5b7",
+    "tests/components/KnowledgeAssistant.test.tsx": "a2f2474d958079f8e4a1fb42a9d04ea89804a75e",
+    "tests/lib/web-demo-fetch.test.ts": "c5063e44f7d4363a644188ea388a044cf6de81ca"
+  },
+  "change": {
+    "description": "Add an independent, collapsible assistant process surface with answer reveal motion and explicit Web Demo steps for search, tool invocation, and answer organization.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change adds compatible optional process metadata and presentation-only assistant generation states without changing routes, authentication, persistence schema, or existing message consumers.",
+      "assessed_at": "2026-11-10T12:00:00+08:00",
+      "evidence": [
+        {
+          "path": "docs/specs/assistant-generation-experience-requirements.md",
+          "blob": "51237b89470aebd6a78473ca5f8a11fd92846321",
+          "command": "Requirements define collapsible process visibility, streaming answer reveal, and a dual-turn Web Demo fixture"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate remains limited to assistant UI state, optional process-step payloads, deterministic Web Demo fixtures, and focused tests; no breaking public API or durable database migration is introduced.",
+      "assessed_at": "2026-11-10T12:00:00+08:00",
+      "scope_drift": {
+        "detected": false,
+        "description": "The implementation stays within the approved assistant generation experience and its Web Demo evidence surface."
+      },
+      "evidence": [
+        {
+          "path": "site/components/KnowledgeAssistant.tsx",
+          "blob": "4be83eb4e7ddf5d0fdec1a2e0134b24a44f9a5f2",
+          "command": "Process steps render outside message bubbles and active progress remains directly visible"
+        },
+        {
+          "path": "src/lib/web-demo-fetch.ts",
+          "blob": "96133fe4bdbaa6bdfe663e5b9f08ae3d1cccb5b7",
+          "command": "The deterministic assistant-generating fixture exposes search, tool, and thinking steps"
+        }
+      ]
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused component and Web Demo tests pass, Biome passes, and the official Web Demo visibly shows a completed turn plus an active turn with search, tool, and answer-organization steps.",
+      "assessed_at": "2026-11-10T12:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/components/KnowledgeAssistant.test.tsx",
+          "blob": "a2f2474d958079f8e4a1fb42a9d04ea89804a75e",
+          "command": "bun test --isolate tests/components/KnowledgeAssistant.test.tsx"
+        },
+        {
+          "path": "tests/lib/web-demo-fetch.test.ts",
+          "blob": "c5063e44f7d4363a644188ea388a044cf6de81ca",
+          "command": "bun test --isolate tests/lib/web-demo-fetch.test.ts"
+        },
+        {
+          "path": "site/components/KnowledgeAssistant.css",
+          "blob": "dcc0b15ff383e351457b90191d98bfea4792e93d",
+          "command": "bunx biome check on changed assistant sources and tests"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.1.10",
+        "4.1.11",
+        "4.2.0",
+        "4.2.1",
+        "4.2.2"
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/assistant-contracts.ts",
+          "blob": "de9be0d360987431e25f8f3d4a5f9303af507a3a",
+          "command": "Assistant processSteps is optional, preserving existing message payload consumers"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema or durable content format changes; the Web Demo session fixture remains resettable and optional metadata is ignored by prior consumers.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/web-demo-fetch.ts",
+          "blob": "96133fe4bdbaa6bdfe663e5b9f08ae3d1cccb5b7",
+          "command": "Process-step fixture data is in-memory Web Demo state and has no database migration"
+        }
+      ]
+    }
+  }
+}
