@@ -419,12 +419,17 @@ for (const width of [1440, 800, 393, 320]) {
             /auto|scroll/.test(getComputedStyle(node).overflowX)
         )
       ).toBe(true);
+      // Transformed DOM rectangles can undershoot a CSS pixel boundary by a fraction.
+      const minimumHeight = width >= 1024 ? 36 : 44;
+      const roundingTolerance = 0.001;
       const send = page.getByRole("button", { name: "发送", exact: true });
       const box = await send.boundingBox();
-      expect(box?.height).toBeGreaterThanOrEqual(width >= 1024 ? 36 : 44);
+      expect(box).not.toBeNull();
+      expect((box?.height ?? 0) + roundingTolerance).toBeGreaterThanOrEqual(minimumHeight);
       for (const button of await body.locator("button").all()) {
         const bounds = await button.boundingBox();
-        expect(bounds?.height).toBeGreaterThanOrEqual(width >= 1024 ? 36 : 44);
+        expect(bounds).not.toBeNull();
+        expect((bounds?.height ?? 0) + roundingTolerance).toBeGreaterThanOrEqual(minimumHeight);
       }
     });
   }
