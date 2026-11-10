@@ -476,6 +476,17 @@ export async function handleAssistantRequest(
       );
     }
 
+    const restoreId = idFromPath(pathname, "/restore");
+    if (restoreId) {
+      if (request.method !== "POST") return methodNotAllowed(request);
+      return response(
+        request,
+        await service.restore(principal, restoreId),
+        200,
+        undefined,
+        resHeaders
+      );
+    }
     const conversationId = idFromPath(pathname, "");
     if (conversationId) {
       await requireConversation(service, principal, conversationId);

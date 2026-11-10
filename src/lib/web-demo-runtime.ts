@@ -50,6 +50,7 @@ export type WebDemoScene =
   | "search-ai-unavailable"
   | "search-index-unavailable"
   | "assistant-ready"
+  | "assistant-archived"
   | "assistant-generating"
   | "assistant-quota-exhausted"
   | "assistant-expired"
@@ -200,6 +201,7 @@ const scenes = [
   "search-ai-unavailable",
   "search-index-unavailable",
   "assistant-ready",
+  "assistant-archived",
   "assistant-generating",
   "assistant-quota-exhausted",
   "assistant-expired",
@@ -627,6 +629,11 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
         value: "assistant-ready",
         label: "助手 · 可用",
         description: "已登录用户可以查看会话、额度和公开知识回答。",
+      },
+      {
+        value: "assistant-archived",
+        label: "助手 · 归档 Toast",
+        description: "展示归档后顶部居中的可撤销 Toast 和倒计时进度条。",
       },
       {
         value: "assistant-generating",

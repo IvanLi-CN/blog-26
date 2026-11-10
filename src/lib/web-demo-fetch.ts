@@ -107,6 +107,7 @@ type DemoAssistantSubmission = {
 const demoAssistantRecords = new Map<string, DemoAssistantRecord>();
 const demoAssistantSeeded = new Set<string>();
 const demoAssistantDeleted = new Set<string>();
+const demoAssistantArchived = new Set<string>();
 const demoAssistantSubmissions = new Map<string, DemoAssistantSubmission>();
 let demoAssistantSequence = 1;
 let demoAssistantResetWindow: Window | null = null;
@@ -117,6 +118,7 @@ function clearDemoAssistantState() {
   demoAssistantRecords.clear();
   demoAssistantSeeded.clear();
   demoAssistantDeleted.clear();
+  demoAssistantArchived.clear();
   demoAssistantSubmissions.clear();
   demoAssistantSequence = 1;
 }
@@ -128,6 +130,7 @@ function restoreDemoAssistantState() {
       records?: unknown;
       seeded?: unknown;
       deleted?: unknown;
+      archived?: unknown;
       submissions?: unknown;
       sequence?: unknown;
     } | null;
@@ -145,6 +148,10 @@ function restoreDemoAssistantState() {
     if (Array.isArray(raw.deleted))
       raw.deleted.forEach((id) => {
         demoAssistantDeleted.add(String(id));
+      });
+    if (Array.isArray(raw.archived))
+      raw.archived.forEach((id) => {
+        demoAssistantArchived.add(String(id));
       });
     if (Array.isArray(raw.submissions)) {
       for (const entry of raw.submissions) {
@@ -168,6 +175,7 @@ function persistDemoAssistantState() {
         records: Array.from(demoAssistantRecords.entries()),
         seeded: Array.from(demoAssistantSeeded),
         deleted: Array.from(demoAssistantDeleted),
+        archived: Array.from(demoAssistantArchived),
         submissions: Array.from(demoAssistantSubmissions.entries()),
         sequence: demoAssistantSequence,
       })
@@ -266,6 +274,7 @@ function demoAssistantQuota(environment: WebDemoEnvironment, scene: WebDemoScene
         record.conversation.frontendUserId ===
           (environment.persona === "admin" ? "demo-admin" : "demo-user") &&
         (!record.isSeed || record.scene === scene) &&
+        !demoAssistantArchived.has(record.conversation.id) &&
         record.conversation.status === "active"
     ).length,
     unlimited,
@@ -284,6 +293,7 @@ function demoAssistantRecord(
     withHistory?: boolean;
     kind?: "general" | "clipping";
     clippingMemoId?: string | null;
+    title?: string | null;
   } = {}
 ) {
   const principal = demoFrontendPrincipal(environment);
@@ -291,7 +301,10 @@ function demoAssistantRecord(
   const withHistory = options.withHistory ?? true;
   const recordId = id || `demo-assistant-${principal.id}-${scene}`;
   const existing = demoAssistantRecords.get(recordId);
-  if (existing) return existing;
+  if (existing) {
+    if (options.title !== undefined) existing.conversation.title = options.title;
+    return existing;
+  }
   const now = Date.now();
   const expired = scene === "assistant-expired";
   const generating = scene === "assistant-generating";
@@ -300,7 +313,7 @@ function demoAssistantRecord(
     id: recordId,
     frontendUserId: principal.id,
     kind: options.kind ?? "general",
-    title: withHistory ? "知识对话" : null,
+    title: options.title ?? (withHistory ? "知识对话" : null),
     clippingMemoId: options.clippingMemoId ?? null,
     clippingSlug: options.kind === "clipping" ? (options.clippingMemoId ?? null) : null,
     clippingVersionId: null,
@@ -1278,8 +1291,57 @@ function getDemoAssistantResponse(
     const seedKey = `${principal.id}:${scene}`;
     const seedId = `demo-assistant-${principal.id}-${scene}`;
     if (!demoAssistantSeeded.has(seedKey) && !demoAssistantDeleted.has(seedId)) {
-      demoAssistantRecord(environment, scene);
+      demoAssistantRecord(environment, scene, undefined, {
+        title: "知识库问答：站点内容与来源",
+      });
+      if (scene === "assistant-archived") {
+        for (const index of [2, 3]) {
+          demoAssistantRecord(environment, scene, `${seedId}-active-${index}`, {
+            title: index === 2 ? "项目复盘：本地内容同步" : "工作方法：把经验写回知识库",
+          });
+        }
+        const archivedTitles = [
+          "搜索体验：全文检索降级策略",
+          "评论维护：审核与恢复流程",
+          "Playbook：项目规则沉淀",
+          "资料剪藏：保留原文与批注",
+          "Agent 协作：引用依据与权限",
+        ];
+        for (const index of [1, 2, 3, 4, 5]) {
+          const archivedId = `${seedId}-archived-${index}`;
+          demoAssistantRecord(environment, scene, archivedId, {
+            title: archivedTitles[index - 1],
+          });
+          demoAssistantArchived.add(archivedId);
+        }
+      }
       demoAssistantSeeded.add(seedKey);
+      persistDemoAssistantState();
+    }
+    if (scene === "assistant-archived") {
+      for (const index of [2, 3]) {
+        const activeId = `${seedId}-active-${index}`;
+        if (!demoAssistantRecords.has(activeId))
+          demoAssistantRecord(environment, scene, activeId, {
+            title: index === 2 ? "项目复盘：本地内容同步" : "工作方法：把经验写回知识库",
+          });
+      }
+      const archivedTitles = [
+        "搜索体验：全文检索降级策略",
+        "评论维护：审核与恢复流程",
+        "Playbook：项目规则沉淀",
+        "资料剪藏：保留原文与批注",
+        "Agent 协作：引用依据与权限",
+      ];
+      for (const index of [1, 2, 3, 4, 5]) {
+        const archivedId = `${seedId}-archived-${index}`;
+        if (!demoAssistantRecords.has(archivedId)) {
+          demoAssistantRecord(environment, scene, archivedId, {
+            title: archivedTitles[index - 1],
+          });
+          demoAssistantArchived.add(archivedId);
+        }
+      }
       persistDemoAssistantState();
     }
     const conversations = Array.from(demoAssistantRecords.values())
@@ -1287,10 +1349,24 @@ function getDemoAssistantResponse(
         (record) =>
           record.conversation.frontendUserId === principal.id &&
           (!record.isSeed || record.scene === scene) &&
+          !demoAssistantDeleted.has(record.conversation.id) &&
+          !demoAssistantArchived.has(record.conversation.id) &&
           record.conversation.status !== "deleted"
       )
       .map(demoAssistantConversation);
-    return jsonResponse({ conversations, quota: demoAssistantQuota(environment, scene) });
+    const archivedConversations = Array.from(demoAssistantRecords.values())
+      .filter(
+        (record) =>
+          record.conversation.frontendUserId === principal.id &&
+          demoAssistantArchived.has(record.conversation.id) &&
+          !demoAssistantDeleted.has(record.conversation.id)
+      )
+      .map(demoAssistantConversation);
+    return jsonResponse({
+      conversations,
+      archivedConversations,
+      quota: demoAssistantQuota(environment, scene),
+    });
   }
 
   if (url.pathname === "/api/public/chat" && method === "POST") {
@@ -1310,6 +1386,7 @@ function getDemoAssistantResponse(
       (record) =>
         record.conversation.frontendUserId === principal.id &&
         (!record.isSeed || record.scene === scene) &&
+        !demoAssistantDeleted.has(record.conversation.id) &&
         record.conversation.status === "active"
     ).length;
     if (
@@ -1477,11 +1554,26 @@ function getDemoAssistantResponse(
     const record = demoAssistantRecords.get(id);
     if (!record || record.conversation.frontendUserId !== principal.id)
       return jsonResponse({ error: "对话不存在", code: "NOT_FOUND" }, 404);
-    demoAssistantRecords.delete(id);
     demoAssistantDeleted.add(id);
+    demoAssistantArchived.delete(id);
     persistDemoAssistantState();
     recordWebDemoMutation("删除助手对话", id);
     return jsonResponse({ deleted: true, conversationId: id });
+  }
+
+  const restoreMatch = url.pathname.match(
+    /^\/api\/public\/chat\/conversations\/([^/]+)\/restore$/u
+  );
+  if (restoreMatch && method === "POST") {
+    const id = decodeURIComponent(restoreMatch[1] ?? "");
+    const record = demoAssistantRecords.get(id);
+    if (!record || record.conversation.frontendUserId !== principal.id)
+      return jsonResponse({ error: "对话不存在", code: "NOT_FOUND" }, 404);
+    demoAssistantDeleted.delete(id);
+    demoAssistantArchived.delete(id);
+    persistDemoAssistantState();
+    recordWebDemoMutation("恢复助手对话", id);
+    return jsonResponse({ restored: true, conversationId: id });
   }
 
   return jsonResponse({ error: "该公共接口未接入 Web Demo 模拟。" }, 404);

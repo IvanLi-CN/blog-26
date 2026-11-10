@@ -33,7 +33,7 @@
 .knowledge-assistant-icon-button > *,
 .knowledge-assistant-list-select > *,
 .knowledge-assistant-list-delete > * {
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .knowledge-assistant-overlay {
@@ -458,7 +458,36 @@
   border: 1px solid var(--nature-line);
   border-radius: 8px;
   background: var(--nature-surface-inset);
+  max-height: 6rem;
   padding: 0.25rem;
+  transform-origin: top;
+  animation: knowledge-assistant-list-item-in 220ms var(--nature-ease) both;
+  transition:
+    opacity 220ms var(--nature-ease),
+    transform 220ms var(--nature-ease),
+    max-height 220ms var(--nature-ease),
+    margin 220ms var(--nature-ease),
+    padding 220ms var(--nature-ease);
+}
+
+.knowledge-assistant-list-item.is-exiting {
+  max-height: 0;
+  margin-block: 0;
+  opacity: 0;
+  overflow: hidden;
+  padding-block: 0;
+  transform: translateY(-0.35rem) scaleY(0.92);
+}
+
+@keyframes knowledge-assistant-list-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.35rem) scaleY(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
 }
 
 .knowledge-assistant-list[data-expanded] {
@@ -641,6 +670,109 @@
   color: var(--nature-danger);
 }
 
+.knowledge-assistant-archive-toast {
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  max-width: min(28rem, calc(100% - 2rem));
+  transform: translateX(-50%);
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--nature-line-strong);
+  border-radius: 0.75rem;
+  background: var(--nature-surface-strong);
+  color: var(--nature-text);
+  box-shadow: var(--nature-shadow-md);
+  font-size: 0.875rem;
+}
+
+.knowledge-assistant-archive-toast.is-restored {
+  border-color: color-mix(in srgb, var(--nature-success) 70%, var(--nature-line-strong));
+  background: color-mix(in srgb, var(--nature-success) 16%, var(--nature-surface-strong));
+}
+
+.knowledge-assistant-archive-toast.is-stacked {
+  top: max(5rem, calc(env(safe-area-inset-top) + 4rem));
+  z-index: 39;
+  transform: translateX(-50%) scale(0.96);
+  opacity: 0.7;
+  pointer-events: auto;
+  transition:
+    top 320ms var(--nature-ease),
+    opacity 240ms var(--nature-ease),
+    transform 320ms var(--nature-ease);
+}
+
+.knowledge-assistant-archive-toast-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.knowledge-assistant-archive-toast-icon {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--nature-accent-strong);
+}
+
+.knowledge-assistant-archive-toast.is-restored .knowledge-assistant-archive-toast-icon {
+  color: var(--nature-success);
+}
+
+.knowledge-assistant-archive-toast-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 0 0 0.75rem 0.75rem;
+  background: var(--nature-accent-strong);
+  transform-origin: left;
+  animation: knowledge-assistant-archive-toast-countdown 6s linear forwards;
+}
+
+.knowledge-assistant-archive-toast-progress[data-paused="true"] {
+  animation-play-state: paused;
+}
+
+.knowledge-assistant-archive-toast:hover .knowledge-assistant-archive-toast-progress {
+  animation-play-state: paused;
+}
+
+@keyframes knowledge-assistant-archive-toast-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.knowledge-assistant-archive-toast button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.4rem;
+  color: var(--nature-accent-strong);
+  font-weight: 700;
+}
+
+.knowledge-assistant-archive-toast button:hover,
+.knowledge-assistant-archive-toast button:focus-visible {
+  background: var(--nature-surface-inset);
+}
+
 .knowledge-assistant-content {
   position: relative;
   z-index: 0;
@@ -746,9 +878,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .knowledge-assistant-streaming-placeholder::before {
+  .knowledge-assistant-streaming-placeholder::before,
+  .knowledge-assistant-list-item {
     animation: none;
+  }
+
+  .knowledge-assistant-streaming-placeholder::before {
     opacity: 0.7;
+  }
+
+  .knowledge-assistant-list-item {
+    transition: none;
   }
 }
 

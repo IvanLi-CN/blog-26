@@ -1451,6 +1451,22 @@ export function createAssistantStorage(
       );
     },
 
+    async restoreConversation(conversationId, frontendUserId, now = Date.now()) {
+      const database = await getDatabase();
+      return database.transaction(
+        (tx) => {
+          const conversation = selectConversation(tx, conversationId, frontendUserId);
+          if (conversation?.status !== "deleted") return false;
+          tx.update(assistantConversations)
+            .set({ status: "active", deletedAt: null, expiresAt: conversation.expiresAt ?? now })
+            .where(eq(assistantConversations.id, conversationId))
+            .run();
+          return true;
+        },
+        { behavior: "immediate" }
+      );
+    },
+
     async expireConversation(conversationId, frontendUserId, now = Date.now()) {
       const database = await getDatabase();
       return database.transaction(
