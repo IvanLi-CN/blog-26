@@ -22,7 +22,7 @@
     "site/content/projects/mains-aegis.mdx": "21be5ca89ca9bae3e11f40dd4d56902a3c4200ae",
     "site/lib/project-content-utils.ts": "55e911fb6654541d8a4f7b6837fb4bbe39289f04",
     "src/components/project-content-blocks.tsx": "7ad03aecbd56898e6f91b2398bcf15c464a24c74",
-    "src/lib/web-demo-runtime.ts": "8531cb0cf4edf675134bce0850c97cc94d450f0b",
+    "src/lib/web-demo-runtime.ts": "b5e6f5adc235216f582b8a13d91aab1520a5d2c9",
     "src/styles/globals.css": "33647cef7f5a6ebdb99743add6a4ba57ae55cd56"
   },
   "change": {
@@ -48,7 +48,7 @@
         },
         {
           "path": "src/lib/web-demo-runtime.ts",
-          "blob": "8531cb0cf4edf675134bce0850c97cc94d450f0b",
+          "blob": "b5e6f5adc235216f582b8a13d91aab1520a5d2c9",
           "command": "bun run check; bun run build; CI Web Demo and E2E checks"
         }
       ]
@@ -70,7 +70,7 @@
         },
         {
           "path": "src/lib/web-demo-runtime.ts",
-          "blob": "8531cb0cf4edf675134bce0850c97cc94d450f0b",
+          "blob": "b5e6f5adc235216f582b8a13d91aab1520a5d2c9",
           "command": "bun run check; bun run build; CI Web Demo and E2E checks"
         }
       ],
@@ -96,7 +96,7 @@
         },
         {
           "path": "src/lib/web-demo-runtime.ts",
-          "blob": "8531cb0cf4edf675134bce0850c97cc94d450f0b",
+          "blob": "b5e6f5adc235216f582b8a13d91aab1520a5d2c9",
           "command": "bun run check; bun run build; CI Web Demo and E2E checks"
         }
       ]
@@ -140,7 +140,7 @@
       "evidence": [
         {
           "path": "src/lib/web-demo-runtime.ts",
-          "blob": "8531cb0cf4edf675134bce0850c97cc94d450f0b",
+          "blob": "b5e6f5adc235216f582b8a13d91aab1520a5d2c9",
           "command": "运行时场景状态仅保存在 Web Demo 内存中，不写入持久化存储"
         }
       ]
