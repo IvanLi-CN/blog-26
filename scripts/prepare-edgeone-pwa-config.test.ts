@@ -20,4 +20,12 @@ describe("prepare-edgeone-pwa-config", () => {
       { key: "Cache-Control", value: "public, max-age=60, must-revalidate" },
     ]);
   });
+
+  it("covers static project preview documents", () => {
+    const config = createEdgeoneCacheConfig("", ["projects/mains-aegis/viewer.html"]);
+
+    expect(findEdgeoneCacheRule(config, "/projects/mains-aegis/viewer.html")?.headers).toEqual([
+      { key: "Cache-Control", value: "public, max-age=60, must-revalidate" },
+    ]);
+  });
 });
