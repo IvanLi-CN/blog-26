@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "3458ae030cde7e2eb94497afbb369001b611d84e",
+  "base_sha": "d3980665e76ae5de88e402c20ddffb777c88c5d4",
   "covered_files": {
     "docs/specs/assistant-generation-experience-requirements.md": "51237b89470aebd6a78473ca5f8a11fd92846321",
     "site/components/AssistantMessageContent.tsx": "59cef50b85e090bd09f1efa4703d5fdfeaf6ae13",
