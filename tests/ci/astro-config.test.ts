@@ -10,4 +10,9 @@ describe("astro.config.mjs", () => {
     expect(astroConfig).toContain('"process.env.PUBLIC_API_BASE_URL"');
     expect(astroConfig).toContain('JSON.stringify(process.env.PUBLIC_API_BASE_URL ?? "")');
   });
+
+  test("delegates cross-origin API origin checks to the public API router", () => {
+    expect(astroConfig).toContain("security:");
+    expect(astroConfig).toContain("checkOrigin: false");
+  });
 });
