@@ -38,6 +38,7 @@ const allowedProjectContentBlocks = new Set([
   "ProjectComparison",
   "ProjectFacts",
   "ProjectFigure",
+  "ProjectArtifactTabs",
 ]);
 
 const allowedProjectContentBlockSources = new Set([

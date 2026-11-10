@@ -68,7 +68,11 @@ export type WebDemoScene =
   | "system-share-publishing"
   | "system-share-success"
   | "system-share-error"
-  | "system-share-response-loss";
+  | "system-share-response-loss"
+  | "mains-aegis-preview-ready"
+  | "mains-aegis-preview-loading"
+  | "mains-aegis-preview-error"
+  | "mains-aegis-preview-expanded";
 
 export type WebDemoSceneState = {
   scene: WebDemoScene;
@@ -219,6 +223,10 @@ const scenes = [
   "system-share-success",
   "system-share-error",
   "system-share-response-loss",
+  "mains-aegis-preview-ready",
+  "mains-aegis-preview-loading",
+  "mains-aegis-preview-error",
+  "mains-aegis-preview-expanded",
 ] as const satisfies readonly WebDemoScene[];
 const personas = ["guest", "user", "admin"] as const satisfies readonly WebDemoPersona[];
 const githubBindings = ["unbound", "bound"] as const satisfies readonly WebDemoGithubBinding[];
@@ -329,6 +337,9 @@ function environmentToLegacyNetwork(environment: WebDemoEnvironment): WebDemoNet
 }
 
 export function getDefaultWebDemoSceneState(pathname = ""): WebDemoSceneState {
+  if (pathname.startsWith("/projects/mains-aegis")) {
+    return { ...defaultSceneState, scene: "mains-aegis-preview-ready" };
+  }
   if (pathname.startsWith("/share"))
     return { ...defaultSceneState, scene: "system-share-confirmation" };
   if (pathname.startsWith("/admin")) return { ...defaultSceneState, scene: "admin-dashboard" };
@@ -390,6 +401,9 @@ export function normalizeWebDemoSceneState(
   )
     scene = "admin-dashboard";
   if (app === "public" && scene.startsWith("admin-")) scene = fallback.scene;
+  if (!pathname.startsWith("/projects/mains-aegis") && scene.startsWith("mains-aegis-")) {
+    scene = fallback.scene;
+  }
   if (app === "public" && scene.startsWith("clipping-") && !isClippingWebDemoPath(pathname)) {
     scene = fallback.scene;
   }
@@ -789,6 +803,31 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
         value: "playbook-topic",
         label: "Playbook · 主题详情",
         description: "固定版本的主题正文和资源。",
+      },
+    ];
+  }
+
+  if (pathname.startsWith("/projects/mains-aegis")) {
+    return [
+      {
+        value: "mains-aegis-preview-ready",
+        label: "Mains Aegis · 已加载",
+        description: "文件预览正常显示，适合核对默认布局。",
+      },
+      {
+        value: "mains-aegis-preview-loading",
+        label: "Mains Aegis · 加载中",
+        description: "保留预览骨架、进度提示和切换中的状态。",
+      },
+      {
+        value: "mains-aegis-preview-error",
+        label: "Mains Aegis · 加载失败",
+        description: "显示可恢复的加载错误和重新加载入口。",
+      },
+      {
+        value: "mains-aegis-preview-expanded",
+        label: "Mains Aegis · 放大预览",
+        description: "直接打开全视口文件浏览浮层。",
       },
     ];
   }
