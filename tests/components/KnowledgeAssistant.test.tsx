@@ -812,7 +812,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     const stop = await waitFor(() => view.getByRole("button", { name: "停止生成" }));
     expect((stop as HTMLButtonElement).disabled).toBe(false);
     expect(view.getByTestId("assistant-messages").textContent).toContain(
-      "正在根据当前对话整理可读的回答。"
+      "正在根据当前对话整理可读的回答"
     );
     expect(
       view.container.querySelector('.knowledge-assistant-header [aria-label="停止生成"]')

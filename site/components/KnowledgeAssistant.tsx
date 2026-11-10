@@ -244,7 +244,7 @@ function AssistantGenerationProcess({
 }) {
   const [expanded, setExpanded] = useState(status === "pending" || status === "streaming");
   const active = status === "pending" || status === "streaming";
-  const progressLabel = "正在根据当前对话整理可读的回答。";
+  const progressLabel = "正在根据当前对话整理可读的回答";
   const title = active ? progressLabel : "思考过程";
   const hasDetails = !active || citations.length > 0 || status === "failed";
 
