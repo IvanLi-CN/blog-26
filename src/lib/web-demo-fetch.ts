@@ -1354,7 +1354,7 @@ function getDemoAssistantResponse(
     const seedId = `demo-assistant-${principal.id}-${scene}`;
     if (!demoAssistantSeeded.has(seedKey) && !demoAssistantDeleted.has(seedId)) {
       demoAssistantRecord(environment, scene, undefined, {
-        title: "知识库问答：站点内容与来源",
+        title: scene === "assistant-archived" ? "知识库问答：站点内容与来源" : "知识对话",
       });
       if (scene === "assistant-archived") {
         for (const index of [2, 3]) {
