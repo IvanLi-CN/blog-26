@@ -406,6 +406,11 @@ export type AssistantMessageStorage = {
     frontendUserId: string,
     now?: number
   ): Promise<boolean>;
+  restoreConversation(
+    conversationId: string,
+    frontendUserId: string,
+    now?: number
+  ): Promise<boolean>;
   expireConversation(
     conversationId: string,
     frontendUserId: string,

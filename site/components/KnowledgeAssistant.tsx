@@ -37,6 +37,7 @@ import {
   readAssistantQuota,
   readAssistantSnapshot,
   readClippingAssistantSnapshot,
+  restoreAssistantConversation,
   startAssistantAdminAuth,
   stopAssistantGeneration,
   stopClippingAssistantGeneration,
@@ -53,6 +54,12 @@ import "./KnowledgeAssistant.css";
 
 type Props = { fullPage?: boolean };
 type AuthState = FrontendAuthState | null;
+type ArchiveToast = {
+  id: string;
+  conversationId: string;
+  remaining: number;
+  status: "archived" | "restored";
+};
 
 const UI_STATE_KEY = "site-knowledge-assistant-ui";
 const UI_LOGIN_HANDOFF_KEY = "site-knowledge-assistant-login-handoff";
@@ -541,6 +548,7 @@ function ConversationList({
   onDelete,
   onCreate,
   onClose,
+  exitingIds,
 }: {
   conversations: AssistantConversation[];
   selectedId: string | null;
@@ -552,6 +560,7 @@ function ConversationList({
   onDelete: (id: string) => void;
   onCreate: () => void;
   onClose: () => void;
+  exitingIds: Set<string>;
 }) {
   const titleId = `${listId}-title`;
   return (
@@ -619,7 +628,7 @@ function ConversationList({
       ) : (
         conversations.map((conversation) => (
           <div
-            className={`knowledge-assistant-list-item ${selectedId === conversation.id ? "is-selected" : ""}`}
+            className={`knowledge-assistant-list-item ${selectedId === conversation.id ? "is-selected" : ""}${exitingIds.has(conversation.id) ? " is-exiting" : ""}`}
             key={conversation.id}
           >
             <button
@@ -638,11 +647,11 @@ function ConversationList({
             <button
               type="button"
               className="knowledge-assistant-list-delete"
-              aria-label={`删除${formatConversationTitle(conversation)}`}
-              title="删除对话"
+              aria-label={`归档${formatConversationTitle(conversation)}`}
+              title="归档对话"
               onClick={() => onDelete(conversation.id)}
             >
-              <Icon name="tabler:trash" className="h-4 w-4" />
+              <Icon name="tabler:archive" className="h-4 w-4" />
             </button>
           </div>
         ))
@@ -953,6 +962,9 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   const [auth, setAuth] = useState<AuthState>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [conversations, setConversations] = useState<AssistantConversation[]>([]);
+  const [exitingConversationIds, setExitingConversationIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const [quota, setQuota] = useState<AssistantQuota | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(
     initialPathConversation || initialUiState.selectedId
@@ -967,6 +979,17 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   );
   const [snapshot, setSnapshot] = useState<AssistantSnapshot | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [archivedConversation, setArchivedConversation] = useState<AssistantConversation | null>(
+    null
+  );
+  const [archiveToastRemaining, setArchiveToastRemaining] = useState(6);
+  const [archiveToastRemainings, setArchiveToastRemainings] = useState<ArchiveToast[]>([]);
+  const [pausedArchiveToastIds, setPausedArchiveToastIds] = useState<Set<string>>(() => new Set());
+  const pausedArchiveToastIdsRef = useRef<Set<string>>(new Set());
+  const archivedConversationRef = useRef<AssistantConversation | null>(null);
+  const archivedConversationPoolRef = useRef<AssistantConversation[]>([]);
+  const conversationOrderRef = useRef<string[]>([]);
+  const archiveTriggeredConversationIdsRef = useRef<Set<string>>(new Set());
   const [offline, setOffline] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
@@ -987,6 +1010,80 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   const selectionRevisionRef = useRef(0);
   const listRequestRef = useRef(0);
   const snapshotRequestRef = useRef(0);
+  const archiveToastTimerRef = useRef<number | null>(null);
+  const restoredConversationIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    pausedArchiveToastIdsRef.current = pausedArchiveToastIds;
+  }, [pausedArchiveToastIds]);
+  useEffect(() => {
+    archivedConversationRef.current = archivedConversation;
+  }, [archivedConversation]);
+  useEffect(() => {
+    if (!archivedConversation || archiveToastRemainings.length === 0) return;
+    const timer = window.setTimeout(() => {
+      setArchiveToastRemainings((values) =>
+        values
+          .map((value) =>
+            pausedArchiveToastIdsRef.current.has(value.id)
+              ? value
+              : { ...value, remaining: value.remaining - 1 }
+          )
+          .filter((value) => value.remaining > 0)
+      );
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [archiveToastRemainings, archivedConversation]);
+
+  useEffect(() => {
+    if (
+      archiveToastRemaining === 0 &&
+      new URL(window.location.href).searchParams.get("d_scene") !== "assistant-archived"
+    )
+      setArchivedConversation(null);
+  }, [archiveToastRemaining]);
+
+  useEffect(() => {
+    if (archivedConversation && archiveToastRemainings.length === 0) setArchivedConversation(null);
+  }, [archiveToastRemainings.length, archivedConversation]);
+
+  useEffect(() => {
+    if (!archivedConversation) return;
+    if (new URL(window.location.href).searchParams.get("d_scene") !== "assistant-archived") return;
+    const timer = window.setInterval(() => {
+      setArchiveToastRemainings((values) => {
+        const used = new Set(values.map((value) => value.conversationId));
+        let nextConversation = archivedConversationPoolRef.current.find(
+          (conversation) =>
+            !used.has(conversation.id) &&
+            !restoredConversationIdsRef.current.has(conversation.id) &&
+            !archiveTriggeredConversationIdsRef.current.has(conversation.id)
+        );
+        if (!nextConversation) {
+          archiveTriggeredConversationIdsRef.current = new Set(
+            [...archiveTriggeredConversationIdsRef.current].filter((id) =>
+              restoredConversationIdsRef.current.has(id)
+            )
+          );
+          nextConversation = archivedConversationPoolRef.current.find(
+            (conversation) =>
+              !used.has(conversation.id) && !restoredConversationIdsRef.current.has(conversation.id)
+          );
+        }
+        if (!nextConversation) return values;
+        archiveTriggeredConversationIdsRef.current.add(nextConversation.id);
+        return [
+          ...values,
+          {
+            id: `archive-toast-${Date.now()}`,
+            conversationId: nextConversation.id,
+            remaining: 6,
+            status: "archived" as const,
+          },
+        ].slice(-3);
+      });
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [archivedConversation]);
   const panelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
@@ -1123,6 +1220,29 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
       const data = await readAssistantList();
       if (listRequestRef.current !== requestSequence) return;
       setConversations(data.conversations);
+      archivedConversationPoolRef.current = data.archivedConversations ?? [];
+      conversationOrderRef.current = [
+        ...data.conversations,
+        ...(data.archivedConversations ?? []),
+      ].map((conversation) => conversation.id);
+      if (
+        isWebDemoBuildEnabled() &&
+        getWebDemoRuntimeState().sceneState.scene === "assistant-archived" &&
+        !archivedConversationRef.current
+      ) {
+        setArchivedConversation(data.archivedConversations?.[0] ?? null);
+        setArchiveToastRemaining(6);
+        setArchiveToastRemainings(
+          (data.archivedConversations ?? []).slice(0, 1).map((conversation) => ({
+            id: `archive-toast-${conversation.id}`,
+            conversationId: conversation.id,
+            remaining: 6,
+            status: "archived" as const,
+          }))
+        );
+        if (data.archivedConversations?.[0])
+          archiveTriggeredConversationIdsRef.current.add(data.archivedConversations[0].id);
+      }
       setQuota(data.quota);
       const requested = selectedRef.current;
       const context = getClippingContext();
@@ -1286,6 +1406,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         setPendingRequests({});
         setNewConversationContext(null);
         setNewConversationContextFrozen(false);
+        setArchivedConversation(null);
         pendingRequestsRef.current = {};
         submissionRequestsRef.current = {};
         newConversationContextRef.current = null;
@@ -1737,12 +1858,33 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
   };
 
   const remove = async (conversationId: string) => {
-    if (!window.confirm("删除这段对话？")) return;
+    const conversation = conversations.find((item) => item.id === conversationId);
+    if (!conversation) return;
     try {
       await deleteAssistantConversation(conversationId);
+      if (archiveToastTimerRef.current) window.clearTimeout(archiveToastTimerRef.current);
+      setExitingConversationIds((current) => new Set(current).add(conversationId));
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 220));
       setConversations((current) =>
         current.filter((conversation) => conversation.id !== conversationId)
       );
+      setExitingConversationIds((current) => {
+        const next = new Set(current);
+        next.delete(conversationId);
+        return next;
+      });
+      restoredConversationIdsRef.current.delete(conversationId);
+      setArchivedConversation(conversation);
+      archivedConversationRef.current = conversation;
+      setArchiveToastRemaining(6);
+      setArchiveToastRemainings([
+        {
+          id: `archive-toast-${Date.now()}`,
+          conversationId: conversation.id,
+          remaining: 6,
+          status: "archived",
+        },
+      ]);
       setDrafts((current) => {
         const next = { ...current };
         delete next[conversationId];
@@ -1754,6 +1896,54 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         setSnapshot(null);
       }
       await loadList();
+      archiveToastTimerRef.current = window.setTimeout(() => {
+        setArchivedConversation(null);
+        archiveToastTimerRef.current = null;
+      }, 6000);
+    } catch (error) {
+      setRequestError(errorMessage(error));
+    }
+  };
+
+  const undoArchive = async (toastId?: string) => {
+    const toast = archiveToastRemainings.find((item) => item.id === toastId);
+    const conversation =
+      conversations.find((item) => item.id === toast?.conversationId) ??
+      archivedConversationPoolRef.current.find((item) => item.id === toast?.conversationId) ??
+      archivedConversation;
+    if (!conversation) return;
+    if (archiveToastTimerRef.current) window.clearTimeout(archiveToastTimerRef.current);
+    archiveToastTimerRef.current = null;
+    try {
+      if (!restoredConversationIdsRef.current.has(conversation.id)) {
+        await restoreAssistantConversation(conversation.id);
+        restoredConversationIdsRef.current.add(conversation.id);
+      }
+      const nextToastId = toastId ?? archiveToastRemainings[0]?.id;
+      setArchiveToastRemainings((items) =>
+        items.map((item) =>
+          item.id === nextToastId ? { ...item, remaining: 3, status: "restored" } : item
+        )
+      );
+      if (nextToastId) {
+        setPausedArchiveToastIds((items) => {
+          const next = new Set(items);
+          next.delete(nextToastId);
+          return next;
+        });
+      }
+      setConversations((items) => {
+        const next = items.some((item) => item.id === conversation.id)
+          ? items
+          : [...items, conversation];
+        return [...next].sort(
+          (left, right) =>
+            conversationOrderRef.current.indexOf(left.id) -
+            conversationOrderRef.current.indexOf(right.id)
+        );
+      });
+      selectConversation(conversation.id);
+      await loadSnapshot(conversation.id);
     } catch (error) {
       setRequestError(errorMessage(error));
     }
@@ -1877,6 +2067,7 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
         setListExpanded(false);
       }}
       onClose={() => setListExpanded(false)}
+      exitingIds={exitingConversationIds}
     />
   );
   const conversationList = renderConversationList();
@@ -1993,6 +2184,80 @@ export default function KnowledgeAssistant({ fullPage = false }: Props) {
                 }
               />
             ) : null}
+            {archivedConversation && typeof document !== "undefined"
+              ? createPortal(
+                  archiveToastRemainings.map((toast, index) => {
+                    const toastConversation =
+                      conversations.find((item) => item.id === toast.conversationId) ??
+                      archivedConversationPoolRef.current.find(
+                        (item) => item.id === toast.conversationId
+                      ) ??
+                      archivedConversation;
+                    return (
+                      <div
+                        className={`knowledge-assistant-archive-toast${index ? " is-stacked" : ""}${toast.status === "restored" ? " is-restored" : ""}`}
+                        style={index ? { top: `${5 + (index - 1) * 4}rem` } : undefined}
+                        role="status"
+                        onMouseEnter={() =>
+                          setPausedArchiveToastIds((current) => {
+                            const next = new Set(current);
+                            next.add(toast.id);
+                            return next;
+                          })
+                        }
+                        onMouseLeave={() =>
+                          setPausedArchiveToastIds((current) => {
+                            const next = new Set(current);
+                            next.delete(toast.id);
+                            return next;
+                          })
+                        }
+                        data-testid={
+                          index === 0
+                            ? "assistant-archive-toast"
+                            : "assistant-archive-toast-stacked"
+                        }
+                        key={toast.id}
+                      >
+                        <span className="knowledge-assistant-archive-toast-copy">
+                          <Icon
+                            name={
+                              toast.status === "restored" ? "tabler:circle-check" : "tabler:archive"
+                            }
+                            className="knowledge-assistant-archive-toast-icon"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            {toast.status === "restored"
+                              ? `已撤销归档“${formatConversationTitle(toastConversation)}”`
+                              : `已归档“${formatConversationTitle(toastConversation)}”`}
+                          </span>
+                        </span>
+                        {toast.status === "archived" ? (
+                          <button type="button" onClick={() => void undoArchive(toast.id)}>
+                            <Icon
+                              name="tabler:archive-off"
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            />
+                            <span>取消归档</span>
+                          </button>
+                        ) : null}
+                        <span
+                          className="knowledge-assistant-archive-toast-progress"
+                          data-paused={pausedArchiveToastIds.has(toast.id) ? "true" : undefined}
+                          role="progressbar"
+                          aria-label="撤销归档剩余时间"
+                          aria-valuemin={0}
+                          aria-valuemax={6}
+                          aria-valuenow={toast.remaining}
+                        />
+                      </div>
+                    );
+                  }),
+                  document.body
+                )
+              : null}
             <MessageStream
               key={`${auth?.principal?.id ?? "anonymous"}:${selectedId}`}
               stateKey={

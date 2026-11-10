@@ -309,6 +309,16 @@ export class AssistantService {
         this.runtime.cancelGeneration(job.id);
     return { deleted: true, conversationId };
   }
+
+  async restore(principal: FrontendPrincipal, conversationId: string) {
+    const restored = await this.storage.restoreConversation(
+      conversationId,
+      principal.id,
+      Date.now()
+    );
+    if (!restored) throw new AssistantServiceError("not-found", "Assistant conversation not found");
+    return { restored: true, conversationId };
+  }
 }
 
 let assistantService: AssistantService | null = null;

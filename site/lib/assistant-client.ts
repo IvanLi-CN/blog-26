@@ -39,6 +39,7 @@ export type AssistantQuota = {
 export type AssistantList = {
   conversations: AssistantConversation[];
   quota: AssistantQuota;
+  archivedConversations?: AssistantConversation[];
 };
 
 export class AssistantClientError extends Error {
@@ -179,5 +180,12 @@ export function deleteAssistantConversation(conversationId: string) {
   return request<{ deleted: true; conversationId: string }>(
     `/chat/conversations/${encodeURIComponent(conversationId)}`,
     { method: "DELETE" }
+  );
+}
+
+export function restoreAssistantConversation(conversationId: string) {
+  return request<{ restored: true; conversationId: string }>(
+    `/chat/conversations/${encodeURIComponent(conversationId)}/restore`,
+    { method: "POST" }
   );
 }
