@@ -748,25 +748,7 @@ function MessageStream({
                   )
               )
               .map((message) => (
-                <div
-                  className={`knowledge-assistant-message knowledge-assistant-message--${message.role}${message.role === "assistant" && !message.content.trim() ? " knowledge-assistant-message--process-only" : ""}`}
-                  data-message-id={message.id}
-                  data-message-role={message.role}
-                  data-presentation-id={presentationId}
-                  data-testid={`assistant-message-${message.role}`}
-                  key={message.id}
-                >
-                  {message.content.trim() || message.role === "user" ? (
-                    <AssistantMessageContent
-                      className="knowledge-assistant-message-content"
-                      messageId={message.id}
-                      presentationId={presentationId}
-                      role={message.role as "user" | "assistant"}
-                      content={message.content}
-                      status={message.status}
-                      renderMarkdown={ConversationMarkdown}
-                    />
-                  ) : null}
+                <div className="knowledge-assistant-turn" key={message.id}>
                   {message.role === "assistant" &&
                   (message.status === "pending" ||
                     message.status === "streaming" ||
@@ -777,38 +759,57 @@ function MessageStream({
                       citations={message.citations}
                     />
                   ) : null}
-                  {message.role === "assistant" && message.status === "cancelled" ? (
-                    <p className="knowledge-assistant-status-note" role="status">
-                      已停止生成
-                    </p>
-                  ) : null}
-                  {message.role === "assistant" && message.status === "failed" ? (
-                    <p className="knowledge-assistant-status-note" role="status">
-                      生成失败，可重试
-                    </p>
-                  ) : null}
-                  {message.status === "failed" && onRetry ? (
-                    <button
-                      type="button"
-                      className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-md border border-[color:var(--nature-line-strong)] px-2 text-xs font-semibold"
-                      onClick={() => onRetry(message)}
-                    >
-                      <Icon name="tabler:refresh" className="h-3.5 w-3.5" />
-                      重试
-                    </button>
-                  ) : null}
-                  {message.citations.length ? (
-                    <ul className="knowledge-assistant-citations" aria-label="回答来源">
-                      {message.citations.map((citation: AssistantCitation) => (
-                        <li key={citation.id}>
-                          <a href={citation.href} target="_blank" rel="noreferrer">
-                            {citation.title}
-                            {citation.location ? ` · ${citation.location}` : ""}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
+                  <div
+                    className={`knowledge-assistant-message knowledge-assistant-message--${message.role}${message.role === "assistant" && !message.content.trim() ? " knowledge-assistant-message--process-only" : ""}`}
+                    data-message-id={message.id}
+                    data-message-role={message.role}
+                    data-presentation-id={presentationId}
+                    data-testid={`assistant-message-${message.role}`}
+                  >
+                    {message.content.trim() || message.role === "user" ? (
+                      <AssistantMessageContent
+                        className="knowledge-assistant-message-content"
+                        messageId={message.id}
+                        presentationId={presentationId}
+                        role={message.role as "user" | "assistant"}
+                        content={message.content}
+                        status={message.status}
+                        renderMarkdown={ConversationMarkdown}
+                      />
+                    ) : null}
+                    {message.role === "assistant" && message.status === "cancelled" ? (
+                      <p className="knowledge-assistant-status-note" role="status">
+                        已停止生成
+                      </p>
+                    ) : null}
+                    {message.role === "assistant" && message.status === "failed" ? (
+                      <p className="knowledge-assistant-status-note" role="status">
+                        生成失败，可重试
+                      </p>
+                    ) : null}
+                    {message.status === "failed" && onRetry ? (
+                      <button
+                        type="button"
+                        className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-md border border-[color:var(--nature-line-strong)] px-2 text-xs font-semibold"
+                        onClick={() => onRetry(message)}
+                      >
+                        <Icon name="tabler:refresh" className="h-3.5 w-3.5" />
+                        重试
+                      </button>
+                    ) : null}
+                    {message.citations.length ? (
+                      <ul className="knowledge-assistant-citations" aria-label="回答来源">
+                        {message.citations.map((citation: AssistantCitation) => (
+                          <li key={citation.id}>
+                            <a href={citation.href} target="_blank" rel="noreferrer">
+                              {citation.title}
+                              {citation.location ? ` · ${citation.location}` : ""}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             {stoppedWithoutContent ? (
