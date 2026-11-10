@@ -714,12 +714,6 @@
   padding-top: 0.35rem;
 }
 
-.knowledge-assistant-message--process-only .knowledge-assistant-process {
-  margin-top: 0;
-  border-top: 0;
-  padding-top: 0;
-}
-
 .assistant-message-body-reveal {
   animation: knowledge-assistant-answer-reveal 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -731,6 +725,12 @@
   color: var(--nature-text-soft);
   font-size: 0.78rem;
   line-height: 1.5;
+}
+
+.knowledge-assistant-message--process-only .knowledge-assistant-process {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
 }
 
 .knowledge-assistant-process-toggle {
