@@ -68,7 +68,15 @@
     "public_api": {
       "impact": "patch",
       "change": "compatible",
-      "supported_consumer_versions": ["4.2.6"],
+      "supported_consumer_versions": [
+        "4.2.0",
+        "4.2.1",
+        "4.2.2",
+        "4.2.3",
+        "4.2.4",
+        "4.2.5",
+        "4.2.6"
+      ],
       "evidence": [
         {
           "path": "site/middleware.ts",
