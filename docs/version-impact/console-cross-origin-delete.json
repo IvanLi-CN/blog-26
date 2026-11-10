@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "5d9bfcae3289903447a7fc533b4dc2958be8b2c6",
+  "covered_files": {
+    "VERSION": "d6f85abf68d9621464e0388d087c8c66fa6894b0",
+    "astro.config.mjs": "a1ace1fe8445d35e4ab73e007b8e8027be9eee53",
+    "docs/specs/assistant-generation-experience-requirements.md": "51237b89470aebd6a78473ca5f8a11fd92846321",
+    "public/projects/diagrams/mains-aegis-hardware-architecture.svg": "725f492bf39b98161d9375f31055913fe775019c",
+    "public/projects/diagrams/mains-aegis-input-charge.svg": "71869995ccada56491ef523ce19070d1d6cda006",
+    "public/projects/diagrams/mains-aegis-output-protection.svg": "06814bc540e67a1b84f74cb5ec0fbcf666658aa0",
+    "public/projects/diagrams/mains-aegis-self-check.svg": "235adbc8646cbd416bd27252da7a0480f02893dc",
+    "public/projects/diagrams/mains-aegis-software-architecture.svg": "a75cf58ea30d9fd41bad186c426fee9db17f4c71",
+    "public/projects/diagrams/mains-aegis-ups-output.svg": "5da2dc428e20d5aaf14c6c87ce52f2f306dd2107",
+    "public/projects/mains-aegis/MainsAegis-Btns.step": "1d437b5a991584db10a2891d0fcae8f39ccbe0da",
+    "public/projects/mains-aegis/MainsAegis-Joystick.step": "132056c2e9a5d5eb6f2061bdb461b114f6f24ddc",
+    "public/projects/mains-aegis/PCB_Main.pdf": "e9d881db14aa7c7ac700f6e6217a0768a6d46b0e",
+    "public/projects/mains-aegis/PCB_Panel.pdf": "7468ac984ce6cf3c0dee8590b4e57fe777973d57",
+    "public/projects/mains-aegis/Panel.pdf": "b0cd831461fe3a375cefdf8b9b179aadb55bc313",
+    "public/projects/mains-aegis/SCH_Main.pdf": "786f9cada47cccb38d002422314e98bb572628d7",
+    "public/projects/mains-aegis/SCH_Panel.pdf": "910859e8851d02476cfb3c5fd19b0aa9b4dea534",
+    "public/projects/mains-aegis/pdf-viewer.html": "4b29cb718bf76801e279d2b459071065dc4762ae",
+    "public/projects/mains-aegis/viewer.html": "ce14bd30be1399d943d1c255a9de03b0da089e52",
+    "scripts/prepare-edgeone-pwa-config.test.ts": "e6d592220670bcd28525651dbb8ffd703134c29a",
+    "scripts/prepare-edgeone-pwa-config.ts": "288510a379951a25a086accc699f15ee09f37bdd",
+    "site/components/AssistantMessageContent.tsx": "59cef50b85e090bd09f1efa4703d5fdfeaf6ae13",
+    "site/components/KnowledgeAssistant.css": "8ccce469ec7f2e1a5a0fcd5be86725aabdf31e38",
+    "site/components/KnowledgeAssistant.tsx": "efc159e2ceebc5da68d718af374bde5633f7741f",
+    "site/components/PublicRouter.tsx": "27ea7349aea76a74c5d75cabeccb2ac4e91185cc",
+    "site/content/projects/mains-aegis.mdx": "21be5ca89ca9bae3e11f40dd4d56902a3c4200ae",
+    "site/lib/assistant-client.ts": "a3b989b2580be9bfd243b7ad2716e4367d915f2e",
+    "site/lib/project-content-utils.ts": "55e911fb6654541d8a4f7b6837fb4bbe39289f04",
+    "site/middleware.ts": "e59f9a2902b777ca4f7ae0432298a58c670dda5b",
+    "site/styles/public-pages.css": "be65b47ced78981fe73385ad682ca46f527285ca",
+    "src/components/project-content-blocks.tsx": "7ad03aecbd56898e6f91b2398bcf15c464a24c74",
+    "src/lib/assistant-contracts.ts": "0a2e2f3875c769be2056ece81200cfd0d19e412f",
+    "src/lib/assistant-storage.ts": "948e75a5c423bc8aebf3637eeeb01ff465d7a728",
+    "src/lib/public-header-scroll.ts": "c781ec6fe2665eb05b8f377487f43bc66ae354f4",
+    "src/lib/web-demo-fetch.ts": "839a3b7fc5e249b95915686bb2b80792f2943f4a",
+    "src/lib/web-demo-runtime.ts": "b5e6f5adc235216f582b8a13d91aab1520a5d2c9",
+    "src/server/assistant/api.ts": "924f54c073a6b0d5d3d7885e26fc5636542bf354",
+    "src/server/assistant/service.ts": "396560ed8fe4cd654863b138cd168ca0e7df832d",
+    "src/styles/globals.css": "33647cef7f5a6ebdb99743add6a4ba57ae55cd56",
+    "tests/ci/astro-config.test.ts": "de3a4443ea27c24fbb3f8688be27731fa3191c5d",
+    "tests/components/KnowledgeAssistant.test.tsx": "a2f2474d958079f8e4a1fb42a9d04ea89804a75e",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "cecce9350c144b79026c0dd961b7a268a0ca0799",
+    "tests/lib/web-demo-fetch.test.ts": "c5063e44f7d4363a644188ea388a044cf6de81ca",
+    "tests/lib/web-demo-runtime.test.ts": "130580d2f87c309828f0fc6b5980e5d4fdff3bc8"
+  },
+  "change": {
+    "description": "Carry forward the compatible v4.2 public assistant, project preview, PWA, and console origin boundary changes present since the published v4.2.1 baseline. Mutating console API requests remain restricted to the trusted public origin allowlist while legitimate cross-origin JSON DELETE requests reach the router.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The cumulative candidate is compatible and patch-level: public API behavior is preserved, existing persisted state remains readable, and the console origin boundary delegates to the existing trusted-origin policy.",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/ci/astro-config.test.ts",
+          "blob": "de3a4443ea27c24fbb3f8688be27731fa3191c5d",
+          "command": "bun test tests/ci/astro-config.test.ts tests/server/site-middleware.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate carries forward the already-reviewed v4.2 feature and asset changes plus the console cross-origin mutation fix; no breaking API or persistent-state change is introduced. ",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/ci/astro-config.test.ts",
+          "blob": "de3a4443ea27c24fbb3f8688be27731fa3191c5d",
+          "command": "bun test tests/ci/astro-config.test.ts tests/server/site-middleware.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "All source, test, documentation, and public asset changes since the published v4.2.1 baseline are covered by this record; no unrelated working-tree files are included."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused origin-boundary tests, console build, repository checks, and the existing cumulative feature coverage pass for the compatible patch-level candidate.",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/ci/astro-config.test.ts",
+          "blob": "de3a4443ea27c24fbb3f8688be27731fa3191c5d",
+          "command": "bun test tests/ci/astro-config.test.ts tests/server/site-middleware.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.1.10",
+        "4.1.11",
+        "4.2.0",
+        "4.2.1",
+        "4.2.2",
+        "4.2.3",
+        "4.2.4",
+        "4.2.5",
+        "4.2.6",
+        "4.2.7",
+        "4.2.8",
+        "4.2.9"
+      ],
+      "evidence": [
+        {
+          "path": "tests/ci/astro-config.test.ts",
+          "blob": "de3a4443ea27c24fbb3f8688be27731fa3191c5d",
+          "command": "bun test tests/ci/astro-config.test.ts tests/server/site-middleware.test.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No database, filesystem content, snapshot, or migration format changes are introduced by this candidate.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "astro.config.mjs",
+          "blob": "a1ace1fe8445d35e4ab73e007b8e8027be9eee53",
+          "command": "Configuration and routing boundary changes do not write persistent state."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "866fff3ac7eaff791e92750c528c1e14fed980d7",
+  "covered_files": {
+    "astro.config.mjs": "a1ace1fe8445d35e4ab73e007b8e8027be9eee53",
+    "site/middleware.ts": "e59f9a2902b777ca4f7ae0432298a58c670dda5b",
+    "tests/ci/astro-config.test.ts": "de3a4443ea27c24fbb3f8688be27731fa3191c5d"
+  },
+  "change": {
+    "description": "Allow legitimate cross-origin JSON DELETE requests to reach the console API while enforcing the trusted public origin policy for every mutating console API request.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The console origin boundary remains compatible and patch-level: Astro no longer rejects the request before routing, while the existing trusted-origin allowlist continues to protect mutating API requests.",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/ci/astro-config.test.ts",
+          "blob": "de3a4443ea27c24fbb3f8688be27731fa3191c5d",
+          "command": "bun test tests/ci/astro-config.test.ts tests/server/site-middleware.test.ts"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate changes only Astro origin handling, the console middleware origin gate, and focused tests.",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/ci/astro-config.test.ts",
+          "blob": "de3a4443ea27c24fbb3f8688be27731fa3191c5d",
+          "command": "bun test tests/ci/astro-config.test.ts tests/server/site-middleware.test.ts"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "All source and test files changed since the v4.2.6 baseline are covered by this record."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Focused middleware tests and the console build pass for the compatible origin-boundary fix.",
+      "assessed_at": "2026-11-10T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/ci/astro-config.test.ts",
+          "blob": "de3a4443ea27c24fbb3f8688be27731fa3191c5d",
+          "command": "bun test tests/ci/astro-config.test.ts tests/server/site-middleware.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.1.10",
+        "4.1.11",
+        "4.2.0",
+        "4.2.1",
+        "4.2.2",
+        "4.2.3",
+        "4.2.4",
+        "4.2.5",
+        "4.2.6",
+        "4.2.7",
+        "4.2.8",
+        "4.2.9"
+      ],
+      "evidence": [
+        {
+          "path": "tests/ci/astro-config.test.ts",
+          "blob": "de3a4443ea27c24fbb3f8688be27731fa3191c5d",
+          "command": "bun test tests/ci/astro-config.test.ts tests/server/site-middleware.test.ts"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No persistent state or migration format changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "astro.config.mjs",
+          "blob": "a1ace1fe8445d35e4ab73e007b8e8027be9eee53",
+          "command": "Configuration-only routing boundary change."
+        }
+      ]
+    }
+  }
+}

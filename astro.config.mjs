@@ -94,6 +94,13 @@ export default defineConfig({
   adapter: serverRuntime ? node({ mode: webDemoRuntime ? "standalone" : "middleware" }) : undefined,
   output: serverRuntime ? "server" : "static",
   trailingSlash: serverRuntime ? "ignore" : "always",
+  // The console serves the public API on a separate origin (ivanli.cc ->
+  // console.ivanli.cc). Astro's form-oriented origin check rejects legitimate
+  // cross-origin JSON DELETE requests before the API router can apply its
+  // allowlist. Mutating public API routes enforce hasTrustedPublicOrigin.
+  security: {
+    checkOrigin: false,
+  },
   srcDir: "./site",
   outDir: astroOutDir,
   site: astroSiteUrl,
