@@ -3,13 +3,14 @@
   "kind": "version-impact-record",
   "base_sha": "79667f38e331dbfca0ca5fe85979213a90602da6",
   "covered_files": {
-    "apps/admin/src/components/app-shell.tsx": "91c3ac869f5807d17e10d0bd63e843e68c3ed6e6",
+    "apps/admin/src/components/app-shell.tsx": "8d253b51fcf5935a15bcbed8b776eb313d009554",
     "scripts/build-web-demo.ts": "53ac78ecc842edeed36b44eb0c279339cf59435e",
-    "site/components/SiteFooter.tsx": "ad426063a98f4de03d59fb0cf7fbe3613be51ab0",
-    "src/lib/version-info.ts": "0742a99395eb4a4512e885409225a8a8e0c474ad"
+    "site/components/SiteFooter.tsx": "6faed6c6f61ce52dc2ac19adaba9e2a3595ac082",
+    "src/lib/version-info.ts": "8e59eb50e1a47e0d0a0c6357119fe6ccf7a1b750",
+    "site/layouts/AssistantRouteLayout.astro": "40f8f443831c36971c4d3b97fda828e8ff95cabb"
   },
   "change": {
-    "description": "Expose the product version in the public footer and admin brand block, and make Web Demo builds generate the version metadata required by those surfaces.",
+    "description": "Expose the product version in public, chat, and admin interface chrome, and link each version label to the corresponding OctoRill release.",
     "release_unit_description": "static frontend and full-feature Docker image",
     "affected_contracts": ["public-api"]
   },
@@ -21,12 +22,12 @@
       "evidence": [
         {
           "path": "site/components/SiteFooter.tsx",
-          "blob": "ad426063a98f4de03d59fb0cf7fbe3613be51ab0",
+          "blob": "6faed6c6f61ce52dc2ac19adaba9e2a3595ac082",
           "command": "The footer adds one v-prefixed product version label beside the existing site name"
         },
         {
           "path": "apps/admin/src/components/app-shell.tsx",
-          "blob": "91c3ac869f5807d17e10d0bd63e843e68c3ed6e6",
+          "blob": "8d253b51fcf5935a15bcbed8b776eb313d009554",
           "command": "The admin brand block adds the same shared product version label"
         }
       ]
@@ -37,12 +38,12 @@
       "assessed_at": "2026-11-02T22:03:13+08:00",
       "scope_drift": {
         "detected": false,
-        "description": "No route, API, authentication, database, content, or release-version input was added; the build-script change only restores an existing generated metadata prerequisite in clean Web Demo builds."
+        "description": "The candidate remains limited to shared version-label formatting, existing public/chat/admin chrome, and the release destination helper; runtime contracts and durable state remain unchanged."
       },
       "evidence": [
         {
           "path": "src/lib/version-info.ts",
-          "blob": "0742a99395eb4a4512e885409225a8a8e0c474ad",
+          "blob": "8e59eb50e1a47e0d0a0c6357119fe6ccf7a1b750",
           "command": "The shared label derives from the existing generated productVersion field and falls back to the existing development label"
         },
         {
@@ -54,17 +55,17 @@
     },
     "verified": {
       "impact": "patch",
-      "reasoning": "The public and admin builds consume one shared v-prefixed product version label, the approved desktop and mobile candidate uses one visible footer label, and the Web Demo builder now creates its ignored generated input before bundling. No public response or durable state contract changes are introduced.",
+      "reasoning": "Deterministic Web Demo captures confirm the chat footer version label is visible and links to the corresponding OctoRill release; the shared helper is consumed by the public and admin version labels without changing API or persistent state.",
       "assessed_at": "2026-11-02T22:03:13+08:00",
       "evidence": [
         {
           "path": "site/components/SiteFooter.tsx",
-          "blob": "ad426063a98f4de03d59fb0cf7fbe3613be51ab0",
+          "blob": "6faed6c6f61ce52dc2ac19adaba9e2a3595ac082",
           "command": "Owner-confirmed footer version candidate C at desktop and mobile layouts"
         },
         {
           "path": "apps/admin/src/components/app-shell.tsx",
-          "blob": "91c3ac869f5807d17e10d0bd63e843e68c3ed6e6",
+          "blob": "8d253b51fcf5935a15bcbed8b776eb313d009554",
           "command": "Admin build passes with the shared product version label"
         },
         {
@@ -93,7 +94,7 @@
         },
         {
           "path": "src/lib/version-info.ts",
-          "blob": "0742a99395eb4a4512e885409225a8a8e0c474ad",
+          "blob": "8e59eb50e1a47e0d0a0c6357119fe6ccf7a1b750",
           "command": "The UI reads the existing productVersion metadata without changing server payloads"
         }
       ]
@@ -107,7 +108,7 @@
       "evidence": [
         {
           "path": "site/components/SiteFooter.tsx",
-          "blob": "ad426063a98f4de03d59fb0cf7fbe3613be51ab0",
+          "blob": "6faed6c6f61ce52dc2ac19adaba9e2a3595ac082",
           "command": "The change only adds existing metadata to footer presentation"
         }
       ]
