@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "79667f38e331dbfca0ca5fe85979213a90602da6",
+  "base_sha": "d3980665e76ae5de88e402c20ddffb777c88c5d4",
   "covered_files": {
     "apps/admin/src/components/app-shell.tsx": "8d253b51fcf5935a15bcbed8b776eb313d009554",
     "scripts/build-web-demo.ts": "53ac78ecc842edeed36b44eb0c279339cf59435e",
