@@ -281,7 +281,7 @@ jobs:
         run: bash scripts/prepare-ci-apt-mirror.sh
 
       - name: Install Playwright Chromium for Storybook interactions
-        run: ./node_modules/.bin/playwright install --with-deps chromium
+        run: ./node_modules/.bin/playwright install chromium
 
       - name: Verify Storybook interactions
         run: bun run test:storybook-interactions
