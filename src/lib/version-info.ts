@@ -74,4 +74,4 @@ export const productVersionLabel = versionInfo.productVersion
   ? `v${versionInfo.productVersion}`
   : versionInfo.version;
 
-export const productVersionUrl = `https://octo-rill.ivanli.cc/IvanLi-CN/blog-26/releases/tag/${encodeURIComponent(productVersionLabel)}`;
+export const productVersionUrl = `https://octo-rill.ivanli.cc/public/IvanLi-CN/blog-26/releases/tag/${encodeURIComponent(productVersionLabel)}`;

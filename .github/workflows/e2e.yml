@@ -74,9 +74,9 @@ jobs:
             sudo apt-get update && sudo apt-get install -y lsof
           fi
 
-      - name: Install Playwright browsers
+      - name: Install Playwright browser binaries
         if: matrix.project != 'mcp'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Build embedded search engine
         uses: ./.github/actions/setup-native-search
@@ -123,8 +123,8 @@ jobs:
       - name: Prepare Ubuntu archive for browser dependencies
         run: bash scripts/prepare-ci-apt-mirror.sh
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browser binaries
+        run: npx playwright install chromium
 
       - name: Build Web Demo artifacts
         run: bun run web-demo:build
