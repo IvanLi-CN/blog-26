@@ -521,8 +521,7 @@ function handleWindowScroll() {
       delta > 0 &&
       controller.state.headerHeight > 0 &&
       controller.state.visibleOffset >= controller.state.headerHeight &&
-      controller.state.gestureDistance >=
-        controller.state.headerHeight * PUBLIC_HEADER_SCROLL_CONFIG.hideThreshold
+      window.scrollY >= controller.state.headerHeight * PUBLIC_HEADER_SCROLL_CONFIG.hideThreshold
     ) {
       controller.state = resetGesture(controller.state, 0);
     }
