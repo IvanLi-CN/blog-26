@@ -517,6 +517,15 @@ function handleWindowScroll() {
       touchActive && controller.touchFollowActive && canMoveHeader
     );
     controller.state = result.state;
+    if (
+      delta > 0 &&
+      controller.state.headerHeight > 0 &&
+      controller.state.visibleOffset >= controller.state.headerHeight &&
+      controller.state.gestureDistance >=
+        controller.state.headerHeight * PUBLIC_HEADER_SCROLL_CONFIG.hideThreshold
+    ) {
+      controller.state = resetGesture(controller.state, 0);
+    }
     if (delta > 0 && atDocumentBottom) {
       controller.state = resetGesture(controller.state, 0);
     }
