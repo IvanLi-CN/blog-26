@@ -595,7 +595,14 @@ function refreshControllers() {
   for (const [header, controller] of controllers) {
     clearSettleTimers(controller);
     if (header.isConnected && isMobileViewport()) {
-      controller.state = resetGesture(controller.state, controller.state.visibleOffset);
+      const restoredOffset = window.scrollY > 0 ? 0 : controller.state.visibleOffset;
+      const timestamp = performance.now();
+      controller.state = {
+        ...resetGesture(controller.state, restoredOffset),
+        lastScrollY: window.scrollY,
+        lastTimestamp: timestamp,
+        samples: [{ scrollY: window.scrollY, timestamp }],
+      };
       controller.touchFollowActive = false;
       applyHeaderState(controller, "steady");
       continue;

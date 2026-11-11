@@ -9,7 +9,8 @@
     "src/lib/version-info.ts": "8e59eb50e1a47e0d0a0c6357119fe6ccf7a1b750",
     "site/layouts/AssistantRouteLayout.astro": "40f8f443831c36971c4d3b97fda828e8ff95cabb",
     "docs/visual-evidence/blog-26-version-footer/chat-footer.png": "1d285608ea71a71287f8b25c65289fa4516c3020",
-    "site/components/SiteHeader.tsx": "88674b50e5baef59429363a6f43f84ec92b15b6f"
+    "site/components/SiteHeader.tsx": "88674b50e5baef59429363a6f43f84ec92b15b6f",
+    "src/lib/public-header-scroll.ts": "a76e88364fadd812f6d55065eb04be2aaa87f780"
   },
   "change": {
     "description": "Expose the product version in public, chat, and admin interface chrome, and link each version label to the corresponding OctoRill release.",
