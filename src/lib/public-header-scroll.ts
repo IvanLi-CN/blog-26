@@ -518,7 +518,6 @@ function handleWindowScroll() {
     );
     controller.state = result.state;
     if (
-      delta > 0 &&
       controller.state.headerHeight > 0 &&
       controller.state.visibleOffset >= controller.state.headerHeight &&
       window.scrollY >= controller.state.headerHeight * PUBLIC_HEADER_SCROLL_CONFIG.hideThreshold
