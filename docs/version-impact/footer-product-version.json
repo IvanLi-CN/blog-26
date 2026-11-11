@@ -29,7 +29,7 @@
         },
         {
           "path": "apps/admin/src/components/app-shell.tsx",
-          "blob": "8d253b51fcf5935a15bcbed8b776eb313d009554",
+          "blob": "d385e976136f584687f9e9f549f222db1da7f10b",
           "command": "The admin brand block adds the same shared product version label"
         }
       ]
@@ -67,7 +67,7 @@
         },
         {
           "path": "apps/admin/src/components/app-shell.tsx",
-          "blob": "8d253b51fcf5935a15bcbed8b776eb313d009554",
+          "blob": "d385e976136f584687f9e9f549f222db1da7f10b",
           "command": "Admin build passes with the shared product version label"
         },
         {
