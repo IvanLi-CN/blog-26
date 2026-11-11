@@ -2,6 +2,7 @@
 import ThemeToggle from "@/components/common/ThemeToggle";
 import { footerData, headerData } from "@/config/navigation";
 import { SITE } from "@/config/site";
+import { productVersionLabel, productVersionUrl } from "@/lib/version-info";
 import { toPublicSitePath } from "../lib/runtime-urls";
 import SiteHeader from "../components/SiteHeader";
 import BaseLayout from "./BaseLayout.astro";
@@ -71,6 +72,9 @@ const currentYear = new Date().getFullYear();
           <span class="assistant-route-footer-title">{SITE.name}</span>
           <span class="assistant-route-footer-meta">
             <span>© {currentYear} {SITE.owner} · Code: MIT</span>
+            <a class="assistant-route-footer-version" href={productVersionUrl} target="_blank" rel="noopener noreferrer">
+              {productVersionLabel}
+            </a>
             <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" rel="noopener noreferrer">
               Content: CC BY-NC-ND 4.0
             </a>

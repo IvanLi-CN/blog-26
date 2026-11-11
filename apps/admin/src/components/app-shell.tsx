@@ -33,7 +33,7 @@ import {
 } from "react";
 import WebDemoInspector from "@/components/WebDemoInspector";
 import { adminApi } from "@/lib/admin-api-client";
-import { productVersionLabel } from "@/lib/version-info";
+import { productVersionLabel, productVersionUrl } from "@/lib/version-info";
 import { WEB_DEMO_ROUTE_EVENT } from "@/lib/web-demo-runtime";
 import { ThemeToggle } from "~/components/theme-toggle";
 import {
@@ -172,13 +172,16 @@ function BrandBlock({ children }: { children?: ReactNode }) {
             <span className="min-w-0 truncate text-base font-semibold leading-tight text-foreground">
               管理后台
             </span>
-            <span
+            <a
               className="mr-8 inline-flex shrink-0 items-center rounded-full border border-primary/45 bg-primary/6 px-2 py-0.5 font-mono text-[0.65rem] font-semibold leading-4 tracking-[0.08em] text-primary lg:mr-0"
-              aria-hidden="true"
+              href={productVersionUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`查看 ${productVersionLabel} 发布记录`}
               data-testid="admin-product-version"
             >
               {productVersionLabel}
-            </span>
+            </a>
           </span>
           <span className="block truncate text-xs text-muted-foreground">内容工作台</span>
         </span>
