@@ -517,6 +517,13 @@ function handleWindowScroll() {
       touchActive && controller.touchFollowActive && canMoveHeader
     );
     controller.state = result.state;
+    if (
+      controller.state.headerHeight > 0 &&
+      controller.state.visibleOffset >= controller.state.headerHeight &&
+      window.scrollY >= controller.state.headerHeight * PUBLIC_HEADER_SCROLL_CONFIG.hideThreshold
+    ) {
+      controller.state = resetGesture(controller.state, 0);
+    }
     if (delta > 0 && atDocumentBottom) {
       controller.state = resetGesture(controller.state, 0);
     }
@@ -595,7 +602,14 @@ function refreshControllers() {
   for (const [header, controller] of controllers) {
     clearSettleTimers(controller);
     if (header.isConnected && isMobileViewport()) {
-      controller.state = resetGesture(controller.state, controller.state.visibleOffset);
+      const restoredOffset = window.scrollY > 0 ? 0 : controller.state.visibleOffset;
+      const timestamp = performance.now();
+      controller.state = {
+        ...resetGesture(controller.state, restoredOffset),
+        lastScrollY: window.scrollY,
+        lastTimestamp: timestamp,
+        samples: [{ scrollY: window.scrollY, timestamp }],
+      };
       controller.touchFollowActive = false;
       applyHeaderState(controller, "steady");
       continue;

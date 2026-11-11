@@ -19,7 +19,6 @@ export default function SiteHeader(props: Props) {
   const {
     className,
     contextLabel,
-    enableScrollBehavior = false,
     pathname = "/",
     showRss = true,
     showSearch = true,
@@ -27,11 +26,10 @@ export default function SiteHeader(props: Props) {
   } = props;
   const isSearchPage = pathname === "/search";
   useLayoutEffect(() => {
-    if (!enableScrollBehavior) return;
     void import("@/lib/public-header-scroll").then(() => {
       window.dispatchEvent(new Event("resize"));
     });
-  }, [enableScrollBehavior]);
+  }, []);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";

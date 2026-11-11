@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "d55e6b5e199c977dfb28bc789e849b655d813fcf",
+  "covered_files": {
+    "apps/admin/src/components/app-shell.tsx": "d385e976136f584687f9e9f549f222db1da7f10b",
+    "scripts/build-web-demo.ts": "53ac78ecc842edeed36b44eb0c279339cf59435e",
+    "site/components/SiteFooter.tsx": "6faed6c6f61ce52dc2ac19adaba9e2a3595ac082",
+    "src/lib/version-info.ts": "8e59eb50e1a47e0d0a0c6357119fe6ccf7a1b750",
+    "site/layouts/AssistantRouteLayout.astro": "40f8f443831c36971c4d3b97fda828e8ff95cabb",
+    "docs/visual-evidence/blog-26-version-footer/chat-footer.png": "1d285608ea71a71287f8b25c65289fa4516c3020",
+    "site/components/SiteHeader.tsx": "88674b50e5baef59429363a6f43f84ec92b15b6f",
+    "src/lib/public-header-scroll.ts": "3e4860ae911c575a189f5f454e320e4594a1ca33"
+  },
+  "change": {
+    "description": "Expose the product version in public, chat, and admin interface chrome, and link each version label to the corresponding OctoRill release.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change adds a presentation-only product version label to existing public and admin chrome. It does not change API payloads, navigation contracts, authentication, or persistent state.",
+      "assessed_at": "2026-11-02T22:03:13+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SiteFooter.tsx",
+          "blob": "6faed6c6f61ce52dc2ac19adaba9e2a3595ac082",
+          "command": "The footer adds one v-prefixed product version label beside the existing site name"
+        },
+        {
+          "path": "apps/admin/src/components/app-shell.tsx",
+          "blob": "d385e976136f584687f9e9f549f222db1da7f10b",
+          "command": "The admin brand block adds the same shared product version label"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate remains limited to shared version-label formatting, two existing brand surfaces, and the Web Demo build prerequisite. The public and admin runtime contracts and durable state remain unchanged.",
+      "assessed_at": "2026-11-02T22:03:13+08:00",
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains limited to shared version-label formatting, existing public/chat/admin chrome, and the release destination helper; runtime contracts and durable state remain unchanged."
+      },
+      "evidence": [
+        {
+          "path": "src/lib/version-info.ts",
+          "blob": "8e59eb50e1a47e0d0a0c6357119fe6ccf7a1b750",
+          "command": "The shared label derives from the existing generated productVersion field and falls back to the existing development label"
+        },
+        {
+          "path": "scripts/build-web-demo.ts",
+          "blob": "53ac78ecc842edeed36b44eb0c279339cf59435e",
+          "command": "Web Demo preparation now generates version metadata before clean builds"
+        }
+      ]
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Deterministic Web Demo captures confirm the chat footer version label is visible and links to the corresponding OctoRill release; the shared helper is consumed by the public and admin version labels without changing API or persistent state.",
+      "assessed_at": "2026-11-02T22:03:13+08:00",
+      "evidence": [
+        {
+          "path": "site/components/SiteFooter.tsx",
+          "blob": "6faed6c6f61ce52dc2ac19adaba9e2a3595ac082",
+          "command": "Owner-confirmed footer version candidate C at desktop and mobile layouts"
+        },
+        {
+          "path": "apps/admin/src/components/app-shell.tsx",
+          "blob": "d385e976136f584687f9e9f549f222db1da7f10b",
+          "command": "Admin build passes with the shared product version label"
+        },
+        {
+          "path": "tests/server/version-api.test.ts",
+          "blob": "c86011cb95db3b9f8358570c62e22630af004ac0",
+          "command": "bun test tests/server/version-api.test.ts (4 passed)"
+        },
+        {
+          "path": "scripts/build-web-demo.ts",
+          "blob": "53ac78ecc842edeed36b44eb0c279339cf59435e",
+          "command": "Clean Web Demo CI failure was reproduced at the missing generated/version.json boundary and fixed at the build entrypoint"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.1.10",
+        "4.1.11",
+        "4.2.0",
+        "4.2.1",
+        "4.2.2",
+        "4.2.6",
+        "4.2.8"
+      ],
+      "evidence": [
+        {
+          "path": "tests/server/version-api.test.ts",
+          "blob": "c86011cb95db3b9f8358570c62e22630af004ac0",
+          "command": "The existing version metadata API tests preserve the version response contract"
+        },
+        {
+          "path": "src/lib/version-info.ts",
+          "blob": "8e59eb50e1a47e0d0a0c6357119fe6ccf7a1b750",
+          "command": "The UI reads the existing productVersion metadata without changing server payloads"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No SQLite schema, local content format, browser storage, cache identity, or durable release state changes are introduced.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/components/SiteFooter.tsx",
+          "blob": "6faed6c6f61ce52dc2ac19adaba9e2a3595ac082",
+          "command": "The change only adds existing metadata to footer presentation"
+        }
+      ]
+    }
+  }
+}
