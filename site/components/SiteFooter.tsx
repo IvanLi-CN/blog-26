@@ -1,7 +1,7 @@
 import Icon from "@/components/ui/Icon";
 import { footerData } from "@/config/navigation";
 import { SITE } from "@/config/site";
-import { productVersionLabel } from "@/lib/version-info";
+import { productVersionLabel, productVersionUrl } from "@/lib/version-info";
 import { toPublicSitePath } from "../lib/runtime-urls";
 
 export default function SiteFooter(_props: Record<string, unknown>) {
@@ -27,9 +27,15 @@ export default function SiteFooter(_props: Record<string, unknown>) {
                     <div className="font-heading text-xl font-semibold leading-tight tracking-[-0.04em]">
                       {SITE.name}
                     </div>
-                    <span className="nature-chip inline-flex h-5 items-center rounded-md px-1.5 py-0 font-mono text-[0.68rem] font-semibold leading-none tracking-[0.01em]">
+                    <a
+                      className="nature-chip nature-chip-link inline-flex h-5 items-center rounded-md px-1.5 py-0 font-mono text-[0.68rem] font-semibold leading-none tracking-[0.01em]"
+                      href={productVersionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`查看 ${productVersionLabel} 发布记录`}
+                    >
                       {productVersionLabel}
-                    </span>
+                    </a>
                   </div>
                   <div className="text-sm text-[color:var(--nature-text-soft)]">
                     Digital greenhouse for notes, memos, and making.
