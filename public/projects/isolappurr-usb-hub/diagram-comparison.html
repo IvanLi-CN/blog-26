@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>IsolaPurr 架构图方案对比</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1512;--surface:#13221d;--line:#2c4c40;--text:#edf7f1;--muted:#abc0b5;--accent:#8bd2ae}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 system-ui,-apple-system,"Noto Sans SC",sans-serif}main{max-width:1440px;margin:0 auto;padding:32px 28px 48px}h1{margin:0 0 6px;font-size:28px}p.lead{margin:0 0 24px;color:var(--muted)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{min-width:0;border:1px solid var(--line);border-radius:18px;background:var(--surface);overflow:hidden}.panel header{padding:18px 20px;border-bottom:1px solid var(--line)}.panel h2{margin:0;font-size:19px}.panel header p{margin:4px 0 0;color:var(--muted);font-size:13px}.canvas{min-height:650px;padding:18px;overflow:auto}.mermaid{min-width:760px}.flow{height:520px;width:100%;border-radius:12px;background:#0e1b17}.react-flow__minimap,.react-flow__attribution{display:none!important}.react-flow__controls button{background:#162820;color:#d8eee2;border-color:#365b49}.react-flow__controls button:hover{background:#234436}.status{padding:16px;color:var(--muted)}@media(max-width:900px){main{padding:22px 14px}.grid{grid-template-columns:1fr}.canvas{min-height:500px}.flow{height:460px}.mermaid{width:100%;min-width:0}}
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xyflow/react@12.8.6/dist/style.css" />
+</head>
+<body>
+<main>
+<h1>IsolaPurr 架构图方案对比</h1>
+<p class="lead">左侧是 Mermaid + ELK 的文本驱动布局，右侧是 React Flow 的可交互节点画布。两边表达同一组非隔离域、隔离域和端口关系。</p>
+<div class="grid">
+<section class="panel"><header><h2>Mermaid + ELK</h2><p>适合正文：关系由文本维护，布局自动生成。</p></header><div class="canvas"><div id="mermaid" class="mermaid"></div><div id="mermaid-status" class="status">正在渲染 Mermaid…</div></div></section>
+<section class="panel"><header><h2>React Flow</h2><p>适合探索：节点可以拖动、缩放、定位和继续扩展交互。</p></header><div class="canvas"><div id="flow" class="flow"></div><div id="flow-status" class="status">正在加载 React Flow…</div></div></section>
+</div>
+</main>
+<script type="module">
+const mermaidSource = `---
+config:
+  layout: elk
+---
+flowchart TB
+  subgraph noniso["非隔离域"]
+    host["电脑 / USB Host"] --> upstream["USB-C 上游端口"]
+    upstream --> local["非隔离 USB-C 下行"]
+  end
+  upstream -->|USB 2.0 数据| ch318["CH318T 数据隔离"]
+  subgraph iso["隔离域"]
+    hub["隔离域 Hub"] --> usbA["USB-A 下行"]
+    hub --> usbC["USB-C PD 下行"]
+  end
+  ch318 --> hub
+  input["DC5525 / USB-C PD 输入"] --> hub
+`;
+try {
+  const mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@12.0.0/dist/mermaid.esm.min.mjs")).default;
+  mermaid.initialize({startOnLoad:false,securityLevel:"loose",theme:"dark",flowchart:{htmlLabels:true,useMaxWidth:true}});
+  const {svg}=await mermaid.render("isolappurr-mermaid-elk",mermaidSource);
+  document.querySelector("#mermaid").innerHTML=svg;
+  document.querySelector("#mermaid-status").remove();
+} catch(error) {
+  document.querySelector("#mermaid-status").textContent="Mermaid 加载失败："+error.message;
+}
+try {
+  const React = await import("https://esm.sh/react@19.1.0");
+  const ReactDOM = await import("https://esm.sh/react-dom@19.1.0/client");
+  const Flow = await import("https://esm.sh/@xyflow/react@12.8.6?deps=react@19.1.0,react-dom@19.1.0");
+  const nodes=[
+    {id:"host",position:{x:30,y:170},data:{label:"电脑 / USB Host"},style:{background:"#202b3d",color:"#edf7f1",border:"1px solid #8fa8d0",borderRadius:12,padding:14,width:160}},
+    {id:"upstream",position:{x:240,y:120},data:{label:"USB-C 上游端口"},style:{background:"#1d3029",color:"#edf7f1",border:"1px solid #78b99e",borderRadius:12,padding:14,width:175}},
+    {id:"local",position:{x:240,y:270},data:{label:"非隔离 USB-C 下行"},style:{background:"#1d3029",color:"#edf7f1",border:"1px solid #78b99e",borderRadius:12,padding:14,width:175}},
+    {id:"ch318",position:{x:480,y:170},data:{label:"CH318T 数据隔离"},style:{background:"#38242b",color:"#edf7f1",border:"1px solid #d28a9b",borderRadius:12,padding:14,width:175}},
+    {id:"hub",position:{x:730,y:170},data:{label:"隔离域 Hub"},style:{background:"#1d3029",color:"#edf7f1",border:"1px solid #78b99e",borderRadius:12,padding:14,width:160}},
+    {id:"usbA",position:{x:950,y:80},data:{label:"USB-A 下行"},style:{background:"#1d3029",color:"#edf7f1",border:"1px solid #78b99e",borderRadius:12,padding:14,width:160}},
+    {id:"usbC",position:{x:950,y:260},data:{label:"USB-C PD 下行"},style:{background:"#1d3029",color:"#edf7f1",border:"1px solid #78b99e",borderRadius:12,padding:14,width:160}},
+    {id:"input",position:{x:700,y:380},data:{label:"DC5525 / USB-C PD 输入"},style:{background:"#342c1d",color:"#edf7f1",border:"1px solid #d2ad68",borderRadius:12,padding:14,width:220}}
+  ];
+  const edges=[
+    {id:"e1",source:"host",target:"upstream",animated:true,label:"USB-C"},{id:"e2",source:"upstream",target:"local",label:"同一电气域"},{id:"e3",source:"upstream",target:"ch318",label:"USB 2.0 数据"},{id:"e4",source:"ch318",target:"hub",label:"隔离后数据"},{id:"e5",source:"hub",target:"usbA"},{id:"e6",source:"hub",target:"usbC"},{id:"e7",source:"input",target:"hub",label:"独立供电"}
+  ];
+  function App(){return React.createElement(Flow.ReactFlow,{nodes,edges,fitView:true,minZoom:.45,maxZoom:1.6,children:[React.createElement(Flow.Background,{key:"bg",color:"#29463a",gap:18}),React.createElement(Flow.Controls,{key:"controls"}),React.createElement(Flow.MiniMap,{key:"map",nodeColor:"#78b99e"})]})}
+  ReactDOM.createRoot(document.querySelector("#flow")).render(React.createElement(App));
+  document.querySelector("#flow-status").remove();
+} catch(error) {
+  document.querySelector("#flow-status").textContent="React Flow 加载失败："+error.message;
+}
+</script>
+</body>
+</html>
