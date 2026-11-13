@@ -39,11 +39,13 @@ const allowedProjectContentBlocks = new Set([
   "ProjectFacts",
   "ProjectFigure",
   "ProjectArtifactTabs",
+  "IsolapurrArchitectureFlow",
 ]);
 
 const allowedProjectContentBlockSources = new Set([
   "@/components/project-content-blocks",
   "../../../src/components/project-content-blocks",
+  "../../../src/components/IsolapurrArchitectureFlow",
 ]);
 
 export function validateProjectMdxImports(source: string, filePath: string) {

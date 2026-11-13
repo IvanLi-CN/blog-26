@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IsolaPurr 3D 模型</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body, #viewer { width: 100%; height: 100%; margin: 0; }
+    body { overflow: hidden; background: var(--viewer-background); }
+    :root { --viewer-background: #0f1613; --viewer-text: #e9f1eb; --viewer-text-soft: rgba(233, 241, 235, 0.68); }
+    :root[data-theme="light"] { --viewer-background: #edf4ef; --viewer-text: #24352d; --viewer-text-soft: rgba(36, 53, 45, 0.68); }
+    #viewer { min-height: 360px; }
+    #viewer > div { display: none; }
+    #status { position: fixed; inset: 0; display: grid; place-items: center; padding: 1rem; color: var(--viewer-text); font: 14px/1.5 system-ui, sans-serif; text-align: center; pointer-events: none; }
+    #status > div { display: grid; gap: 0.35rem; }
+    #status-detail { color: var(--viewer-text-soft); font-size: 12px; }
+    #status[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <div id="viewer"></div>
+  <div id="status"><div><strong>正在加载 3D 模型…</strong><span id="status-detail">正在导入 STEP 几何数据</span></div></div>
+  <script type="module">
+    import * as OV from "https://cdn.jsdelivr.net/npm/online-3d-viewer@0.18.0/+esm";
+
+    const status = document.getElementById("status");
+    const models = {
+      "buttons": "Isolapurr-4-Button-Print.step",
+      "bottom": "Isolapurr-Bottom.step",
+      "iframe": "Isolapurr-Iframe.step",
+    };
+    const key = new URLSearchParams(location.search).get("model") || "buttons";
+    const file = models[key] || models.buttons;
+    function parentTheme() {
+      try {
+        return window.parent.document.documentElement.dataset.uiTheme === "light" ? "light" : "dark";
+      } catch {
+        return "dark";
+      }
+    }
+
+    function mountViewer(theme) {
+      const isLight = theme === "light";
+      document.documentElement.dataset.theme = theme;
+      document.getElementById("viewer").replaceChildren();
+      status.hidden = false;
+      status.innerHTML = "<div><strong>正在加载 3D 模型…</strong><span id=\"status-detail\">正在导入 STEP 几何数据</span></div>";
+      const viewer = new OV.EmbeddedViewer(document.getElementById("viewer"), {
+        backgroundColor: isLight ? new OV.RGBAColor(237, 244, 239, 255) : new OV.RGBAColor(15, 22, 19, 255),
+        defaultColor: new OV.RGBColor(255, 255, 255),
+        defaultLineColor: isLight ? new OV.RGBColor(188, 188, 188) : new OV.RGBColor(84, 84, 84),
+        edgeSettings: new OV.EdgeSettings(true, isLight ? new OV.RGBColor(136, 136, 136) : new OV.RGBColor(88, 88, 88), 10),
+        onModelLoaded: () => {
+          const shading = viewer.GetViewer().shadingModel;
+          shading.ambientLight.color.setRGB(1, 1, 1);
+          shading.directionalLight.color.setRGB(1, 1, 1);
+          shading.ambientLight.intensity = isLight ? Math.PI * 1.8 : Math.PI * 0.72;
+          shading.directionalLight.intensity = isLight ? Math.PI * 1.2 : Math.PI * 0.62;
+          viewer.GetViewer().Render();
+          status.hidden = true;
+          window.parent.postMessage({ type: "project-preview-ready" }, "*");
+          window.parent.postMessage({ type: "project-preview-height", height: document.documentElement.scrollHeight }, "*");
+        },
+        onModelLoadFailed: () => {
+          status.innerHTML = "<div><strong>3D 模型加载失败</strong><span id=\"status-detail\">请下载 STEP 文件查看</span></div>";
+        },
+      });
+      viewer.GetViewer().SetNavigationMode(OV.NavigationMode.FreeOrbit);
+      viewer.LoadModelFromUrlList([`/projects/isolappurr-usb-hub/${file}`]);
+    }
+
+    let activeTheme = parentTheme();
+    mountViewer(activeTheme);
+    try {
+      new MutationObserver(() => {
+        const nextTheme = parentTheme();
+        if (nextTheme !== activeTheme) {
+          activeTheme = nextTheme;
+          mountViewer(activeTheme);
+        }
+      }).observe(window.parent.document.documentElement, { attributes: true, attributeFilter: ["data-ui-theme"] });
+    } catch {
+      // Cross-origin parents cannot be observed; the initial theme still applies.
+    }
+  </script>
+</body>
+</html>

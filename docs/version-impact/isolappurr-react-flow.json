@@ -1,0 +1,327 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "42b2a773be52fb23e66fcf86f72c25c52d72f2c5",
+  "covered_files": {
+    "bun.lock": "e3658d7dc2153b016f1d13b23dfd454e8df994f4",
+    "package.json": "52caab61560fad699d87234a13b4793bb1d22dc0",
+    "public/projects/isolappurr-usb-hub/Isolapurr-4-Button-Print.step": "1c8279752b70b494f95c2a0b8df587078b2588ea",
+    "public/projects/isolappurr-usb-hub/Isolapurr-Bottom.step": "37b8d5f4d18f2272789ec23d6311ab30ed0d029b",
+    "public/projects/isolappurr-usb-hub/Isolapurr-Iframe.step": "979085d863a25697a37e0f7d7c8fc64ae27feeea",
+    "public/projects/isolappurr-usb-hub/diagram-comparison.html": "698a2360d8b2077b4d231c2284a3a13f5128a492",
+    "public/projects/isolappurr-usb-hub/viewer.html": "68f123ef13f9c6810cb2b9e6a70d45f5be9a3445",
+    "site/content/projects/isolappurr-usb-hub.mdx": "786b3c07574b806625628f143edca2b54a0370cb",
+    "site/lib/project-content-utils.ts": "e5d2719c2f6967479e32fd9db1af45d9d7273864",
+    "src/components/IsolapurrArchitectureFlow.css": "5be68e0086e56a4467047bc7fb4da246a473f870",
+    "src/components/IsolapurrArchitectureFlow.tsx": "1371b714edb6a9dce61fa9f5aa8b0ed9cf7a8a48"
+  },
+  "change": {
+    "description": "为 IsolaPurr USB Hub 项目页增加 React Flow 交互式架构图、STEP 模型预览和对应的项目内容校验；新增前端依赖，不改变公共 API 或持久化数据格式。",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "本次变更限于项目文档展示、前端交互组件、静态 STEP 资源和依赖锁文件；不新增 API、数据库迁移或持久化格式。",
+      "assessed_at": "2026-11-14T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "bun.lock",
+          "blob": "e3658d7dc2153b016f1d13b23dfd454e8df994f4",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "package.json",
+          "blob": "52caab61560fad699d87234a13b4793bb1d22dc0",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-4-Button-Print.step",
+          "blob": "1c8279752b70b494f95c2a0b8df587078b2588ea",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "React Flow 仅用于项目详情页的客户端架构图，STEP 资源仅用于静态预览；公共接口和持久化结构保持兼容。",
+      "assessed_at": "2026-11-14T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "bun.lock",
+          "blob": "e3658d7dc2153b016f1d13b23dfd454e8df994f4",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "package.json",
+          "blob": "52caab61560fad699d87234a13b4793bb1d22dc0",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-4-Button-Print.step",
+          "blob": "1c8279752b70b494f95c2a0b8df587078b2588ea",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-Bottom.step",
+          "blob": "37b8d5f4d18f2272789ec23d6311ab30ed0d029b",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-Iframe.step",
+          "blob": "979085d863a25697a37e0f7d7c8fc64ae27feeea",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/diagram-comparison.html",
+          "blob": "698a2360d8b2077b4d231c2284a3a13f5128a492",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/viewer.html",
+          "blob": "68f123ef13f9c6810cb2b9e6a70d45f5be9a3445",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "site/content/projects/isolappurr-usb-hub.mdx",
+          "blob": "786b3c07574b806625628f143edca2b54a0370cb",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "site/lib/project-content-utils.ts",
+          "blob": "e5d2719c2f6967479e32fd9db1af45d9d7273864",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "src/components/IsolapurrArchitectureFlow.css",
+          "blob": "5be68e0086e56a4467047bc7fb4da246a473f870",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "src/components/IsolapurrArchitectureFlow.tsx",
+          "blob": "1371b714edb6a9dce61fa9f5aa8b0ed9cf7a8a48",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "候选范围与项目页架构图、模型预览和相关校验改动一致。"
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "构建、Lint、单元测试和 Playwright E2E 已在候选 head 上通过；变更不影响公共 API 或持久化格式。",
+      "assessed_at": "2026-11-14T00:00:00+08:00",
+      "evidence": [
+        {
+          "path": "bun.lock",
+          "blob": "e3658d7dc2153b016f1d13b23dfd454e8df994f4",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "package.json",
+          "blob": "52caab61560fad699d87234a13b4793bb1d22dc0",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-4-Button-Print.step",
+          "blob": "1c8279752b70b494f95c2a0b8df587078b2588ea",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-Bottom.step",
+          "blob": "37b8d5f4d18f2272789ec23d6311ab30ed0d029b",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-Iframe.step",
+          "blob": "979085d863a25697a37e0f7d7c8fc64ae27feeea",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/diagram-comparison.html",
+          "blob": "698a2360d8b2077b4d231c2284a3a13f5128a492",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/viewer.html",
+          "blob": "68f123ef13f9c6810cb2b9e6a70d45f5be9a3445",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "site/content/projects/isolappurr-usb-hub.mdx",
+          "blob": "786b3c07574b806625628f143edca2b54a0370cb",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "site/lib/project-content-utils.ts",
+          "blob": "e5d2719c2f6967479e32fd9db1af45d9d7273864",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "src/components/IsolapurrArchitectureFlow.css",
+          "blob": "5be68e0086e56a4467047bc7fb4da246a473f870",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "src/components/IsolapurrArchitectureFlow.tsx",
+          "blob": "1371b714edb6a9dce61fa9f5aa8b0ed9cf7a8a48",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.1.10",
+        "4.1.11",
+        "4.2.0",
+        "4.2.1",
+        "4.2.2",
+        "4.2.3",
+        "4.2.4",
+        "4.2.5",
+        "4.2.6",
+        "4.2.7",
+        "4.2.8",
+        "4.2.9",
+        "4.2.10"
+      ],
+      "evidence": [
+        {
+          "path": "bun.lock",
+          "blob": "e3658d7dc2153b016f1d13b23dfd454e8df994f4",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "package.json",
+          "blob": "52caab61560fad699d87234a13b4793bb1d22dc0",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-4-Button-Print.step",
+          "blob": "1c8279752b70b494f95c2a0b8df587078b2588ea",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-Bottom.step",
+          "blob": "37b8d5f4d18f2272789ec23d6311ab30ed0d029b",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-Iframe.step",
+          "blob": "979085d863a25697a37e0f7d7c8fc64ae27feeea",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/diagram-comparison.html",
+          "blob": "698a2360d8b2077b4d231c2284a3a13f5128a492",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/viewer.html",
+          "blob": "68f123ef13f9c6810cb2b9e6a70d45f5be9a3445",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "site/content/projects/isolappurr-usb-hub.mdx",
+          "blob": "786b3c07574b806625628f143edca2b54a0370cb",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "site/lib/project-content-utils.ts",
+          "blob": "e5d2719c2f6967479e32fd9db1af45d9d7273864",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "src/components/IsolapurrArchitectureFlow.css",
+          "blob": "5be68e0086e56a4467047bc7fb4da246a473f870",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "src/components/IsolapurrArchitectureFlow.tsx",
+          "blob": "1371b714edb6a9dce61fa9f5aa8b0ed9cf7a8a48",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "没有数据库迁移、持久化字段或客户端存储格式变更。",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "bun.lock",
+          "blob": "e3658d7dc2153b016f1d13b23dfd454e8df994f4",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "package.json",
+          "blob": "52caab61560fad699d87234a13b4793bb1d22dc0",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-4-Button-Print.step",
+          "blob": "1c8279752b70b494f95c2a0b8df587078b2588ea",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-Bottom.step",
+          "blob": "37b8d5f4d18f2272789ec23d6311ab30ed0d029b",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/Isolapurr-Iframe.step",
+          "blob": "979085d863a25697a37e0f7d7c8fc64ae27feeea",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/diagram-comparison.html",
+          "blob": "698a2360d8b2077b4d231c2284a3a13f5128a492",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "public/projects/isolappurr-usb-hub/viewer.html",
+          "blob": "68f123ef13f9c6810cb2b9e6a70d45f5be9a3445",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "site/content/projects/isolappurr-usb-hub.mdx",
+          "blob": "786b3c07574b806625628f143edca2b54a0370cb",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "site/lib/project-content-utils.ts",
+          "blob": "e5d2719c2f6967479e32fd9db1af45d9d7273864",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "src/components/IsolapurrArchitectureFlow.css",
+          "blob": "5be68e0086e56a4467047bc7fb4da246a473f870",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        },
+        {
+          "path": "src/components/IsolapurrArchitectureFlow.tsx",
+          "blob": "1371b714edb6a9dce61fa9f5aa8b0ed9cf7a8a48",
+          "command": "bun run check; bun test tests/lib/project-content.test.ts; GitHub Actions Build and Playwright E2E on the candidate head"
+        }
+      ]
+    }
+  }
+}

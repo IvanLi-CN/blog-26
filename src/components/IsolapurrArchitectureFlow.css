@@ -1,0 +1,149 @@
+.isolapurr-flow-shell {
+  --flow-bg: #f5faf6;
+  --flow-surface: #ffffff;
+  --flow-border: rgba(48, 91, 72, 0.2);
+  --flow-text: #18352b;
+  --flow-muted: #557064;
+  --flow-accent: #39795a;
+  margin: 24px 0;
+  border: 1px solid var(--flow-border);
+  border-radius: 18px;
+  background: var(--flow-surface);
+  overflow: hidden;
+}
+.isolapurr-flow-shell-dark {
+  --flow-bg: #0e1b17;
+  --flow-surface: #13221d;
+  --flow-border: rgba(137, 202, 166, 0.26);
+  --flow-text: #edf7f1;
+  --flow-muted: #abc0b5;
+  --flow-accent: #8bd2ae;
+}
+.isolapurr-flow-header {
+  padding: 12px 16px 11px;
+  border-bottom: 1px solid var(--flow-border);
+}
+.isolapurr-flow-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+}
+.isolapurr-flow-shell .isolapurr-flow-title-row h3 {
+  margin: 0;
+  color: var(--flow-text);
+  font-size: 18px;
+}
+.isolapurr-flow-shell .isolapurr-flow-header p {
+  margin: 3px 0 0;
+  color: var(--flow-muted);
+  font-size: 13px;
+}
+.isolapurr-flow-hint {
+  color: var(--flow-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.isolapurr-flow-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--flow-border);
+  overflow-x: auto;
+}
+.isolapurr-flow-tabs button {
+  border: 1px solid var(--flow-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--flow-muted);
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.isolapurr-flow-tabs button.active {
+  background: var(--flow-accent);
+  border-color: var(--flow-accent);
+  color: #fff;
+}
+.isolapurr-flow-canvas {
+  height: 380px;
+  background: var(--flow-bg);
+}
+.isolapurr-flow-canvas .react-flow__edge-text {
+  fill: var(--flow-text);
+  font-size: 11px;
+}
+.isolapurr-flow-canvas .react-flow__edge-textbg {
+  fill: var(--flow-bg);
+}
+.isolapurr-flow-canvas .react-flow__edge-path {
+  stroke: var(--flow-accent);
+  stroke-width: 1.8;
+}
+.isolapurr-flow-canvas .react-flow__arrowhead {
+  fill: var(--flow-accent);
+}
+.isolapurr-flow-canvas .react-flow__handle {
+  opacity: 0;
+}
+.isolapurr-flow-canvas .react-flow__controls {
+  box-shadow: none;
+}
+.isolapurr-flow-canvas .react-flow__controls button {
+  background: var(--flow-surface);
+  color: var(--flow-text);
+  border-color: var(--flow-border);
+  fill: var(--flow-text);
+}
+.isolapurr-flow-canvas .react-flow__minimap {
+  background: var(--flow-surface);
+  border: 1px solid var(--flow-border);
+}
+.isolapurr-flow-node {
+  border: 1px solid var(--flow-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-width: 150px;
+  color: var(--flow-text);
+  background: var(--flow-surface);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+  font-size: 14px;
+  font-weight: 650;
+}
+.isolapurr-flow-node small {
+  display: block;
+  margin-top: 4px;
+  color: var(--flow-muted);
+  font-size: 11px;
+  font-weight: 450;
+}
+.isolapurr-flow-node-external {
+  background: color-mix(in srgb, #6f87bd 15%, var(--flow-surface));
+  border-color: #6f87bd;
+}
+.isolapurr-flow-node-domain {
+  background: color-mix(in srgb, #4f9a74 13%, var(--flow-surface));
+  border-color: #4f9a74;
+}
+.isolapurr-flow-node-security {
+  background: color-mix(in srgb, #b86b7b 14%, var(--flow-surface));
+  border-color: #b86b7b;
+}
+.isolapurr-flow-node-power {
+  background: color-mix(in srgb, #b08a4c 15%, var(--flow-surface));
+  border-color: #b08a4c;
+}
+@media (max-width: 720px) {
+  .isolapurr-flow-title-row {
+    display: block;
+  }
+  .isolapurr-flow-hint {
+    display: block;
+    margin-top: 8px;
+  }
+  .isolapurr-flow-canvas {
+    height: 320px;
+  }
+}

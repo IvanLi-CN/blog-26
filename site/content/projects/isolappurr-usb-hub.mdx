@@ -1,56 +1,122 @@
 ---
 slug: isolappurr-usb-hub
 detailSummary: >-
-  IsolaPurr USB Hub 是面向桌面工作台的有源、隔离 USB 集线器和供电模块，把 USB-C 上行、USB-C/USB-A 下行、独立供电和端口保护放进一套可诊断的设备控制面。控制台通过 Local USB、Web Serial 或 LAN 识别同一台 Hub，围绕完整 device_id 合并连接、硬件 variant、固件和维护记录。端口动作必须经过能力与 confirmed state 校验，未知状态不会被界面伪装成可执行开关。
+  IsolaPurr USB Hub 是面向桌面工作台的有源、隔离 USB 集线器和供电模块，适合 DIY、电子、维修行业人群。
+  Web 控制台通过 Local USB、Web Serial 或 LAN 连接硬件的能力。带有 CLI 和 skills，方便 Agent 接入。
+
+  谁不想有一个带有 USB PD 能力的隔离 USB 2.0 接口呢？
 ---
 
+import { IsolapurrArchitectureFlow } from "../../../src/components/IsolapurrArchitectureFlow";
+import { ProjectArtifactTabs } from "../../../src/components/project-content-blocks";
+
 <section className="project-mdx-section">
 
-## 隔离电源与数据
+## 数据隔离
 
-IsolaPurr USB Hub 是一台面向桌面工作台的有源 USB 集线器和供电模块。它提供 USB-C 上行、USB-C 下行和 USB-A 下行：USB-C 上行承载主机连接，USB-C 下行承担可调供电路径，USB-A 下行则通过独立的隔离 DC/DC 供电，把数据链路和端口电源的边界落到硬件上。
+IsolaPurr USB Hub 是一台面向桌面工作台的有源 USB 集线器和供电模块。
+具备 2 kV 电气隔离的 USB HUB，支持 USB 2.0 480 Mbps，能有效保护主机安全。
 
-当前正式硬件基线是 `tps-sw`。CH334P 处理 USB2.0 Hub，CH318T 负责隔离数据链路，URB2405S-3WR3 负责隔离侧供电；CH217、CH442E、TVS0500 和 TPS55288 分别承担接口保护、USB 数据切换、VBUS 保护和可调电源控制。
+非隔离域提供一个用于连接主机 USB-C 上行端口和一个用户连接其他设备的 USB-C 下行接口。
+
+隔离域提供一个 USB A 型下行接口与一个 USB-C PD 下行接口。
+
+<IsolapurrArchitectureFlow diagramId="isolation" />
+
+## 电源隔离
+
+非隔离域电源来自主机，下行接口电流能力受主机提供的能力限制，最大额定 5V/1.8A （可自己替换电阻调整）。
+
+隔离域电源来自 DC5525 或 USB-C PD 输入，额定 9V-28V、1A-10A。
+特别注意，为了确保电气隔离有效，必须使用独立的隔离电源作为隔离域的输入电源。
+比如目前市售的手机、电脑的电源适配器，一般你能直接触碰的 AC-DC 电源是隔离的，不与主机共用同一路 DC 电源就行。
+
+隔离域的电源用于主控和下行端口供电。如果希望 USB-C 接口提供 PD 电源能力，建议按至少 120% 的功率连接足额输入电源，并注意电流。
+
+隔离域的 USB-C PD 电源还同时连接着一对 2mm 香蕉插座，支持提供 3V-21V、最高 5A 的可调电源输出能力。
+支持 CC、CV 模式，电压步长 20mV、电流步长 50mA。
+
+<IsolapurrArchitectureFlow diagramId="power" />
 
 </section>
 
 <section className="project-mdx-section">
 
-## 端口诊断状态
+## 用户界面
 
-USB 数据经过 Hub 与隔离链路，端口电源由独立的可调路径管理。控制面同时观察输入资格、端口输出、温度和过流状态，USB 枚举结果不代表端口已经可用。
+硬件自带一个 1.47 英寸的彩屏，用于显示功率、状态等。左右两侧各有一个微动按钮，支持简单交互。
 
-能力没有得到设备确认时，界面显示已知状态和故障原因，不提供强制开关。未确认状态留在诊断层。
+Isolapurr 主要依靠 Web App 进行交互，支持信息查看、接口数据与电源通断控制、PD 协议控制、可调电源功能设置、固件升级等。
 
-</section>
-
-<section className="project-mdx-section">
+附带 CLI 工具和 skills，方便接入 AI Agent 配合其他项目协同开发。
 
 ## 设备身份与连接路径
 
-本地 USB、Web Serial 和 LAN 发现都可能同时看到同一台 Hub。系统用完整 `device_id` 合并这些观察结果，并把端口、硬件 variant、固件版本和网络地址作为同一设备的属性管理；显示用的短名称不能参与身份判断。
+使用 ESP32-S3 作为主控制器，提供了 USB 和 WiFi 连接硬件的能力。
 
-更换连接方式仍指向同一份设备配置，操作者看到同一台 Hub 的 confirmed state、能力声明和维护记录。
+设备可以通过 Wi-Fi/LAN、Web Serial 或 Local USB 进入控制台。
+Wi-Fi/LAN 适合日常局域网控制，Web Serial 适合浏览器直接连接，Local USB 由 `isolapurr-devd` 和 `isolapurr` 负责串口、代理、烧录和身份校验。三种路径对应不同的生命周期和使用环境。
 
-</section>
+<IsolapurrArchitectureFlow diagramId="control" />
 
-<section className="project-mdx-section">
-
-## 三种连接路径
-
-设备可以通过 Wi-Fi/LAN、Web Serial 或 Local USB 进入控制台。Wi-Fi/LAN 适合日常局域网控制，Web Serial 适合浏览器直接连接，Local USB 由 `isolapurr-devd` 和 `isolapurr` 负责串口、代理、烧录和身份校验。三种路径对应不同的生命周期和使用环境。
-
-三条路径最终都解析到同一个完整的 12 字符 `device_id`。端口、网络和本地保存记录围绕这个身份合并，短前缀只用于显示或输入便利，不能替代完整身份。USB、Wi-Fi 和 LAN 同时出现时，系统仍将它们归并为同一台 Hub。
+需要比较不同图形表达方式时，可以打开 [Mermaid + ELK 与 React Flow 对比页](/projects/isolappurr-usb-hub/diagram-comparison.html)，左侧查看文本驱动的自动布局，右侧查看可拖动的交互式节点画布。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 端口动作确认
+## 结构模型预览
 
-设备控制面把端口状态和端口能力分开处理。HTTP API 可以读取端口快照，也可以提交端口电源开关和 replug 操作；Web 控制台则根据设备声明的 capability schema 判断某个动作是 `supported`、`unsupported` 还是 `unknown`。
+下面的 STEP 模型来自 IsolaPurr 项目的 `hardware/models` 目录，分别对应外壳底件、内部支架和四按键打印件。预览卡片支持旋转、缩放和放大查看；需要在本地继续编辑时，可以从卡片下载原始 STEP 文件。
 
-没有足够的兼容性证据时，系统不能凭固件版本或界面猜测来提供危险动作。端口的 confirmed state 是设备真正返回的状态，capability 则是系统是否有依据安全地展示动作，两者分别服务于反馈和准入。
+<ProjectArtifactTabs
+  title="IsolaPurr 结构模型"
+  description="三个 STEP 零件模型可直接在页面内查看，适合先确认结构关系，再下载到 FreeCAD、CAD Assistant 或其他 STEP 工具中继续处理。"
+  items={[
+    {
+      id: "four-button-print",
+      label: "四按键打印件",
+      title: "Isolapurr-4-Button-Print.step",
+      description: "四按键结构的打印件模型。",
+      previewKind: "model",
+      previewUrl: "/projects/isolappurr-usb-hub/viewer.html?model=buttons",
+      downloads: [
+        {
+          label: "下载 STEP",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/isolappurr-usb-hub/18271193849522c90ca07ceffc538033c4d9accf/hardware/models/Isolapurr-4-Button-Print.step",
+        },
+      ],
+    },
+    {
+      id: "bottom",
+      label: "底部外壳",
+      title: "Isolapurr-Bottom.step",
+      description: "设备底部外壳模型。",
+      previewKind: "model",
+      previewUrl: "/projects/isolappurr-usb-hub/viewer.html?model=bottom",
+      downloads: [
+        {
+          label: "下载 STEP",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/isolappurr-usb-hub/18271193849522c90ca07ceffc538033c4d9accf/hardware/models/Isolapurr-Bottom.step",
+        },
+      ],
+    },
+    {
+      id: "iframe",
+      label: "内部支架",
+      title: "Isolapurr-Iframe.step",
+      description: "内部支架与安装关系模型。",
+      previewKind: "model",
+      previewUrl: "/projects/isolappurr-usb-hub/viewer.html?model=iframe",
+      downloads: [
+        {
+          label: "下载 STEP",
+          href: "https://raw.githubusercontent.com/IvanLi-CN/isolappurr-usb-hub/18271193849522c90ca07ceffc538033c4d9accf/hardware/models/Isolapurr-Iframe.step",
+        },
+      ],
+    },
+  ]}
+/>
 
 </section>
 
@@ -58,7 +124,7 @@ USB 数据经过 Hub 与隔离链路，端口电源由独立的可调路径管�
 
 ## 硬件版本边界
 
-仓库同时保留 `tps-sw` 和 `tps-fusb` 两个硬件方案。前者是当前正式版本，后者是下一版设计基线：它计划使用双 FUSB302B，并由 MCU 实现 USB-PD Fixed/PPS 的策略控制，但目前仍处于网表归档和验证前阶段。
+仓库同时保留 `tps-sw` 和 `tps-fusb` 两个硬件方案。前者是当前正式版本，后者是下一版设计方向：它计划使用双 FUSB302B，并由 MCU 实现 USB-PD Fixed/PPS 的策略控制，但目前仍处于网表归档和验证前阶段。
 
 当前版本正文只描述 `tps-sw` 的隔离、端口控制、设备身份和三种连接路径；`tps-fusb`、主动协议档位配置和未完成的实物验证仍属于后续工程。
 
