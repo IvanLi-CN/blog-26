@@ -6,7 +6,7 @@
 <title>IsolaPurr 架构图方案对比</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1512;--surface:#13221d;--line:#2c4c40;--text:#edf7f1;--muted:#abc0b5;--accent:#8bd2ae}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 system-ui,-apple-system,"Noto Sans SC",sans-serif}main{max-width:1440px;margin:0 auto;padding:32px 28px 48px}h1{margin:0 0 6px;font-size:28px}p.lead{margin:0 0 24px;color:var(--muted)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{min-width:0;border:1px solid var(--line);border-radius:18px;background:var(--surface);overflow:hidden}.panel header{padding:18px 20px;border-bottom:1px solid var(--line)}.panel h2{margin:0;font-size:19px}.panel header p{margin:4px 0 0;color:var(--muted);font-size:13px}.canvas{min-height:650px;padding:18px;overflow:auto}.mermaid{min-width:760px}.flow{height:520px;width:100%;border-radius:12px;background:#0e1b17}.react-flow__minimap,.react-flow__attribution{display:none!important}.react-flow__controls button{background:#162820;color:#d8eee2;border-color:#365b49}.react-flow__controls button:hover{background:#234436}.status{padding:16px;color:var(--muted)}@media(max-width:900px){main{padding:22px 14px}.grid{grid-template-columns:1fr}.canvas{min-height:500px}.flow{height:460px}.mermaid{width:100%;min-width:0}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 system-ui,-apple-system,"Noto Sans SC",sans-serif}main{max-width:1440px;margin:0 auto;padding:32px 28px 48px}h1{margin:0 0 6px;font-size:28px}p.lead{margin:0 0 24px;color:var(--muted)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{min-width:0;border:1px solid var(--line);border-radius:18px;background:var(--surface);overflow:hidden}.panel header{padding:18px 20px;border-bottom:1px solid var(--line)}.panel h2{margin:0;font-size:19px}.panel header p{margin:4px 0 0;color:var(--muted);font-size:13px}.canvas{min-height:650px;padding:18px;overflow:auto}.mermaid{min-width:760px}.flow{height:520px;width:100%;border-radius:12px;background:#0e1b17}.react-flow__minimap,.react-flow__attribution{display:none}.react-flow__controls button{background:#162820;color:#d8eee2;border-color:#365b49}.react-flow__controls button:hover{background:#234436}.status{padding:16px;color:var(--muted)}@media(max-width:900px){main{padding:22px 14px}.grid{grid-template-columns:1fr}.canvas{min-height:500px}.flow{height:460px}.mermaid{width:100%;min-width:0}}
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xyflow/react@12.8.6/dist/style.css" />
 </head>
@@ -44,7 +44,7 @@ try {
   document.querySelector("#mermaid").innerHTML=svg;
   document.querySelector("#mermaid-status").remove();
 } catch(error) {
-  document.querySelector("#mermaid-status").textContent="Mermaid 加载失败："+error.message;
+  document.querySelector("#mermaid-status").textContent=`Mermaid 加载失败：${error.message}`;
 }
 try {
   const React = await import("https://esm.sh/react@19.1.0");
@@ -67,7 +67,7 @@ try {
   ReactDOM.createRoot(document.querySelector("#flow")).render(React.createElement(App));
   document.querySelector("#flow-status").remove();
 } catch(error) {
-  document.querySelector("#flow-status").textContent="React Flow 加载失败："+error.message;
+  document.querySelector("#flow-status").textContent=`React Flow 加载失败：${error.message}`;
 }
 </script>
 </body>
