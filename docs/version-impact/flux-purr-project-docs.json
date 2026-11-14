@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "93b83180d12175002c9c18f29a4822a8d95ec0a2",
+  "covered_files": {
+    "biome.jsonc": "23123488f5aa0dbd270301de7accc40a2ef74416",
+    "public/projects/flux-purr/flux-purr-5p6-Bottom.step": "efb21a069f94493abe27f6510f61b21c0c8661c6",
+    "public/projects/flux-purr/flux-purr-5p6-Iframe.step": "3d8770eb8344b78e1b6a76609ed84d575bc75139",
+    "public/projects/flux-purr/flux-purr-Joystick.step": "9c6d4c0c61156b1c58b3103278374452dd5fafa7",
+    "public/projects/flux-purr/flux-purr-heater-plate-7p0cm-3p2ohm-pcb.pdf": "c849e6c3c2f372b3427b0865841a27b82d76ea00",
+    "public/projects/flux-purr/front-panel-board-schematic.pdf": "4f233b02a7370dba883cf58fa4e65a77a440a2e7",
+    "public/projects/flux-purr/main-controller-board-fusb302b-rev-5-2-schematic.pdf": "c475e53e512f3fcba8005540236877be7e711f81",
+    "public/projects/flux-purr/model-viewer.js": "af6d77a7a190c1acffb275474e40f2bff7d37282",
+    "public/projects/flux-purr/online-3d-viewer.mjs": "64145ca3f982e2329203623af778b6b586d7645c",
+    "public/projects/flux-purr/pdf-viewer.html": "4b29cb718bf76801e279d2b459071065dc4762ae",
+    "public/projects/flux-purr/viewer.html": "14e7259b83e950c4c1ab3bdff7e3d9beca2cde4f",
+    "site/content/projects/flux-purr.mdx": "b258a2440208c0491f9ca8317500ff67dc84a943",
+    "site/lib/project-content-utils.ts": "1adf1123bcb8465bd54f109a5af6ae6342f305d9",
+    "src/components/project-content-blocks.tsx": "e94b626d33b3d29d837b1c8ca69aa7f141ef1edf",
+    "src/styles/globals.css": "1d29d3b9a40613d6dfc220aa7ef8b8b494949706"
+  },
+  "change": {
+    "description": "Improve the Flux Purr project page with accurate technical documentation, architecture and function diagrams, repository navigation, and local STEP/PDF previews.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "This change updates the Flux Purr project documentation and its local presentation assets. It does not change runtime API contracts or persisted state.",
+      "assessed_at": "2026-11-15T00:00:06+08:00",
+      "evidence": [
+        {
+          "path": "biome.jsonc",
+          "blob": "23123488f5aa0dbd270301de7accc40a2ef74416",
+          "command": "Review Flux Purr project documentation, diagrams, and local hardware previews"
+        },
+        {
+          "path": "public/projects/flux-purr/flux-purr-5p6-Bottom.step",
+          "blob": "efb21a069f94493abe27f6510f61b21c0c8661c6",
+          "command": "Review Flux Purr project documentation, diagrams, and local hardware previews"
+        },
+        {
+          "path": "public/projects/flux-purr/flux-purr-5p6-Iframe.step",
+          "blob": "3d8770eb8344b78e1b6a76609ed84d575bc75139",
+          "command": "Review Flux Purr project documentation, diagrams, and local hardware previews"
+        },
+        {
+          "path": "public/projects/flux-purr/flux-purr-Joystick.step",
+          "blob": "9c6d4c0c61156b1c58b3103278374452dd5fafa7",
+          "command": "Review Flux Purr project documentation, diagrams, and local hardware previews"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "This change updates the Flux Purr project documentation and its local presentation assets. It does not change runtime API contracts or persisted state.",
+      "assessed_at": "2026-11-15T00:00:06+08:00",
+      "evidence": [
+        {
+          "path": "biome.jsonc",
+          "blob": "23123488f5aa0dbd270301de7accc40a2ef74416",
+          "command": "Review Flux Purr project documentation, diagrams, and local hardware previews"
+        },
+        {
+          "path": "public/projects/flux-purr/flux-purr-5p6-Bottom.step",
+          "blob": "efb21a069f94493abe27f6510f61b21c0c8661c6",
+          "command": "Review Flux Purr project documentation, diagrams, and local hardware previews"
+        },
+        {
+          "path": "public/projects/flux-purr/flux-purr-5p6-Iframe.step",
+          "blob": "3d8770eb8344b78e1b6a76609ed84d575bc75139",
+          "command": "Review Flux Purr project documentation, diagrams, and local hardware previews"
+        },
+        {
+          "path": "public/projects/flux-purr/flux-purr-Joystick.step",
+          "blob": "9c6d4c0c61156b1c58b3103278374452dd5fafa7",
+          "command": "Review Flux Purr project documentation, diagrams, and local hardware previews"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "The candidate remains within the approved Flux Purr project-page documentation and preview scope."
+      }
+    },
+    "verified": null
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": ["4.2.11"],
+      "evidence": [
+        {
+          "path": "biome.jsonc",
+          "blob": "23123488f5aa0dbd270301de7accc40a2ef74416",
+          "command": "Review Flux Purr project documentation, diagrams, and local hardware previews"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No database schema or persisted state is changed.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "biome.jsonc",
+          "blob": "23123488f5aa0dbd270301de7accc40a2ef74416",
+          "command": "Review Flux Purr project documentation, diagrams, and local hardware previews"
+        }
+      ]
+    }
+  }
+}
