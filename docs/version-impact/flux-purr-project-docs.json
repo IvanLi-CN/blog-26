@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "93b83180d12175002c9c18f29a4822a8d95ec0a2",
+  "base_sha": "836ed6db2b2963ab20c3102bdf077c7577e3a3cc",
   "covered_files": {
     "biome.jsonc": "23123488f5aa0dbd270301de7accc40a2ef74416",
     "public/projects/flux-purr/flux-purr-5p6-Bottom.step": "efb21a069f94493abe27f6510f61b21c0c8661c6",
