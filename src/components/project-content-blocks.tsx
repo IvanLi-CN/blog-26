@@ -42,6 +42,48 @@ type ProjectArtifact = {
   downloads: ProjectArtifactDownload[];
 };
 
+function ProjectModelPreview({
+  modelUrl,
+  revision,
+  onReady,
+  onError,
+}: {
+  modelUrl: string;
+  revision: number;
+  onReady: () => void;
+  onError: () => void;
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let disposed = false;
+    const viewerRevision = revision;
+    const loadViewer = customElements.get("flux-purr-model-viewer")
+      ? Promise.resolve()
+      : new Promise<void>((resolve, reject) => {
+          const script = document.createElement("script");
+          script.type = "module";
+          script.src = `/projects/flux-purr/model-viewer.js?v=theme-6&r=${viewerRevision}`;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("model viewer load failed"));
+          document.head.append(script);
+        });
+    void loadViewer
+      .then(() => {
+        if (disposed || !hostRef.current) return;
+        const element = document.createElement("flux-purr-model-viewer");
+        element.setAttribute("model-url", modelUrl);
+        element.addEventListener("model-ready", onReady);
+        element.addEventListener("model-error", onError);
+        hostRef.current.replaceChildren(element);
+      })
+      .catch(onError);
+    return () => {
+      disposed = true;
+    };
+  }, [modelUrl, onError, onReady, revision]);
+  return <div ref={hostRef} className="project-model-viewer-host" />;
+}
+
 type PreviewStatus = "loading" | "ready" | "error";
 
 function previewStatusForScene(scene: WebDemoScene | null): PreviewStatus | null {
@@ -111,6 +153,13 @@ export function ProjectArtifactTabs({
     if (mode !== "scroll" || !active.previewUrl.includes("pdf-viewer.html"))
       return active.previewUrl;
     return `${active.previewUrl}${active.previewUrl.includes("?") ? "&" : "?"}mode=scroll`;
+  };
+  const modelUrl = () => {
+    if (active?.previewKind !== "model") return "";
+    const model = active.previewUrl.match(/[?&]model=([^&]+)/)?.[1];
+    if (model === "iframe") return "/projects/flux-purr/flux-purr-5p6-Iframe.step";
+    if (model === "joystick") return "/projects/flux-purr/flux-purr-Joystick.step";
+    return "/projects/flux-purr/flux-purr-5p6-Bottom.step";
   };
 
   useEffect(() => {
@@ -223,21 +272,31 @@ export function ProjectArtifactTabs({
       >
         <div
           ref={previewRef}
-          className="project-artifact-preview"
+          className={`project-artifact-preview project-artifact-preview-${active.previewKind}`}
           style={{ height: `${previewHeight}px` }}
         >
-          <iframe
-            key={`${active.id}-${previewRevision}`}
-            ref={iframeRef}
-            title={`${active.title} 预览`}
-            src={previewUrl()}
-            loading="lazy"
-            onLoad={() => {
-              if (!forcedPreviewStatus) setPreviewStatus("ready");
-            }}
-            onError={() => setPreviewStatus("error")}
-            sandbox={active.previewKind === "model" ? "allow-scripts allow-same-origin" : undefined}
-          />
+          {active.previewKind === "model" ? (
+            <ProjectModelPreview
+              modelUrl={modelUrl()}
+              revision={previewRevision}
+              onReady={() => {
+                if (!forcedPreviewStatus) setPreviewStatus("ready");
+              }}
+              onError={() => setPreviewStatus("error")}
+            />
+          ) : (
+            <iframe
+              key={`${active.id}-${previewRevision}`}
+              ref={iframeRef}
+              title={`${active.title} 预览`}
+              src={previewUrl()}
+              loading="lazy"
+              onLoad={() => {
+                if (!forcedPreviewStatus) setPreviewStatus("ready");
+              }}
+              onError={() => setPreviewStatus("error")}
+            />
+          )}
           <ProjectArtifactStatus
             status={previewStatus}
             title={active.label}
@@ -297,19 +356,27 @@ export function ProjectArtifactTabs({
                 </div>
               </aside>
               <div className="project-artifact-modal-viewer">
-                <iframe
-                  key={`expanded-${active.id}-${previewRevision}`}
-                  ref={modalIframeRef}
-                  title={`${active.title} 放大预览`}
-                  src={previewUrl("scroll")}
-                  onLoad={() => {
-                    if (!forcedPreviewStatus) setPreviewStatus("ready");
-                  }}
-                  onError={() => setPreviewStatus("error")}
-                  sandbox={
-                    active.previewKind === "model" ? "allow-scripts allow-same-origin" : undefined
-                  }
-                />
+                {active.previewKind === "model" ? (
+                  <ProjectModelPreview
+                    modelUrl={modelUrl()}
+                    revision={previewRevision}
+                    onReady={() => {
+                      if (!forcedPreviewStatus) setPreviewStatus("ready");
+                    }}
+                    onError={() => setPreviewStatus("error")}
+                  />
+                ) : (
+                  <iframe
+                    key={`expanded-${active.id}-${previewRevision}`}
+                    ref={modalIframeRef}
+                    title={`${active.title} 放大预览`}
+                    src={previewUrl("scroll")}
+                    onLoad={() => {
+                      if (!forcedPreviewStatus) setPreviewStatus("ready");
+                    }}
+                    onError={() => setPreviewStatus("error")}
+                  />
+                )}
                 <ProjectArtifactStatus
                   status={previewStatus}
                   title={active.label}
@@ -360,6 +427,160 @@ export function ProjectComparison({ before, after }: { before: ReactNode; after:
         <span>之后</span>
         {after}
       </div>
+    </div>
+  );
+}
+
+function DiagramBox({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="project-diagram-box">
+      <strong>{title}</strong>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+export function ProjectArchitectureDiagram() {
+  return (
+    <figure className="project-content-figure project-diagram">
+      <div className="project-diagram-row">
+        <DiagramBox title="设备固件">
+          ESP32-S3
+          <br />
+          采样 · 热控 · 输出 · EEPROM
+        </DiagramBox>
+        <span className="project-diagram-arrow" aria-hidden="true">
+          →
+        </span>
+        <DiagramBox title="传输层">
+          USB Serial · Web Serial
+          <br />
+          native IPC · LAN HTTP
+        </DiagramBox>
+        <span className="project-diagram-arrow" aria-hidden="true">
+          →
+        </span>
+        <DiagramBox title="操作入口">
+          React Web Console
+          <br />
+          flux-purr CLI · Public Demo
+        </DiagramBox>
+      </div>
+      <figcaption>固件提供设备能力；传输层提供连接路径；Web 控制台和 CLI 位于操作层。</figcaption>
+    </figure>
+  );
+}
+
+export function ProjectFunctionDiagram() {
+  return (
+    <figure className="project-content-figure project-diagram">
+      <div className="project-diagram-flow">
+        <DiagramBox title="1. 发现设备">USB / Web Serial / LAN</DiagramBox>
+        <span className="project-diagram-down-arrow" aria-hidden="true">
+          ↓
+        </span>
+        <DiagramBox title="2. 确认条件">身份 · 能力 · lease · 安全条件</DiagramBox>
+        <span className="project-diagram-down-arrow" aria-hidden="true">
+          ↓
+        </span>
+        <div className="project-diagram-branches">
+          <DiagramBox title="查看状态">温度 · PD · 输出 · 风扇</DiagramBox>
+          <DiagramBox title="执行动作">日常控制 · 校准 · 固件维护</DiagramBox>
+          <DiagramBox title="诊断">monitor · 日志 · 错误原因</DiagramBox>
+        </div>
+      </div>
+      <figcaption>
+        设备从发现和连接开始，经过状态查看、配置、校准和维护；每一步都先检查设备能力与安全条件。
+      </figcaption>
+    </figure>
+  );
+}
+
+const repositoryLayers = [
+  {
+    title: "设备运行层",
+    tone: "runtime",
+    items: [["firmware/", "ESP32-S3 固件：采样、热控、PD、风扇和 EEPROM"]],
+  },
+  {
+    title: "设备访问层",
+    tone: "transport",
+    items: [["tools/flux-purr-devd/", "CLI、守护进程、USB/串口和 native IPC"]],
+  },
+  {
+    title: "控制台层",
+    tone: "console",
+    items: [["web/", "React 控制台、设备状态、校准、固件维护和 Demo"]],
+  },
+  {
+    title: "契约与验证层",
+    tone: "evidence",
+    items: [
+      ["docs/specs/", "功能规格、协议和验收条件"],
+      ["docs/hardware/", "引脚、电源、加热、风扇和外壳资料"],
+      ["fixtures/ · thermal-self-test-runs/", "模拟数据与热控自测记录"],
+    ],
+  },
+] as const;
+
+const repositoryTasks = [
+  ["温度采样或加热逻辑", "firmware/", "docs/specs/、docs/hardware/"],
+  ["USB、串口或局域网连接", "tools/flux-purr-devd/", "协议规格、CLI 行为"],
+  ["Web 控制台页面", "web/", "mock/live 状态和设备能力模型"],
+  ["校准流程", "firmware/、web/", "校准规格、运行记录"],
+  ["硬件改版", "docs/hardware/", "firmware/ 的引脚和电源配置"],
+  ["回归验证", "fixtures/、thermal-self-test-runs/", "对应功能规格"],
+] as const;
+
+export function ProjectRepositoryMap() {
+  return (
+    <div className="project-repository-map">
+      <div className="project-repository-layers">
+        {repositoryLayers.map((layer) => (
+          <div
+            className={`project-repository-layer project-repository-layer-${layer.tone}`}
+            key={layer.title}
+          >
+            <strong>{layer.title}</strong>
+            <div className="project-repository-layer-items">
+              {layer.items.map(([path, description]) => (
+                <div key={path}>
+                  <code>{path}</code>
+                  <span>{description}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="project-repository-tasks">
+        <strong>按任务查找</strong>
+        <table className="project-repository-table">
+          <caption className="sr-only">按任务查找仓库目录</caption>
+          <thead>
+            <tr className="project-repository-row project-repository-row-head">
+              <th scope="col">要修改的内容</th>
+              <th scope="col">先看</th>
+              <th scope="col">再看</th>
+            </tr>
+          </thead>
+          <tbody>
+            {repositoryTasks.map(([task, first, next]) => (
+              <tr className="project-repository-row" key={task}>
+                <td>{task}</td>
+                <td>
+                  <code>{first}</code>
+                </td>
+                <td>{next}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="project-repository-note">
+        <code>docs/specs/</code> 定义系统应该如何工作，<code>firmware/</code>、<code>web/</code> 和{" "}
+        <code>tools/</code> 分别实现设备、控制台和访问层；验证目录用于检查实现是否符合规格。
+      </p>
     </div>
   );
 }

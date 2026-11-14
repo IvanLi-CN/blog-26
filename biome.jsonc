@@ -23,7 +23,8 @@
       "!**/coverage",
       "!**/.git",
       "!**/.worktrees",
-      "!**/old"
+      "!**/old",
+      "!public/projects/flux-purr/online-3d-viewer.mjs"
     ]
   },
   "formatter": {
