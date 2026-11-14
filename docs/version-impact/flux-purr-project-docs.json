@@ -108,11 +108,7 @@
           "blob": "9c6d4c0c61156b1c58b3103278374452dd5fafa7",
           "command": "Review Flux Purr project documentation, diagrams, and local hardware previews"
         }
-      ],
-      "scope_drift": {
-        "detected": false,
-        "description": "The candidate remains within the approved Flux Purr project-page documentation and preview scope."
-      }
+      ]
     }
   },
   "compatibility_evidence": {
