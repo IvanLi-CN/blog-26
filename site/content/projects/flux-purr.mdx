@@ -135,7 +135,7 @@ Web 控制台不直接承担所有本地设备操作。首次 Wi-Fi 配置、固
 
 <section className="project-mdx-section">
 
-### 热控与安全行为
+**热控与安全行为**
 
 固件使用 RTD 采样和 PID 控制加热输出，并根据 PD contract 判断当前电源条件。PD contract 未就绪、传感器故障或发生绝对过温时，加热输出保持关闭；控制台仍然可以显示状态和故障原因。
 
@@ -145,7 +145,7 @@ Web 控制台不直接承担所有本地设备操作。首次 Wi-Fi 配置、固
 
 <section className="project-mdx-section">
 
-### 校准数据
+**校准数据**
 
 校准分为三个阶段：采集样本、生成拟合建议、写入生效参数。
 
@@ -155,7 +155,7 @@ Web 控制台不直接承担所有本地设备操作。首次 Wi-Fi 配置、固
 
 <section className="project-mdx-section">
 
-### 固件维护
+**固件维护**
 
 普通用户使用本地 `.fluxpurr-fw` bundle 更新固件，bundle 必须通过发布清单中的 SHA-256 校验。开发者可以使用指定串口和本地 ELF 执行 `flash`；该流程默认备份 EEPROM。`recover` 用于明确确认后的 MCU 内部 Flash 擦除，不会修改外部 EEPROM。
 
@@ -190,7 +190,7 @@ Web 控制台不直接承担所有本地设备操作。首次 Wi-Fi 配置、固
 
 <section className="project-mdx-section">
 
-### 相关入口
+**相关入口**
 
 - [项目站点](https://flux-purr.ivanli.cc/)
 - [Web Demo](https://flux-purr-demo.ivanli.cc/)
