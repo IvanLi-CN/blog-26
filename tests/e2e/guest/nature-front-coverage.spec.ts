@@ -648,7 +648,27 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.locator(".project-mdx-section")).toHaveCount(3);
   });
 
-  test("desktop project sidebar clears the public header and scrolls in short viewports", async ({
+  test("project TOC fits six entries without an internal scrollbar", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 620 });
+    await gotoWithTheme(page, "/projects/flux-purr", "light");
+    await expect(page.locator(".project-toc a")).toHaveCount(6);
+
+    const tocState = await page.locator(".project-toc").evaluate((toc) => {
+      const list = toc.querySelector("ol");
+      const link = toc.querySelector("a");
+      if (!list || !link) throw new Error("Project TOC list is missing");
+      return {
+        canScroll: toc.scrollHeight > toc.clientHeight,
+        maxHeight: Number.parseFloat(getComputedStyle(toc).maxHeight),
+      };
+    });
+
+    expect(tocState.canScroll).toBe(false);
+    expect(tocState.maxHeight).toBeGreaterThan(0);
+    expect(tocState.maxHeight).toBeLessThanOrEqual(32 * 16);
+  });
+
+  test("desktop project sidebar clears the public header without outer scrolling", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -733,21 +753,60 @@ test.describe("Nature frontend public coverage", () => {
       )
       .toBeGreaterThan(0);
     await page.evaluate(() => window.scrollTo(0, 600));
+    await expect(page.locator(".project-toc")).toBeVisible();
+    await expect(page.locator(".project-detail-comments > section")).toBeVisible();
     const shortViewportState = await page.evaluate(() => {
       const sidebar = document.querySelector<HTMLElement>(".project-detail-sidebar");
-      if (!sidebar) throw new Error("Project detail sidebar is missing");
-      const style = getComputedStyle(sidebar);
+      const toc = document.querySelector<HTMLElement>(".project-toc");
+      const comments = document.querySelector<HTMLElement>(".project-detail-comments > section");
+      if (!sidebar || !toc || !comments) throw new Error("Project detail sidebar is missing");
       return {
-        bottom: sidebar.getBoundingClientRect().bottom,
         viewportHeight: window.innerHeight,
-        overflowY: style.overflowY,
-        canScrollInternally: sidebar.scrollHeight > sidebar.clientHeight,
+        sidebarOverflowY: getComputedStyle(sidebar).overflowY,
+        sidebarCanScroll: sidebar.scrollHeight > sidebar.clientHeight,
+        tocOverflowY: getComputedStyle(toc).overflowY,
+        tocMaxHeight: Number.parseFloat(getComputedStyle(toc).maxHeight),
+        commentsOverflowY: getComputedStyle(comments).overflowY,
+        commentsMaxHeight: getComputedStyle(comments).maxHeight,
       };
     });
 
-    expect(shortViewportState.bottom).toBeLessThanOrEqual(shortViewportState.viewportHeight + 0.5);
-    expect(shortViewportState.overflowY).toBe("auto");
-    expect(shortViewportState.canScrollInternally).toBe(true);
+    expect(shortViewportState.viewportHeight).toBe(620);
+    expect(shortViewportState.sidebarOverflowY).toBe("visible");
+    expect(shortViewportState.sidebarCanScroll).toBe(false);
+    expect(shortViewportState.tocOverflowY).toBe("auto");
+    expect(shortViewportState.tocMaxHeight).toBeGreaterThan(0);
+    expect(shortViewportState.tocMaxHeight).toBeLessThanOrEqual(32 * 16);
+    expect(shortViewportState.commentsOverflowY).toBe("auto");
+    expect(shortViewportState.commentsMaxHeight).toBe("none");
+
+    await page.setViewportSize({ width: 1280, height: 480 });
+    await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
+    await expect(page.locator(".project-toc")).toBeVisible();
+    await expect(page.locator(".project-detail-comments > section")).toBeVisible();
+    const tinyViewportState = await page.evaluate(() => {
+      const sidebar = document.querySelector<HTMLElement>(".project-detail-sidebar");
+      const toc = document.querySelector<HTMLElement>(".project-toc");
+      const comments = document.querySelector<HTMLElement>(".project-detail-comments > section");
+      if (!sidebar || !toc || !comments) throw new Error("Project detail sidebar is missing");
+      return {
+        sidebarPosition: getComputedStyle(sidebar).position,
+        sidebarOverflowY: getComputedStyle(sidebar).overflowY,
+        tocOverflowY: getComputedStyle(toc).overflowY,
+        tocMaxHeight: getComputedStyle(toc).maxHeight,
+        commentsOverflowY: getComputedStyle(comments).overflowY,
+        commentsMaxHeight: getComputedStyle(comments).maxHeight,
+      };
+    });
+
+    expect(tinyViewportState).toEqual({
+      sidebarPosition: "static",
+      sidebarOverflowY: "visible",
+      tocOverflowY: "visible",
+      tocMaxHeight: "none",
+      commentsOverflowY: "visible",
+      commentsMaxHeight: "none",
+    });
 
     await page.setViewportSize({ width: 1024, height: 768 });
     await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
