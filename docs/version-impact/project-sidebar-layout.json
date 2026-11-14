@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "836ed6db2b2963ab20c3102bdf077c7577e3a3cc",
+  "covered_files": {
+    "site/styles/public-pages.css": "b3d10edd84a5747f1b7b286bf72c579dd0c23c2a",
+    "tests/e2e/guest/nature-front-coverage.spec.ts": "34677ac5b3b1e870e432c6d331cbdd3eecfa427e"
+  },
+  "change": {
+    "description": "Stabilize project detail sidebar height, bounded TOC and comments scrolling, and responsive behavior for short viewports.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api", "persistent-state"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "The change is limited to public layout CSS and its browser coverage; it does not change API contracts, persisted data, or release inputs.",
+      "assessed_at": "2026-11-14T23:15:00+08:00",
+      "evidence": [
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "b3d10edd84a5747f1b7b286bf72c579dd0c23c2a",
+          "command": "Review project sidebar layout and responsive overflow rules"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate only adjusts project detail presentation and adds regression assertions for sidebar overflow behavior.",
+      "assessed_at": "2026-11-14T23:15:00+08:00",
+      "evidence": [
+        {
+          "path": "tests/e2e/guest/nature-front-coverage.spec.ts",
+          "blob": "34677ac5b3b1e870e432c6d331cbdd3eecfa427e",
+          "command": "Review desktop sidebar and six-entry TOC coverage"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "No runtime API, persistent state, or release workflow surfaces changed."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "Targeted project content tests pass, lint reports no errors, and the Web Demo was manually checked at desktop and short viewport sizes.",
+      "assessed_at": "2026-11-14T23:15:00+08:00",
+      "evidence": [
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "b3d10edd84a5747f1b7b286bf72c579dd0c23c2a",
+          "command": "bunx biome check site/styles/public-pages.css tests/e2e/guest/nature-front-coverage.spec.ts"
+        },
+        {
+          "path": "tests/e2e/guest/nature-front-coverage.spec.ts",
+          "blob": "34677ac5b3b1e870e432c6d331cbdd3eecfa427e",
+          "command": "bun test tests/lib/project-content.test.ts"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "unchanged",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.1.10",
+        "4.1.11",
+        "4.2.0",
+        "4.2.1",
+        "4.2.2",
+        "4.2.3",
+        "4.2.4",
+        "4.2.5",
+        "4.2.6",
+        "4.2.7",
+        "4.2.8",
+        "4.2.9",
+        "4.2.10",
+        "4.2.11"
+      ],
+      "evidence": [
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "b3d10edd84a5747f1b7b286bf72c579dd0c23c2a",
+          "command": "CSS-only presentation change"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No database, local content, browser persistence, or durable release state changes.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "site/styles/public-pages.css",
+          "blob": "b3d10edd84a5747f1b7b286bf72c579dd0c23c2a",
+          "command": "CSS-only presentation change"
+        }
+      ]
+    }
+  }
+}

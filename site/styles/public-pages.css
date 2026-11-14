@@ -2017,7 +2017,7 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
 .project-mdx-content .project-mdx-section {
   padding: 1.5rem 1.5rem;
   border: 1px solid rgba(var(--nature-border-rgb), 0.14);
-  border-radius: 1.15rem;
+  border-radius: var(--nature-radius-lg);
   background: rgba(var(--nature-surface-rgb), 0.72);
   box-shadow: 0 1rem 2.5rem rgba(8, 21, 16, 0.04);
 }
@@ -2073,9 +2073,12 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
   .project-detail-sidebar {
     position: sticky;
     top: calc(var(--public-header-visible-height, 4.5rem) + 1rem);
+    height: calc(100dvh - var(--public-header-visible-height, 4.5rem) - 1rem);
+    min-height: 0;
     max-height: calc(100dvh - var(--public-header-visible-height, 4.5rem) - 1rem);
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
     background: transparent;
     border: 0;
     box-shadow: none;
@@ -2092,16 +2095,52 @@ html[data-ui-theme="dark"] .runtime-project-logo-has-dark .runtime-project-logo-
     transform: none;
     box-shadow: none;
   }
+
+  .project-toc {
+    flex: 0 0 auto;
+    max-height: min(48dvh, 32rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .project-detail-comments > section {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .project-detail-comments {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
+@media (min-width: 1280px) and (max-height: 480px) {
+  .project-detail-sidebar {
+    position: static;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    display: block;
+  }
+
+  .project-toc,
+  .project-detail-comments > section {
+    max-height: none;
+    overflow: visible;
+    overscroll-behavior: auto;
+  }
+
+  .project-detail-comments {
+    display: block;
+  }
 }
 
 .project-detail-comments > section {
   margin-top: 0;
-}
-
-@media (min-width: 1280px) {
-  .project-detail-comments {
-    margin-top: 1.5rem;
-  }
 }
 
 @media (max-width: 639px) {
