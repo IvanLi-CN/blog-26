@@ -1,65 +1,199 @@
 ---
 slug: flux-purr
 detailSummary: >-
-  Flux Purr 是面向嵌入式设备的单仓软件基座，将 ESP32-S3 固件、React 控制台和本地 CLI/devd 工具放在同一套设备控制契约下。操作者可以在 live、mock、offline、degraded、pending 和 unsupported 等状态之间辨认设备能力、连接方式、遥测和热控限制。USB、Web Serial、native IPC 与 LAN HTTP 共用身份和能力模型，而校准、烧录、凭据写入与配对重置仍受设备安全前置条件保护。
+  Flux Purr 是一个嵌入式设备单仓项目，包含 ESP32-S3 固件、React 控制台、`flux-purr` CLI 和 `flux-purr-devd` 本地守护进程。项目统一处理设备连接、状态查看、Wi-Fi 配置、固件更新、校准和热控运行。
 ---
 
+import { ProjectArtifactTabs } from "../../../src/components/project-content-blocks";
+
+import {
+  ProjectArchitectureDiagram,
+  ProjectFunctionDiagram,
+  ProjectRepositoryMap,
+} from "../../../src/components/project-content-blocks";
+
 <section className="project-mdx-section">
 
-## 单仓设备软件结构
+## 项目介绍
 
-Flux Purr 是一个面向嵌入式设备的单仓工程：ESP32-S3 固件、React 控制台以及本地 CLI/devd 工具共同维护同一套设备控制契约。
+Flux Purr 为嵌入式设备提供一套完整的软件控制面。固件运行在 ESP32-S3 上，Web 控制台负责设备操作和状态展示，CLI 与 `flux-purr-devd` 负责本地设备访问和维护。
 
-设备身份、能力、状态和错误语义由共享领域模型定义，再通过 USB、native IPC、Web Serial、局域网 HTTP 和 Web 控制台传递。
+项目的重点是统一设备协议和操作路径。设备身份、能力、连接方式、运行状态和错误信息由同一套模型表达，因此 Web、CLI 和本地守护进程可以使用相同的设备语义。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 校准数据归属
+## 架构
 
-Flux Purr 的校准流程把采样、拟合建议和生效参数分成不同阶段。电压与温度校准先产生带设备身份的样本，热控测试再根据受控的 PD 条件和温度曲线形成建议；只有写入明确的 A/B 参数槽位并完成设备确认后，控制运行时才会把它当成当前参数。
+系统分为三层：
 
-实验数据不直接改变设备。操作者可以比较不同批次和硬件变体；参数不完整或来源不匹配时，流程停在诊断界面。
+- 固件层：负责温度采样、PID 加热、PD 状态、风扇、前面板和 EEPROM 配置。
+- 本地设备层：`flux-purr-devd` 负责 USB/串口发现、独占 lease、有限 monitor 事件和 Wi-Fi 配置桥接；`flux-purr` CLI 通过 native IPC 使用这些能力。
+- 控制台层：React Web App 通过 Web Serial、devd 或局域网 HTTP 连接设备，展示设备状态并执行允许的操作。
 
-</section>
+<ProjectArchitectureDiagram />
 
-<section className="project-mdx-section">
-
-## 连接与能力模型
-
-USB、Web Serial、native IPC 和 LAN HTTP 使用同一设备模型。连接建立后，控制台依据设备能力、当前状态和 lease 结果决定动作；离线或降级状态只提供已知信息。
-
-公共 Demo 只模拟状态和交互。烧录、凭据写入和配对重置保留在具备设备身份与安全前置条件的本地路径。
+Web 控制台不直接承担所有本地设备操作。首次 Wi-Fi 配置、固件烧录和配对令牌重置必须使用 USB 路径；完成配置和配对后，设备才可以通过可信局域网 HTTP 进行日常控制。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 控制台能力状态
+## 功能概要
 
-Flux Purr Web App 面向一次操作一台设备的硬件和固件操作者。界面会区分 live、mock、offline、degraded、pending 与 unsupported 状态，并把当前设备、连接方式、遥测、热控状态和能力限制放在同一条操作路径里。
+控制台支持以下功能：
 
-VIN ADC、RTD ADC、加热曲线校准和固件产物检查都带有对应的设备、传输和安全前置条件。动作只有在当前设备确实具备能力时才开放，无法执行的原因也保留在界面上。
+- 发现设备并显示设备身份、连接方式和设备能力。
+- 查看温度、输入输出状态、PD contract、加热和风扇状态。
+- 配置 Wi-Fi，并通过局域网控制已配对设备。
+- 执行 VIN ADC、RTD 温度和加热曲线校准。
+- 检查固件产物，并执行普通更新或开发者烧录。
+- 查看设备监视事件和诊断信息。
+
+控制台会区分 `live`、`mock`、`offline`、`degraded`、`pending` 和 `unsupported` 状态。动作只有在设备能力和安全条件满足时才会开放。
+
+<ProjectFunctionDiagram />
 
 </section>
 
 <section className="project-mdx-section">
 
-## 热控运行时
+## 硬件资料与模型
 
-当前固件基线以 ESP32-S3 热控设备为中心，包含 RTD 温度采样、PID 加热、PD 合同判断、风扇策略、前面板状态和 EEPROM 持久化。PD contract 尚未就绪、传感器故障或绝对过温时，输出会保持在安全状态，而 Dashboard 仍可用于诊断。
+硬件资料按“先看结构，再看电路”的顺序排列。模型预览用于确认外壳和装配件的相对关系；PDF 资料用于查看板卡布局与原理图。页面只放入已经从仓库硬件目录核对过的文件，原始文件仍可直接下载。
 
-校准分成电压读数、温度和加热曲线三个 owner-facing 模式。样本、拟合建议和真正生效的 A/B 参数槽位各自有清晰边界，避免把测到的建议值误写成设备已经采用的控制参数。
+<ProjectArtifactTabs
+  title="结构模型"
+  description="STEP 文件可在页面内旋转查看，也可以下载后在 FreeCAD、Fusion 360 或其他 CAD 工具中继续编辑。"
+  items={[
+    {
+      id: "bottom-5p6",
+      label: "5.6 cm 底版",
+      title: "flux-purr-5p6-Bottom.step",
+      description: "5.6 cm 规格底版，适合先确认外壳尺寸和安装基准。",
+      previewKind: "model",
+      previewUrl: "/projects/flux-purr/viewer.html?model=bottom&v=transparent-2",
+      downloads: [{ label: "下载 STEP", href: "https://raw.githubusercontent.com/IvanLi-CN/flux-purr/main/hardware/models/5p6cm/flux-purr-5p6-Bottom.step" }],
+    },
+    {
+      id: "iframe-5p6",
+      label: "5.6 cm 内框",
+      title: "flux-purr-5p6-Iframe.step",
+      description: "5.6 cm 规格内框，用于检查内部器件和支撑结构的空间。",
+      previewKind: "model",
+      previewUrl: "/projects/flux-purr/viewer.html?model=iframe&v=transparent-2",
+      downloads: [{ label: "下载 STEP", href: "https://raw.githubusercontent.com/IvanLi-CN/flux-purr/main/hardware/models/5p6cm/flux-purr-5p6-Iframe.step" }],
+    },
+    {
+      id: "joystick",
+      label: "摇杆帽",
+      title: "flux-purr-Joystick.step",
+      description: "通用摇杆帽模型，用于输入组件的装配和打印。",
+      previewKind: "model",
+      previewUrl: "/projects/flux-purr/viewer.html?model=joystick&v=transparent-2",
+      downloads: [{ label: "下载 STEP", href: "https://raw.githubusercontent.com/IvanLi-CN/flux-purr/main/hardware/models/flux-purr-Joystick.step" }],
+    },
+  ]}
+/>
+
+<ProjectArtifactTabs
+  title="PCB 与原理图 PDF"
+  description="这些 PDF 对应仓库中的板卡导出物，适合在焊接、检查和复核电路时使用。"
+  items={[
+    {
+      id: "main-controller-schematic",
+      label: "主控原理图",
+      title: "main-controller-board-fusb302b-rev-5-2-schematic.pdf",
+      description: "带 FUSB302B 的主控板原理图。",
+      previewKind: "pdf",
+      previewUrl: "/projects/flux-purr/pdf-viewer.html?file=%2Fprojects%2Fflux-purr%2Fmain-controller-board-fusb302b-rev-5-2-schematic.pdf",
+      downloads: [{ label: "下载 PDF", href: "https://raw.githubusercontent.com/IvanLi-CN/flux-purr/main/hardware/pcb/main-controller-board-fusb302b-rev-5-2-schematic.pdf" }],
+    },
+    {
+      id: "heater-plate-pcb",
+      label: "7.0 cm 加热板",
+      title: "flux-purr-heater-plate-7p0cm-3p2ohm-pcb.pdf",
+      description: "7.0 cm、3.2 Ω 加热板的 PCB 图纸。",
+      previewKind: "pdf",
+      previewUrl: "/projects/flux-purr/pdf-viewer.html?file=%2Fprojects%2Fflux-purr%2Fflux-purr-heater-plate-7p0cm-3p2ohm-pcb.pdf",
+      downloads: [{ label: "下载 PDF", href: "https://raw.githubusercontent.com/IvanLi-CN/flux-purr/main/hardware/pcb/flux-purr-heater-plate-7p0cm-3p2ohm-pcb.pdf" }],
+    },
+    {
+      id: "front-panel-schematic",
+      label: "前面板原理图",
+      title: "front-panel-board-schematic.pdf",
+      description: "前面板板卡原理图。",
+      previewKind: "pdf",
+      previewUrl: "/projects/flux-purr/pdf-viewer.html?file=%2Fprojects%2Fflux-purr%2Ffront-panel-board-schematic.pdf",
+      downloads: [{ label: "下载 PDF", href: "https://raw.githubusercontent.com/IvanLi-CN/flux-purr/main/hardware/pcb/front-panel-board-schematic.pdf" }],
+    },
+  ]}
+/>
 
 </section>
 
 <section className="project-mdx-section">
 
-## 本地 devd 边界
+**热控与安全行为**
 
-`flux-purr-devd` 处理 USB/串口发现、独占 lease、有限监视事件和 Wi-Fi provisioning bridge。CLI 与 devd 之间保持 native IPC 边界；浏览器需要本地能力时，才显式使用 Web companion。
+固件使用 RTD 采样和 PID 控制加热输出，并根据 PD contract 判断当前电源条件。PD contract 未就绪、传感器故障或发生绝对过温时，加热输出保持关闭；控制台仍然可以显示状态和故障原因。
 
-局域网控制面用于已配对设备的状态和有限维护动作，初始 Wi-Fi 配置、凭据写入、烧录和配对重置仍然要求 USB-backed 路径。公共 Demo 保持 mock-only，复用控制台交互而不触碰真实设备。
+软件功率限制用于约束控制逻辑，不能替代硬件过流保护。当前硬件基线使用 ESP32-S3，具体电源链、PD 芯片和风扇电路以 `docs/hardware/` 中的资料为准。
+
+</section>
+
+<section className="project-mdx-section">
+
+**校准数据**
+
+校准分为三个阶段：采集样本、生成拟合建议、写入生效参数。
+
+样本和拟合建议不会自动改变设备运行参数。只有将结果写入指定的 A/B 参数槽位并完成设备确认后，运行时才会使用新参数。设备身份不匹配、参数不完整或运行条件不满足时，流程会停在诊断状态。
+
+</section>
+
+<section className="project-mdx-section">
+
+**固件维护**
+
+普通用户使用本地 `.fluxpurr-fw` bundle 更新固件，bundle 必须通过发布清单中的 SHA-256 校验。开发者可以使用指定串口和本地 ELF 执行 `flash`；该流程默认备份 EEPROM。`recover` 用于明确确认后的 MCU 内部 Flash 擦除，不会修改外部 EEPROM。
+
+每次固件操作都要求明确的串口。CLI 不会自动扫描、选择或记忆物理设备。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 仓库结构
+
+仓库按“设备运行、设备访问、控制台、契约与验证”分层。先按任务定位所属层，再阅读对应规格和硬件资料，不需要从根目录逐项翻找。
+
+<ProjectRepositoryMap />
+
+</section>
+
+<section className="project-mdx-section">
+
+## DIY 使用路径
+
+1. 通过 USB 连接设备并确认串口和设备身份。
+2. 烧录或更新匹配的固件。
+3. 通过 USB 配置 Wi-Fi 和配对信息。
+4. 使用 Web 控制台查看状态和执行日常控制。
+5. 在满足 PD、温度和设备能力条件后执行校准。
+6. 使用 monitor、日志和状态信息排查问题。
+
+公共 Demo 只模拟设备状态和控制台交互，不执行真实烧录、凭据写入或配对重置。
+
+</section>
+
+<section className="project-mdx-section">
+
+**相关入口**
+
+- [项目站点](https://flux-purr.ivanli.cc/)
+- [Web Demo](https://flux-purr-demo.ivanli.cc/)
+- [GitHub 仓库](https://github.com/IvanLi-CN/flux-purr)
 
 </section>

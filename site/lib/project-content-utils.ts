@@ -38,6 +38,9 @@ const allowedProjectContentBlocks = new Set([
   "ProjectComparison",
   "ProjectFacts",
   "ProjectFigure",
+  "ProjectArchitectureDiagram",
+  "ProjectFunctionDiagram",
+  "ProjectRepositoryMap",
   "ProjectArtifactTabs",
   "IsolapurrArchitectureFlow",
 ]);
