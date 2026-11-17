@@ -1,4 +1,4 @@
-import * as OV from "./online-3d-viewer.mjs";
+import * as OV from "./online-3d-viewer.js";
 
 function colorFromCss(value, fallback) {
   const hex = value.trim().match(/^#([0-9a-f]{6})$/i);

@@ -24,6 +24,29 @@
 
 例如正式基线为 `2.7.0`、verified impact 为 minor，连续新请求可分配 `2.8.0-alpha.1` → `2.8.0-alpha.2` → `2.8.0-beta.1` → `2.8.0-rc.1` → `2.8.0`，允许跳过阶段。同核心进入 beta 后再请求 alpha 会停止；可显式填写更高的完整目标，例如 `2.9.0-alpha.1`。每个完整版本有独立身份、发布 PR、确切合并来源及冻结字节，不能将预发布产物直接改标正式版。Git tag 为 `v` 加完整版本；镜像 tag 同样带 `v`，仅将 metadata 分隔符 `+` 映射为 `_`，长度超出 registry 限制时预留前拒绝。
 
+## EdgeOne 静态产物与 STEP 预览验收
+
+公开项目页的 STEP 预览由仓库构建静态产物，再交给 EdgeOne Makers 发布。PR 阶段只构建和检查候选产物，不执行生产 EdgeOne 发布，也不依赖控制台自定义 MIME/header 配置。
+
+构建候选静态产物：
+
+```bash
+bash scripts/build-edgeone-content-artifact.sh
+```
+
+构建后确认 `edgeone-dist/projects/flux-purr/online-3d-viewer.js` 和 `edgeone-dist/projects/flux-purr/model-viewer.js` 存在，并确认 `edgeone-dist/projects/flux-purr/online-3d-viewer.mjs` 不存在。`online-3d-viewer.js` 仍是 ES Module；页面和动态加载脚本必须继续使用 `type="module"`，源码中的 `import`/`export` 和模块依赖图不能删除或改成 classic script。
+
+合并并完成正式发布链路后，先确认部署身份对应合并 SHA，再检查 EdgeOne 返回的 MIME：
+
+```bash
+curl -fsSL -D - -o /dev/null \
+  https://ivanli.cc/projects/flux-purr/online-3d-viewer.js
+```
+
+响应必须返回 `application/javascript` 或 `text/javascript`。随后打开 IsolaPurr 项目详情页，依次切换四按键打印件、底部外壳和内部支架三个标签，确认 viewer 注册成功、预览进入 ready 状态，并确认浏览器控制台没有 module MIME 错误。模型请求应分别指向三个 IsolaPurr 同源 STEP 路径；Flux Purr 和 Mains Aegis 的模型条目同样必须使用各自项目目录下的显式 `modelUrl`。
+
+如果浏览器仍加载旧的 `model-viewer.js`，确认请求 URL 使用 `v=theme-7`，再清理候选缓存或重新打开页面。不要通过 EdgeOne 控制台把 `.mjs` 强制声明为 JavaScript，也不要把 STEP 文件设置为 JavaScript MIME；正确修复是使用 `.js` 扩展名获得静态服务器的 JavaScript MIME，同时保留 ES Module 语义。
+
 ## 语义证据
 
 GitHub 适配器固定 REST API `2022-11-28`，按该字段合同核验 PR 与真实合并来源。升级 API 版本前必须先核验 PR 元数据与恢复所需字段；`2026-03-10` 已删除所有 PR 响应中的 `merge_commit_sha`，不得通过放松来源校验来兼容。[GitHub breaking changes](https://docs.github.com/en/rest/about-the-rest-api/breaking-changes)。

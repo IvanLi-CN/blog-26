@@ -24,7 +24,7 @@
       "!**/.git",
       "!**/.worktrees",
       "!**/old",
-      "!public/projects/flux-purr/online-3d-viewer.mjs"
+      "!public/projects/flux-purr/online-3d-viewer.js"
     ]
   },
   "formatter": {

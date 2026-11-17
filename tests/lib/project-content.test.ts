@@ -37,6 +37,58 @@ describe("project content contracts", () => {
     }
   });
 
+  test("STEP previews use explicit same-origin model assets and JavaScript modules", () => {
+    const publicRoot = join(process.cwd(), "public");
+    const fluxRoot = join(publicRoot, "projects/flux-purr");
+    const modelViewerSource = readFileSync(join(fluxRoot, "model-viewer.js"), "utf8");
+    const standaloneViewerSource = readFileSync(join(fluxRoot, "viewer.html"), "utf8");
+    const componentSource = readFileSync(
+      join(process.cwd(), "src/components/project-content-blocks.tsx"),
+      "utf8"
+    );
+    const expectedModelUrls = {
+      "isolappurr-usb-hub": [
+        "/projects/isolappurr-usb-hub/Isolapurr-4-Button-Print.step",
+        "/projects/isolappurr-usb-hub/Isolapurr-Bottom.step",
+        "/projects/isolappurr-usb-hub/Isolapurr-Iframe.step",
+      ],
+      "flux-purr": [
+        "/projects/flux-purr/flux-purr-5p6-Bottom.step",
+        "/projects/flux-purr/flux-purr-5p6-Iframe.step",
+        "/projects/flux-purr/flux-purr-Joystick.step",
+      ],
+      "mains-aegis": [
+        "/projects/mains-aegis/MainsAegis-Btns.step",
+        "/projects/mains-aegis/MainsAegis-Joystick.step",
+      ],
+    } as const;
+
+    expect(existsSync(join(fluxRoot, "online-3d-viewer.js"))).toBe(true);
+    expect(existsSync(join(fluxRoot, "online-3d-viewer.mjs"))).toBe(false);
+    expect(modelViewerSource).toContain('from "./online-3d-viewer.js"');
+    expect(modelViewerSource).not.toContain(".mjs");
+    expect(standaloneViewerSource).toContain('type="module"');
+    expect(standaloneViewerSource).toContain('from "./online-3d-viewer.js"');
+    expect(standaloneViewerSource).not.toContain(".mjs");
+    expect(componentSource).toContain("modelUrl={active.modelUrl}");
+    expect(componentSource).not.toContain("previewUrl.match");
+    expect(componentSource).not.toContain("flux-purr-5p6-Bottom.step");
+
+    for (const [slug, modelUrls] of Object.entries(expectedModelUrls)) {
+      const source = readFileSync(
+        join(process.cwd(), "site/content/projects", `${slug}.mdx`),
+        "utf8"
+      );
+      const declaredModelUrls = [...source.matchAll(/^\s+modelUrl: "([^"]+)",$/gm)].map(
+        ([, modelUrl]) => modelUrl
+      );
+      expect(declaredModelUrls).toEqual(modelUrls);
+      for (const modelUrl of modelUrls) {
+        expect(existsSync(join(publicRoot, modelUrl.slice(1)))).toBe(true);
+      }
+    }
+  });
+
   test("missing project bodies preserve catalog-only fallback", () => {
     const compiledBodies = {
       "../content/projects/migrated.mdx": { default: "compiled body" },
