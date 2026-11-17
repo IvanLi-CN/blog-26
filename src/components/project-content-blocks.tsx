@@ -32,15 +32,18 @@ type ProjectArtifactDownload = {
   href: string;
 };
 
-type ProjectArtifact = {
+type ProjectArtifactBase = {
   id: string;
   label: string;
   title: string;
   description: string;
   previewUrl: string;
-  previewKind: "pdf" | "model";
   downloads: ProjectArtifactDownload[];
 };
+
+type ProjectArtifact =
+  | (ProjectArtifactBase & { previewKind: "pdf" })
+  | (ProjectArtifactBase & { modelUrl: string; previewKind: "model" });
 
 function ProjectModelPreview({
   modelUrl,
@@ -62,7 +65,7 @@ function ProjectModelPreview({
       : new Promise<void>((resolve, reject) => {
           const script = document.createElement("script");
           script.type = "module";
-          script.src = `/projects/flux-purr/model-viewer.js?v=theme-6&r=${viewerRevision}`;
+          script.src = `/projects/flux-purr/model-viewer.js?v=theme-7&r=${viewerRevision}`;
           script.onload = () => resolve();
           script.onerror = () => reject(new Error("model viewer load failed"));
           document.head.append(script);
@@ -154,14 +157,6 @@ export function ProjectArtifactTabs({
       return active.previewUrl;
     return `${active.previewUrl}${active.previewUrl.includes("?") ? "&" : "?"}mode=scroll`;
   };
-  const modelUrl = () => {
-    if (active?.previewKind !== "model") return "";
-    const model = active.previewUrl.match(/[?&]model=([^&]+)/)?.[1];
-    if (model === "iframe") return "/projects/flux-purr/flux-purr-5p6-Iframe.step";
-    if (model === "joystick") return "/projects/flux-purr/flux-purr-Joystick.step";
-    return "/projects/flux-purr/flux-purr-5p6-Bottom.step";
-  };
-
   useEffect(() => {
     if (!isWebDemoBuildEnabled()) return;
     const syncScene = () => setDemoScene(getWebDemoRuntimeState(window.location).sceneState.scene);
@@ -277,7 +272,7 @@ export function ProjectArtifactTabs({
         >
           {active.previewKind === "model" ? (
             <ProjectModelPreview
-              modelUrl={modelUrl()}
+              modelUrl={active.modelUrl}
               revision={previewRevision}
               onReady={() => {
                 if (!forcedPreviewStatus) setPreviewStatus("ready");
@@ -358,7 +353,7 @@ export function ProjectArtifactTabs({
               <div className="project-artifact-modal-viewer">
                 {active.previewKind === "model" ? (
                   <ProjectModelPreview
-                    modelUrl={modelUrl()}
+                    modelUrl={active.modelUrl}
                     revision={previewRevision}
                     onReady={() => {
                       if (!forcedPreviewStatus) setPreviewStatus("ready");

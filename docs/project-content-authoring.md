@@ -63,10 +63,19 @@ Standard MDX handles prose, headings, lists, block quotes, links, code, tables, 
 - `ProjectCallout` for a constraint, decision, limitation, or key conclusion.
 - `ProjectFacts` for compact factual details that do not warrant a narrative section.
 - `ProjectComparison` for alternatives and the trade-offs between them.
+- `ProjectArtifactTabs` for PDF and STEP engineering assets with an in-page preview and original-file downloads.
 
 Do not import arbitrary site components. Add a new project content block only after at least two projects need the same semantic presentation; otherwise, use standard Markdown or a project-local asset.
 
-The site build validates component imports: only named imports of the four reviewed blocks from the project content-block module are accepted.
+The site build validates component imports: only named imports of the reviewed blocks from the project content-block module are accepted.
+
+## 工程资料预览
+
+`ProjectArtifactTabs` 的每个模型条目都必须显式提供同源 `modelUrl`，并且该路径必须对应 `public/` 下实际存在的 STEP 文件。组件不会再从 `previewUrl` 的查询参数猜测项目或模型；这样可以避免不同项目的模型互相映射。
+
+`previewUrl` 仍然保留为独立 viewer 页面或 PDF 预览页面的地址，`downloads` 仍然指向原始工程文件。`modelUrl` 只负责告诉页面内 3D viewer 应加载哪个 STEP 文件，三者不能互相替代。
+
+Flux Purr 的本地 viewer 使用 ES Module。`online-3d-viewer.mjs` 使用 `.js` 扩展名是静态服务器 MIME 兼容处理，不代表改成 classic script：HTML 仍然使用 `type="module"`，模块文件继续保留 `import`/`export` 和依赖图。不要删除 `type="module"`、把模块改写成全局脚本，或把 STEP 文件伪装成 JavaScript。
 
 ## Catalog Copy and Public Entries
 

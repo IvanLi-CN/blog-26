@@ -19,6 +19,7 @@ Key project scripts live in this directory. Use Bun unless a shell script is exp
 - `package-public-media.ts`: package processed facade media referenced by the generated public site
 - `verify-public-media-package.ts`: verify packaged media references and EdgeOne artifact quotas
 - `verify-edgeone-pwa-artifact.ts`: verify the staged EdgeOne cache configuration matches the public site output
+- `build-edgeone-content-artifact.sh`: build the single static artifact consumed by EdgeOne Makers
 
 ## Common Commands
 
@@ -34,6 +35,10 @@ bun run test-data:verify
 bun run frontend:package-media
 bun run frontend:verify-media
 bun run pwa:verify-edgeone-artifact
+bun test tests/lib/project-content.test.ts
+bun run check
+bun run build
+bash scripts/build-edgeone-content-artifact.sh
 ```
 
 Set `PUBLIC_MEDIA_ARTIFACT_DIR=./edgeone-dist` to make the media verifier inspect the final staged EdgeOne directory; it defaults to `site-dist` for local frontend checks.
@@ -44,6 +49,7 @@ Set `PUBLIC_MEDIA_ARTIFACT_DIR=./edgeone-dist` to make the media verifier inspec
 - Use `DB_PATH` and `LOCAL_CONTENT_BASE_PATH` explicitly when running data-affecting scripts.
 - New scripts should support `--help`, exit non-zero on failure, and prefer kebab-case filenames.
 - Linked worktree bootstrap is automatic only on the first checkout of a new worktree; later reruns should use `bun run worktree:bootstrap -- --force`.
+- The EdgeOne artifact builder runs the public site build, stages `site-dist` into `edgeone-dist`, applies the existing PWA rules, and verifies the staged media and cache contracts. Use the focused project-content test before the full check and build when changing public engineering previews.
 
 ## 项目图片增量缓存
 
