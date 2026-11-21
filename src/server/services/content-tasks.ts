@@ -97,7 +97,7 @@ export async function waitContentTask(id: string, timeout = 300000) {
 }
 export async function beginContentTask(input: {
   kind: "sync" | "rag";
-  source: "local" | "playbook";
+  source: "local" | "playbook" | "content-repo";
   requestKey: string;
   origin: string;
   target: string;

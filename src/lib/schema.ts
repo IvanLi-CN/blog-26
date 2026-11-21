@@ -1178,6 +1178,23 @@ export const playbookSnapshots = sqliteTable(
   })
 );
 
+export const contentRepoBaselines = sqliteTable(
+  "content_repo_baselines",
+  {
+    path: text("path").primaryKey(),
+    contentId: text("content_id").notNull(),
+    kind: text("kind").notNull(),
+    contentHash: text("content_hash").notNull(),
+    media: text("media").notNull(),
+    remoteBlobs: text("remote_blobs").notNull(),
+    commitSha: text("commit_sha").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => ({
+    content: index("content_repo_baselines_content").on(t.contentId),
+  })
+);
+
 export const contentTaskCounters = sqliteTable("content_task_counters", {
   source: text("source").primaryKey(),
   total: integer("total").notNull().default(0),

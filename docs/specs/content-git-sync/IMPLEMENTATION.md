@@ -4,32 +4,35 @@
 
 ## Current Status
 
-- Implementation: 未开始。本主题只有需求契约，没有运行时代码、迁移或配置变更。
+- Implementation: 推送基座已实现并有定向测试；拉取、合并、差异对比界面与权威切换尚未实现。
 - Lifecycle: active
 - Catalog note: 取代 [本地内容源真实目录布局](../local-real-content-layout/SPEC.md) 的内容来源部分。
 
 ## Implementation Coverage
 
-- Requirement coverage: 尚无实现。已确认的落点是设计约束，不是已交付能力：
-  - `REQ-CGS-001`、`REQ-CGS-015`：内容与媒体字节入独立内容寻址表，媒体只经只读路由提供；媒体字节不得作为 `posts` 列，因为 `src/server/services/tag-content.ts` 对 `posts` 执行无列名的 `select()`。
-  - `REQ-CGS-002`：GitHub 交互复用 `src/lib/playbook/github-source.ts` 的 transport 形态（sha 媒体类型、字节上限、受控错误），写侧新增 Git Data API 能力。生产镜像不含 `git`（`Dockerfile` 只安装 `curl ca-certificates sqlite3 gosu` 与运行库），本主题不引入。
-  - `REQ-CGS-003`、`REQ-CGS-004`：规范化实现与基线表为本主题新增；`posts.filePath` 保留为逻辑内容键与仓库路径，不再是磁盘事实。
-  - `REQ-CGS-006`、`REQ-CGS-007`、`REQ-CGS-008`、`REQ-CGS-009`：推送、检查、拉取与合并为新增服务端能力；直接复用 `src/server/services/content-tasks.ts` 的租约与执行归属，不新造调度。
-  - `REQ-CGS-012`：串行沿用 `content-tasks` 的单飞与 ownership，不引入第二套队列。
-  - `REQ-CGS-013`：切换前的不变量为 `src/lib/content-sources/register.ts` 的注册条件、`src/config/paths.ts` 的扫描根、`src/lib/content-sources/manager.ts` 的全量判废谓词，以及 `src/server/jobs/definitions.ts` 每 30 分钟的增量同步任务。
-  - `REQ-CGS-016`：错误分类对齐既有 `unconfigured/current/checking/stale/failed/invalid/unavailable` 词表的语义分层，但差异是本主题新增状态，不复用失败语义。
-- Verification commands: 尚未建立。测试形态计划对齐既有 `src/lib/playbook/github-source.test.ts` 的注入式 transport fixture。
-- Rollout facts: 未规划上线。一次性导入必须是停机窗口内的启动前步骤，不能写成只读 SQL 迁移。
+- `REQ-CGS-002`：`src/lib/content-repo/github.ts` 只经 GitHub API 交互，解析 ref 到 commit 与树、递归列出 blob、创建 blob/tree/commit 并以非强制方式更新分支 ref。不 clone、不落盘、不调用 `git`。
+- `REQ-CGS-003`：`src/lib/content-repo/canonical.ts` 固定 frontmatter 字段与顺序、省略空值、统一换行与行尾空白，并把媒体引用改写为相对仓库路径。
+- `REQ-CGS-004`：`drizzle/0033_content_repo_baselines.sql` 与 `contentRepoBaselines` 保存内容 hash、媒体 sha、远端 blob sha 与提交；仅在 ref 更新成功后写入。
+- `REQ-CGS-006`：单篇、批量与全部推送均经 Git Data API 形成单个提交；无差异内容跳过且不产生提交；远端已存在同路径且无基线时返回 `claim-required` 而不覆盖；单批上限 200；提交信息固定。
+- `REQ-CGS-010`：附件按 sha 比对，只有变化的上传；超过文章 50 MiB 或 Memo 20 MiB 的内容被标为 `oversized` 并阻止该内容推送。
+- `REQ-CGS-012`：同一时刻只允许一个推送；任务记录复用 `content-tasks` 的执行归属。
+- `REQ-CGS-014`：`CONTENT_REPO_REPOSITORY`、`CONTENT_REPO_REF`、`CONTENT_REPO_TOKEN` 仅服务端读取；缺少令牌返回 `unconfigured`，不阻塞其它功能；路径经规范化拒绝越界。
+- `REQ-CGS-016`：认证与权限失败不重试；前置条件冲突在 ref 更新处有界重试一次；重复推送无新提交；差异不是失败。
+
+- 未实现：`REQ-CGS-001`（Memo 与媒体仍来自本地文件）、`REQ-CGS-005`（完整差异状态仅实现推送侧所需部分）、`REQ-CGS-007`（拉取）、`REQ-CGS-008`（三方合并）、`REQ-CGS-009`（远端新增与删除）、`REQ-CGS-011`（合并落地）、`REQ-CGS-013`（权威切换）、`REQ-CGS-015`（差异对比界面与文件树退役）。
+- Verification commands: `bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts`；`bun run db:migrations:validate`；`DB_PATH=<tmp> bun run migrate`。
+- Rollout facts: 推送入口当前只有管理员 tRPC `contentRepo.status` 与 `contentRepo.push`，没有界面入口，也没有定时任务；权威切换与本地源退役不在本次范围内。
 
 ## Coverage / rollout summary
 
-- 当前没有可交付代码；本主题只固定了边界、状态语义与切换顺序。
+- 本次只新增服务端推送能力，不改变内容读取路径、不停止本地扫描、不改动既有同步任务；迁移期间本地源扫描范围保持不变。
 
 ## Remaining Gaps
 
-- 全部需求未实现。
-- 媒体字节存放、合并界面位置与依赖选型在规范中已定，但尚未验证实际构建体积、编辑器集成与移动端布局。
-- 本地内容源退役、管理端文件树与内容文件读写接口的移除尚未排期。
+- 媒体字节仍存放在本地媒体根，尚未迁入内容寻址表（`REQ-CGS-001`、`REQ-CGS-015`）。
+- 拉取、三方合并、远端新增/删除、差异对比与合并界面尚未实现。
+- 与真实仓库的 smoke 验证尚未执行；当前只有注入式 transport 与纯函数测试。
+- 权威切换（导入 + 停止注册本地源 + 移除判废路径）仍是未排期的一次性发布。
 
 ## Related Changes
 

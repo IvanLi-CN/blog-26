@@ -1,5 +1,6 @@
 import { createTRPCRouter } from "../../trpc";
 import { adminCommentsRouter } from "./comments";
+import { adminContentRepoRouter } from "./content-repo";
 import { adminContentSyncRouter } from "./content-sync";
 import { adminDashboardRouter } from "./dashboard";
 import { filesRouter } from "./files";
@@ -22,6 +23,7 @@ export const adminRouter = createTRPCRouter({
   comments: adminCommentsRouter,
   githubBinding: adminGithubBindingRouter,
   contentSync: adminContentSyncRouter,
+  contentRepo: adminContentRepoRouter,
   vectorize: adminVectorizeRouter,
   jobs: adminJobsRouter,
   files: filesRouter,
