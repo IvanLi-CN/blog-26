@@ -787,6 +787,7 @@ describe("system share API", () => {
     fs.rmSync(path.join(legacyMigrationsPath, "0030_assistant_message_citations.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0031_assistant_lookup_indexes.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0032_site_feature_settings.sql"));
+    fs.rmSync(path.join(legacyMigrationsPath, "0033_content_repo_baselines.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0021_project_status.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0022_project_status_running_guard.sql"));
     fs.rmSync(path.join(legacyMigrationsPath, "0023_project_status_heartbeat.sql"));
@@ -810,6 +811,7 @@ describe("system share API", () => {
         entry.tag !== "0030_assistant_message_citations" &&
         entry.tag !== "0031_assistant_lookup_indexes" &&
         entry.tag !== "0032_site_feature_settings" &&
+        entry.tag !== "0033_content_repo_baselines" &&
         entry.tag !== "0021_project_status" &&
         entry.tag !== "0022_project_status_running_guard" &&
         entry.tag !== "0023_project_status_heartbeat" &&
