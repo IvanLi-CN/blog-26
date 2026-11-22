@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Save } from "lucide-react";
 import { useRef, useState } from "react";
 import {
   adminApi,
@@ -371,13 +372,14 @@ export function ContentMergePage() {
             </div>
             {selected && !selected.media ? (
               <Button
-                size="sm"
+                size="lg"
                 onClick={() => {
                   const text = mergeHandle.current?.getText();
                   if (text !== undefined) resolve.mutate({ path: selected.path, text });
                 }}
                 disabled={!diff.data || diff.data.status !== "ready"}
               >
+                <Save />
                 保存到内容库
               </Button>
             ) : null}
