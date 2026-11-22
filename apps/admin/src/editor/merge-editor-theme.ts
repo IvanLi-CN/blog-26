@@ -36,6 +36,9 @@ export const mergeEditorTheme = EditorView.theme({
   "&.cm-focused .cm-selectionBackground": {
     backgroundColor: "color-mix(in oklch, var(--primary) 34%, transparent)",
   },
+  ".cm-merge-conflict": {
+    backgroundColor: "color-mix(in oklch, var(--warning) 18%, transparent)",
+  },
   ".cm-changedLine, .cm-inlineChangedLine": {
     backgroundColor: "color-mix(in oklch, var(--warning) 16%, transparent)",
   },

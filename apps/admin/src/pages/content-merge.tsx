@@ -9,6 +9,7 @@ import {
 import { ContentMediaCompare } from "~/components/content-media-compare";
 import { ContentMergeEditor } from "~/components/content-merge-editor";
 import { ContentSplitMerge } from "~/components/content-split-merge";
+import { ContentThreeWayMerge } from "~/components/content-three-way-merge";
 import {
   Alert,
   Badge,
@@ -114,8 +115,8 @@ export function ContentRepoDiffView({
 }: {
   diff: ContentRepoDiffPayload | undefined;
   onSave?: (text: string) => void;
-  mode: "inline" | "split";
-  onModeChange: (mode: "inline" | "split") => void;
+  mode: "inline" | "split" | "three";
+  onModeChange: (mode: "inline" | "split" | "three") => void;
 }) {
   if (!diff) return null;
   if (diff.status !== "ready")
@@ -129,6 +130,7 @@ export function ContentRepoDiffView({
           [
             ["inline", "行内"],
             ["split", "双栏"],
+            ["three", "三路"],
           ] as const
         ).map(([value, label]) => (
           <Button
@@ -148,9 +150,17 @@ export function ContentRepoDiffView({
           remoteText={diff.remoteText ?? ""}
           onSave={onSave}
         />
-      ) : (
+      ) : mode === "split" ? (
         <ContentSplitMerge
           localText={diff.localText ?? ""}
+          remoteText={diff.remoteText ?? ""}
+          onSave={onSave}
+        />
+      ) : (
+        <ContentThreeWayMerge
+          regions={diff.regions ?? []}
+          localText={diff.localText ?? ""}
+          baseText={diff.baseText ?? ""}
           remoteText={diff.remoteText ?? ""}
           onSave={onSave}
         />
@@ -178,7 +188,7 @@ export function ContentMergePage() {
   const queryClient = useQueryClient();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [mode, setMode] = useState<"inline" | "split">("inline");
+  const [mode, setMode] = useState<"inline" | "split" | "three">("inline");
 
   const status = useQuery({
     queryKey: ["content-repo", "status"],
@@ -281,7 +291,7 @@ export function ContentMergePage() {
         <Alert tone="danger">{check.data.message ?? "检查内容仓库失败"}</Alert>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+      <div className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>内容仓库</CardTitle>

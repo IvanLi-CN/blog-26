@@ -7,27 +7,48 @@ import { mergeEditorTheme } from "~/editor/merge-editor-theme";
 
 type Chunk = { fromA: number; toA: number; fromB: number; toB: number };
 
+function chunkKey(chunk: Chunk) {
+  return `${chunk.fromA}:${chunk.toA}`;
+}
+
 class ChunkAction extends GutterMarker {
   constructor(
-    private readonly chunk: Chunk,
+    private readonly chosenLocal: boolean,
+    private readonly keepLocal: () => void,
     private readonly adopt: () => void
   ) {
     super();
   }
 
   override toDOM() {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.title = "采用远端的这一块";
-    button.textContent = "←";
-    button.className =
-      "mr-1 cursor-pointer rounded border border-border bg-card px-1 text-[10px] leading-4 text-foreground hover:bg-muted";
-    button.addEventListener("mousedown", (event) => {
+    const wrap = document.createElement("span");
+    wrap.className = "inline-flex gap-0.5 pr-1";
+    const local = document.createElement("button");
+    local.type = "button";
+    local.title = this.chosenLocal ? "已采用本地" : "采用本地的这一块";
+    local.textContent = "本";
+    local.className = this.chosenLocal
+      ? "cursor-pointer rounded border border-primary/60 bg-primary/20 px-1 text-[10px] leading-4 text-foreground"
+      : "cursor-pointer rounded border border-border bg-card px-1 text-[10px] leading-4 text-foreground hover:bg-muted";
+    local.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.keepLocal();
+    });
+    wrap.appendChild(local);
+    const remote = document.createElement("button");
+    remote.type = "button";
+    remote.title = "采用远端的这一块";
+    remote.textContent = "←";
+    remote.className =
+      "cursor-pointer rounded border border-border bg-card px-1 text-[10px] leading-4 text-foreground hover:bg-muted";
+    remote.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
       this.adopt();
     });
-    return button;
+    wrap.appendChild(remote);
+    return wrap;
   }
 
   override eq() {
@@ -36,10 +57,7 @@ class ChunkAction extends GutterMarker {
 }
 
 class PushLocalAction extends GutterMarker {
-  constructor(
-    private readonly chunk: Chunk,
-    private readonly run: () => void
-  ) {
+  constructor(private readonly run: () => void) {
     super();
   }
 
@@ -75,6 +93,8 @@ export function ContentSplitMerge({
 }) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<MergeView | null>(null);
+  const trackRef = useRef<() => void>(() => undefined);
+  const chosenLocal = useRef<Set<string>>(new Set());
   const [chunks, setChunks] = useState({ count: 0, index: 0 });
 
   useEffect(() => {
@@ -104,9 +124,15 @@ export function ContentSplitMerge({
       markers: (pane) =>
         RangeSet.of(
           openChunks().map((chunk) =>
-            new ChunkAction(chunk, () => adoptChunk(chunk)).range(
-              pane.state.doc.lineAt(Math.min(chunk.fromB, pane.state.doc.length)).from
-            )
+            new ChunkAction(
+              chosenLocal.current.has(chunkKey(chunk)),
+              () => {
+                chosenLocal.current.add(chunkKey(chunk));
+                refresh();
+                trackRef.current();
+              },
+              () => adoptChunk(chunk)
+            ).range(pane.state.doc.lineAt(Math.min(chunk.fromB, pane.state.doc.length)).from)
           ),
           true
         ),
@@ -117,7 +143,7 @@ export function ContentSplitMerge({
       markers: (pane) =>
         RangeSet.of(
           openChunks().map((chunk) =>
-            new PushLocalAction(chunk, () => {
+            new PushLocalAction(() => {
               const merge = view.current;
               if (!merge) return;
               merge.a.dispatch({
@@ -154,6 +180,7 @@ export function ContentSplitMerge({
       const found = list.findIndex((chunk) => head <= chunk.toB);
       setChunks({ count: list.length, index: found === -1 ? list.length - 1 : found });
     };
+    trackRef.current = track;
     track();
     next.b.dispatch({
       effects: StateEffect.appendConfig.of(

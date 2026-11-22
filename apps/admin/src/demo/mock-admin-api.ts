@@ -2150,6 +2150,7 @@ async function handleAdminRequest(
         localText: demoMergeDocument("local"),
         remoteText: demoMergeDocument("remote"),
         mergedText: null,
+        regions: demoMergeRegions,
         conflictingFields: ["title", "tags"],
         bodyConflicts: demoMergeRegions.filter((region) => region.kind === "conflict").length - 2,
       });
