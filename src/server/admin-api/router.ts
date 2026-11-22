@@ -1013,6 +1013,16 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
       return json(await caller.admin.contentRepo.status(), { status: 200 }, resHeaders);
     }
+    if (pathname === "/content-repo/resolve" && request.method === "POST") {
+      const body = (await parseJsonBody(request)) as { path?: string; text?: string };
+      if (!body?.path || typeof body.text !== "string")
+        return json({ error: "path and text are required" }, { status: 400 }, resHeaders);
+      return json(
+        await caller.admin.contentRepo.resolve({ path: body.path, text: body.text }),
+        { status: 200 },
+        resHeaders
+      );
+    }
     if (pathname === "/content-repo/diff") {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
       const path = url.searchParams.get("path");

@@ -793,6 +793,11 @@ export const adminApi = {
   getContentRepoStatus: () =>
     adminRequest<ContentRepoStatusPayload>("/api/admin/content-repo/status"),
   checkContentRepo: () => adminRequest<ContentRepoCheckPayload>("/api/admin/content-repo/check"),
+  resolveContentRepo: (input: { path: string; text: string }) =>
+    adminRequest<{ status: string; path: string; contentHash?: string; message?: string }>(
+      "/api/admin/content-repo/resolve",
+      { method: "POST", body: JSON.stringify(input) }
+    ),
   getContentRepoDiff: (path: string) =>
     adminRequest<ContentRepoDiffPayload>(
       `/api/admin/content-repo/diff?path=${encodeURIComponent(path)}`

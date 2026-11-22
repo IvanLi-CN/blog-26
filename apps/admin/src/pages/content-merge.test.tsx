@@ -30,8 +30,9 @@ describe("ContentRepoDiffView", () => {
   test("renders the side-by-side diff and the shared ancestor", () => {
     const { getByTestId, getByText } = render(<ContentRepoDiffView diff={diffPayload()} />);
     expect(getByTestId("content-repo-diff")).toBeTruthy();
-    expect(getByTestId("content-text-diff")).toBeTruthy();
-    expect(getByText("远端 ↔ 本地")).toBeTruthy();
+    expect(getByTestId("content-merge-editor")).toBeTruthy();
+    expect(getByText("采用远端本处")).toBeTruthy();
+    expect(getByText("保存到内容库")).toBeTruthy();
     expect(getByText("base line")).toBeTruthy();
   });
 

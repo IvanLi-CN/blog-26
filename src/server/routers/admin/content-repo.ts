@@ -9,11 +9,16 @@ import {
   pushContentRepo,
   readContentRepoStatus,
   removeRemoteDeleted,
+  saveResolvedContent,
 } from "../../services/content-repo-sync";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 export const adminContentRepoRouter = createTRPCRouter({
   status: adminProcedure.query(() => readContentRepoStatus()),
+
+  resolve: adminProcedure
+    .input(z.object({ path: z.string().min(1), text: z.string().min(1) }))
+    .mutation(({ input }) => saveResolvedContent(input)),
 
   diff: adminProcedure
     .input(z.object({ path: z.string().min(1) }))

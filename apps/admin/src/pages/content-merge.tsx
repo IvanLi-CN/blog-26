@@ -6,7 +6,7 @@ import {
   type ContentRepoDiffPayload,
   type ContentRepoSyncItem,
 } from "@/lib/admin-api-client";
-import { ContentTextDiff } from "~/components/content-text-diff";
+import { ContentMergeEditor } from "~/components/content-merge-editor";
 import {
   Alert,
   Badge,
@@ -61,7 +61,13 @@ function TextPane({ title, text }: { title: string; text: string | null | undefi
   );
 }
 
-export function ContentRepoDiffView({ diff }: { diff: ContentRepoDiffPayload | undefined }) {
+export function ContentRepoDiffView({
+  diff,
+  onSave,
+}: {
+  diff: ContentRepoDiffPayload | undefined;
+  onSave?: (text: string) => void;
+}) {
   if (!diff) return null;
   if (diff.status !== "ready")
     return <Alert tone="warning">{diff.message ?? "差异暂不可用"}</Alert>;
@@ -71,11 +77,10 @@ export function ContentRepoDiffView({ diff }: { diff: ContentRepoDiffPayload | u
         <Alert tone="warning">冲突字段：{diff.conflictingFields.join("、")}</Alert>
       ) : null}
       {diff.bodyConflicts ? <Alert tone="warning">正文冲突 {diff.bodyConflicts} 处</Alert> : null}
-      <ContentTextDiff
-        left={diff.remoteText ?? ""}
-        right={diff.localText ?? ""}
-        leftLabel="远端"
-        rightLabel="本地"
+      <ContentMergeEditor
+        localText={diff.localText ?? ""}
+        remoteText={diff.remoteText ?? ""}
+        onSave={onSave}
       />
       <Disclosure summary="基线（共同祖先）">
         <div className="mt-2">
@@ -143,6 +148,18 @@ export function ContentMergePage() {
     mutationFn: (input: { paths?: string[] }) => adminApi.acceptRemoteContent(input),
     onSuccess,
     onError,
+  });
+  const resolve = useMutation({
+    mutationFn: (input: { path: string; text: string }) => adminApi.resolveContentRepo(input),
+    onSuccess: async (result) => {
+      setNotice(
+        result.status === "saved"
+          ? `已保存到内容库：${result.path}`
+          : (result.message ?? result.status)
+      );
+      await refresh();
+    },
+    onError: (error) => setNotice(getErrorMessage(error)),
   });
   const remove = useMutation({
     mutationFn: (input: { paths?: string[] }) => adminApi.removeRemoteDeletedContent(input),
@@ -262,7 +279,14 @@ export function ContentMergePage() {
                 {selected.missingMedia.length ? (
                   <Alert tone="danger">附件缺失：{selected.missingMedia.join("、")}</Alert>
                 ) : null}
-                {diff.isLoading ? <Spinner /> : <ContentRepoDiffView diff={diff.data} />}
+                {diff.isLoading ? (
+                  <Spinner />
+                ) : (
+                  <ContentRepoDiffView
+                    diff={diff.data}
+                    onSave={(text) => selected && resolve.mutate({ path: selected.path, text })}
+                  />
+                )}
                 <Separator />
                 <div className="flex flex-wrap gap-2">
                   {selected.state === "merge-conflict" ? (

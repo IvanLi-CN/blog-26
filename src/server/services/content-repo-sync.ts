@@ -530,6 +530,72 @@ export function pullContentRepo(input: { ids?: string[] } = {}): Promise<Content
   return pullFlight;
 }
 
+export interface ContentRepoResolveOutcome {
+  status: "saved" | "unavailable" | "failed";
+  path: string;
+  contentHash?: string;
+  message?: string;
+}
+
+/**
+ * Write a human-resolved document back into the content library.
+ * The sync baseline is intentionally left untouched so the next check reports
+ * `to-push`; resolution never implies publishing.
+ */
+export function saveResolvedContent(input: {
+  path: string;
+  text: string;
+}): ContentRepoResolveOutcome {
+  try {
+    const bytes = new TextEncoder().encode(input.text);
+    const update = toDocumentUpdate(parseRemoteDocument(bytes));
+    const row = db.select().from(posts).where(eq(posts.filePath, input.path)).get();
+    if (!row) return { status: "unavailable", path: input.path, message: "Unknown path" };
+    const document = buildCanonicalDocument({
+      ...toContentRecord(row),
+      ...{
+        slug: update.slug,
+        title: update.title,
+        body: update.body,
+        draft: update.draft,
+        public: update.public,
+        category: update.category,
+        tags: JSON.stringify(update.tags),
+        author: update.author,
+        image: update.image,
+        publishDate: update.publishDate,
+        updateDate: update.updateDate ?? row.updateDate,
+      },
+    });
+    db.update(posts)
+      .set({
+        slug: update.slug,
+        title: update.title,
+        body: update.body,
+        draft: update.draft,
+        public: update.public,
+        category: update.category,
+        tags: JSON.stringify(update.tags),
+        author: update.author,
+        image: update.image,
+        publishDate: update.publishDate,
+        updateDate: update.updateDate ?? row.updateDate,
+        lastModified: Date.now(),
+        contentHash: document.contentHash,
+      })
+      .where(eq(posts.id, row.id))
+      .run();
+    clearSearchCache();
+    return { status: "saved", path: input.path, contentHash: document.contentHash };
+  } catch (error) {
+    return {
+      status: "failed",
+      path: input.path,
+      message: error instanceof Error ? error.message : "Content resolution failed",
+    };
+  }
+}
+
 export interface ContentRepoDiffOutcome {
   status: "ready" | "unavailable" | "unconfigured" | "failed";
   path: string;
