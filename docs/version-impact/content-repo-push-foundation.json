@@ -9,18 +9,19 @@
     "apps/admin/src/components/content-merge-editor.tsx": "098bc62c1950ac821f467f8fde1b8259d3884d33",
     "apps/admin/src/components/content-split-merge.tsx": "f4069e3c2b08778c5243bf54414651d69ad2cfb2",
     "apps/admin/src/components/content-text-diff.tsx": "73195236e642b91806b09f5b97dc5ca347005653",
-    "apps/admin/src/components/content-three-way-merge.tsx": "2eba5a6e18a296c1efde4d78104acf61f096ac56",
-    "apps/admin/src/components/content-three-way-result.ts": "6c091945508b78ff1fe761de0c4e639c20129658",
+    "apps/admin/src/components/content-three-way-merge.tsx": "115196344b91a465bbfe6c91e1409507ee2fea51",
+    "apps/admin/src/components/content-three-way-result.test.ts": "3a83da0d22e3bba633f6686e5b0d13b754217b22",
+    "apps/admin/src/components/content-three-way-result.ts": "5a5e960c1ecd91f736e841e6bc885abdc26bd72c",
     "apps/admin/src/demo/mock-admin-api.ts": "e97749e119805c63162d5ab10e473dbba3cff07a",
-    "apps/admin/src/pages/content-merge.test.tsx": "ef3a2f3437502c690fb242042f489c3a5c984923",
+    "apps/admin/src/pages/content-merge.test.tsx": "7eab277c247891968df41c991ede977a06e20a2c",
     "apps/admin/src/pages/content-merge.tsx": "d631d37b911417f1d4a14e0d88899edbdcefd8f0",
     "apps/admin/src/router.tsx": "aad616093220faeb0d82027314ecdd3ab27b142a",
     "bun.lock": "dd7c8f844f45e2e1b04034337ee86b1290406133",
     "docs/adr/0043-database-content-authority-and-repository-sync.md": "ed536b4d68b7ad1fc98c5f08056a139f54d4d8c1",
     "docs/specs/README.md": "52cc61f4c0dd149e989deb4f9ab1a57fb3806ee7",
     "docs/specs/content-git-sync/HISTORY.md": "46da7ebe73b7de5f6337312ada6e007254ea0bdb",
-    "docs/specs/content-git-sync/IMPLEMENTATION.md": "64ddfa9c64e3c22a4833a2e8b43610e282c7988d",
-    "docs/specs/content-git-sync/SPEC.md": "422242ebcb0589b37f7bb0ed0216486691cfae65",
+    "docs/specs/content-git-sync/IMPLEMENTATION.md": "ddd7bdd1da31804400396c2bb6c5a7d8c2a40b36",
+    "docs/specs/content-git-sync/SPEC.md": "cac14a48ea09b43c695b05b96a93e1fc6b943357",
     "drizzle/0033_content_repo_baselines.sql": "e2f4ffa7430f2c5954ed4ea138d6fd2869ea1c4b",
     "drizzle/0034_content_media.sql": "2b2e1843636da9cb73dd45cb50ae15e6603f544c",
     "drizzle/0035_content_repo_baseline_document.sql": "7de677f23ebbfc3a97c282b4d4bfdaffac74858f",
@@ -66,7 +67,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "422242ebcb0589b37f7bb0ed0216486691cfae65",
+          "blob": "cac14a48ea09b43c695b05b96a93e1fc6b943357",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts"
         }
       ]
@@ -78,7 +79,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "422242ebcb0589b37f7bb0ed0216486691cfae65",
+          "blob": "cac14a48ea09b43c695b05b96a93e1fc6b943357",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts"
         }
       ],
@@ -94,8 +95,8 @@
       "evidence": [
         {
           "path": "apps/admin/src/pages/content-merge.test.tsx",
-          "blob": "ef3a2f3437502c690fb242042f489c3a5c984923",
-          "command": "bun test --isolate apps/admin/src/pages/content-merge.test.tsx"
+          "blob": "7eab277c247891968df41c991ede977a06e20a2c",
+          "command": "bun test --isolate apps/admin/src/pages/content-merge.test.tsx apps/admin/src/components/content-three-way-result.test.ts"
         },
         {
           "path": "src/lib/content-repo/merge.test.ts",
@@ -172,7 +173,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "422242ebcb0589b37f7bb0ed0216486691cfae65",
+          "blob": "cac14a48ea09b43c695b05b96a93e1fc6b943357",
           "command": "Admin routes are administrator-only; public routes, payloads and search responses are untouched"
         }
       ]
