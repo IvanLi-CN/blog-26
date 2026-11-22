@@ -1,15 +1,8 @@
-import { EditorState, RangeSet } from "@codemirror/state";
-import {
-  Decoration,
-  type DecorationSet,
-  EditorView,
-  GutterMarker,
-  gutter,
-  lineNumbers,
-  ViewPlugin,
-} from "@codemirror/view";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "~/components/ui";
+import { EditorState } from "@codemirror/state";
+import { Decoration, EditorView, lineNumbers, WidgetType } from "@codemirror/view";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { Badge, Button } from "~/components/ui";
 import { mergeEditorTheme } from "~/editor/merge-editor-theme";
 
 export type MergeRegion =
@@ -20,7 +13,16 @@ type Side = "local" | "base" | "remote";
 type Pane = Side;
 
 const PANE_LABEL: Record<Pane, string> = { local: "本地", base: "基线", remote: "远端" };
-const SIDE_LABEL: Record<Side, string> = { local: "本地", base: "基线", remote: "远端" };
+const PANE_HINT: Record<Pane, string> = {
+  local: "可编辑 · 合并结果",
+  base: "只读 · 共同祖先",
+  remote: "只读 · 仓库版本",
+};
+const DECISION_LABEL: Record<Side, string> = {
+  local: "采用本地",
+  base: "采用基线",
+  remote: "采用远端",
+};
 
 interface Span {
   index: number;
@@ -28,7 +30,6 @@ interface Span {
   to: number;
 }
 
-/** Locate conflicts in one pane; the local pane uses its current content. */
 function conflictSpans(
   text: string,
   regions: MergeRegion[],
@@ -58,78 +59,125 @@ function conflictSpans(
   return spans;
 }
 
-class DecisionMarker extends GutterMarker {
+function ConflictActions({
+  ordinal,
+  decision,
+  onDecide,
+}: {
+  ordinal: number;
+  decision: Side | null;
+  onDecide: (side: Side) => void;
+}) {
+  return (
+    <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-2 py-1 shadow-sm">
+      <span className="text-[11px] font-semibold text-foreground">冲突 {ordinal}</span>
+      <Badge tone={decision ? "success" : "warning"}>{decision ? "已解决" : "未解决"}</Badge>
+      {(["local", "base", "remote"] as const).map((side) => (
+        <Button
+          key={side}
+          size="sm"
+          title={DECISION_LABEL[side]}
+          variant={decision === side ? "default" : "outline"}
+          onClick={() => onDecide(side)}
+        >
+          {PANE_LABEL[side]}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+class ConflictPanel extends WidgetType {
+  private root: Root | null = null;
+
   constructor(
+    private readonly index: number,
+    private readonly ordinal: number,
     private readonly decision: Side | null,
-    private readonly choose: (side: Side) => void
+    private readonly onDecide: (index: number, side: Side) => void
   ) {
     super();
   }
 
-  override eq() {
-    return false;
+  override eq(other: WidgetType) {
+    return (
+      other instanceof ConflictPanel &&
+      other.index === this.index &&
+      other.ordinal === this.ordinal &&
+      other.decision === this.decision
+    );
+  }
+
+  override ignoreEvent() {
+    return true;
   }
 
   override toDOM() {
-    const wrap = document.createElement("span");
-    wrap.className = "inline-flex gap-0.5 pr-1";
-    for (const side of ["local", "base", "remote"] as const) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = side === "local" ? "本" : side === "base" ? "基" : "远";
-      button.title = `采用${SIDE_LABEL[side]}`;
-      button.className =
-        this.decision === side
-          ? "cursor-pointer rounded border border-primary/60 bg-primary/20 px-1 text-[10px] leading-4 text-foreground"
-          : "cursor-pointer rounded border border-border bg-card px-1 text-[10px] leading-4 text-foreground hover:bg-muted";
-      button.addEventListener("mousedown", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this.choose(side);
-      });
-      wrap.appendChild(button);
-    }
-    return wrap;
+    const host = document.createElement("div");
+    host.className = "cm-conflict-panel mb-1";
+    this.root = createRoot(host);
+    this.root.render(
+      <ConflictActions
+        ordinal={this.ordinal}
+        decision={this.decision}
+        onDecide={(side) => this.onDecide(this.index, side)}
+      />
+    );
+    return host;
+  }
+
+  override destroy() {
+    this.root?.unmount();
+    this.root = null;
   }
 }
 
-function conflictMarks(
+function localPanels(
   regions: MergeRegion[],
-  side: Pane,
   decisions: Map<number, Side>,
-  getView: () => EditorView | null
+  onDecide: (index: number, side: Side) => void
 ) {
-  const build = (): DecorationSet => {
-    const view = getView();
-    if (!view) return Decoration.set([]);
+  const ordinals = new Map<number, number>();
+  let ordinal = 0;
+  regions.forEach((region, index) => {
+    if (region.kind !== "conflict") return;
+    ordinal += 1;
+    ordinals.set(index, ordinal);
+  });
+  return EditorView.decorations.compute(["doc"], (state) => {
+    const spans = conflictSpans(state.doc.toString(), regions, "local", decisions);
     return Decoration.set(
-      conflictSpans(view.state.doc.toString(), regions, side, decisions).map((span) =>
-        Decoration.mark({ class: "cm-merge-conflict" }).range(span.from, span.to)
+      spans.map((span) =>
+        Decoration.widget({
+          widget: new ConflictPanel(
+            span.index,
+            ordinals.get(span.index) ?? span.index + 1,
+            decisions.get(span.index) ?? null,
+            onDecide
+          ),
+          side: -1,
+          block: true,
+        }).range(span.from)
       ),
       true
     );
-  };
-  return ViewPlugin.fromClass(
-    class {
-      decorations: DecorationSet;
-      constructor() {
-        this.decorations = build();
-      }
-      update(update: {
-        docChanged: boolean;
-        transactions: readonly { effects: readonly unknown[] }[];
-      }) {
-        if (update.docChanged || update.transactions.length) this.decorations = build();
-      }
-    },
-    { decorations: (plugin) => plugin.decorations }
-  );
+  });
 }
 
+const conflictMarks = (regions: MergeRegion[], side: Pane, decisions: Map<number, Side>) =>
+  EditorView.decorations.compute(["doc"], (state) =>
+    Decoration.set(
+      conflictSpans(state.doc.toString(), regions, side, decisions).map((span) =>
+        Decoration.mark({ class: "cm-merge-conflict" }).range(span.from, span.to)
+      ),
+      true
+    )
+  );
+
 /**
- * Three-pane conflict resolution: local, base and remote only. The local pane is
- * the merge target; each conflict decides locally, and unresolved conflicts are
- * reported without blocking the save.
+ * Three-pane conflict resolution in one frame: local, base and remote. The local
+ * pane is the editable merge target; each conflict offers the three decisions
+ * through the shared button primitives.
  */
 export function ContentThreeWayMerge({
   regions,
@@ -152,14 +200,13 @@ export function ContentThreeWayMerge({
   const editors = useRef<Partial<Record<Pane, EditorView>>>({});
   const decisions = useRef<Map<number, Side>>(new Map());
   const syncing = useRef(false);
-  const [tick, setTick] = useState(0);
+  const [revision, setRevision] = useState(0);
   const [active, setActive] = useState<number | null>(null);
 
   const texts: Record<Pane, string> = useMemo(
     () => ({ local: localText, base: baseText, remote: remoteText }),
     [localText, baseText, remoteText]
   );
-
   const conflictIndexes = useMemo(
     () => regions.flatMap((region, index) => (region.kind === "conflict" ? [index] : [])),
     [regions]
@@ -167,31 +214,40 @@ export function ContentThreeWayMerge({
   const unresolved = conflictIndexes.filter((index) => !decisions.current.has(index));
   const solved = conflictIndexes.length - unresolved.length;
 
-  function refresh() {
-    setTick((value) => value + 1);
-    for (const side of ["local", "base", "remote"] as const) editors.current[side]?.dispatch({});
-  }
-
-  function decide(index: number, side: Side) {
-    const local = editors.current.local;
-    const region = regions[index];
-    if (!local || !region || region.kind !== "conflict") return;
-    const span = conflictSpans(
-      local.state.doc.toString(),
-      regions,
-      "local",
-      decisions.current
-    ).find((candidate) => candidate.index === index);
-    decisions.current.set(index, side);
-    if (span) {
-      local.dispatch({
-        changes: { from: span.from, to: span.to, insert: region[side] },
-        selection: { anchor: span.from + region[side].length },
-      });
+  const syncScroll = useCallback((source: Pane) => {
+    if (syncing.current) return;
+    const origin = editors.current[source]?.scrollDOM;
+    if (!origin) return;
+    syncing.current = true;
+    const ratio = origin.scrollTop / Math.max(1, origin.scrollHeight - origin.clientHeight);
+    for (const side of ["local", "base", "remote"] as const) {
+      const pane = editors.current[side]?.scrollDOM;
+      if (pane && pane !== origin)
+        pane.scrollTop = ratio * Math.max(0, pane.scrollHeight - pane.clientHeight);
     }
-    setActive(index);
-    refresh();
-  }
+    syncing.current = false;
+  }, []);
+
+  const decide = useCallback(
+    (index: number, side: Side) => {
+      const local = editors.current.local;
+      const region = regions[index];
+      if (!local || !region || region.kind !== "conflict") return;
+      const span = conflictSpans(
+        local.state.doc.toString(),
+        regions,
+        "local",
+        decisions.current
+      ).find((candidate) => candidate.index === index);
+      decisions.current.set(index, side);
+      if (span) local.dispatch({ changes: { from: span.from, to: span.to, insert: region[side] } });
+      if (local.scrollDOM.scrollLeft !== 0) local.scrollDOM.scrollLeft = 0;
+      setActive(index);
+      setRevision((value) => value + 1);
+      for (const pane of ["local", "base", "remote"] as const) editors.current[pane]?.dispatch({});
+    },
+    [regions]
+  );
 
   function decideAll(side: Side) {
     const local = editors.current.local;
@@ -205,7 +261,8 @@ export function ContentThreeWayMerge({
     });
     if (changes.length)
       local.dispatch({ changes: changes.sort((left, right) => left.from - right.from) });
-    refresh();
+    setRevision((value) => value + 1);
+    for (const pane of ["local", "base", "remote"] as const) editors.current[pane]?.dispatch({});
   }
 
   function jump(direction: 1 | -1) {
@@ -230,7 +287,6 @@ export function ContentThreeWayMerge({
     }
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: editors are built once per document set
   useEffect(() => {
     decisions.current = new Map();
     setActive(null);
@@ -238,37 +294,18 @@ export function ContentThreeWayMerge({
     for (const side of ["local", "base", "remote"] as const) {
       const parent = hosts.current[side];
       if (!parent) continue;
-      const localPane = side === "local";
-      const markers = () =>
-        localPane
-          ? conflictSpans(
-              editors.current.local?.state.doc.toString() ?? "",
-              regions,
-              "local",
-              decisions.current
-            )
-          : [];
+      const editable = side === "local";
       const view = new EditorView({
         parent,
         state: EditorState.create({
           doc: texts[side],
           extensions: [
-            ...(localPane ? [] : [EditorState.readOnly.of(true), EditorView.editable.of(false)]),
             lineNumbers(),
+            EditorView.lineWrapping,
             mergeEditorTheme,
-            conflictMarks(regions, side, decisions.current, () => editors.current[side] ?? null),
-            gutter({
-              class: "cm-conflict-gutter",
-              markers: () =>
-                RangeSet.of(
-                  markers().map((span) =>
-                    new DecisionMarker(decisions.current.get(span.index) ?? null, (chosen) =>
-                      decide(span.index, chosen)
-                    ).range(editors.current.local?.state.doc.lineAt(span.from).from ?? span.from)
-                  ),
-                  true
-                ),
-            }),
+            ...(editable ? [localPanels(regions, decisions.current, decide)] : []),
+            conflictMarks(regions, side, decisions.current),
+            ...(editable ? [] : [EditorState.readOnly.of(true), EditorView.editable.of(false)]),
           ],
         }),
       });
@@ -276,26 +313,11 @@ export function ContentThreeWayMerge({
       created.push(view);
       view.scrollDOM.addEventListener("scroll", () => syncScroll(side));
     }
-    refresh();
     return () => {
       for (const view of created) view.destroy();
       editors.current = {};
     };
-  }, [regions, texts]);
-
-  function syncScroll(source: Pane) {
-    if (syncing.current) return;
-    const origin = editors.current[source]?.scrollDOM;
-    if (!origin) return;
-    syncing.current = true;
-    const ratio = origin.scrollTop / Math.max(1, origin.scrollHeight - origin.clientHeight);
-    for (const side of ["local", "base", "remote"] as const) {
-      const pane = editors.current[side]?.scrollDOM;
-      if (pane && pane !== origin)
-        pane.scrollTop = ratio * Math.max(0, pane.scrollHeight - pane.clientHeight);
-    }
-    syncing.current = false;
-  }
+  }, [regions, texts, decide, syncScroll]);
 
   const position = (() => {
     if (!unresolved.length || active === null) return 0;
@@ -306,8 +328,8 @@ export function ContentThreeWayMerge({
   })();
 
   return (
-    <div className="space-y-3" data-testid="content-three-way-merge" data-tick={tick}>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-3" data-testid="content-three-way-merge" data-revision={revision}>
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2">
         <Button
           size="sm"
           variant="outline"
@@ -329,9 +351,10 @@ export function ContentThreeWayMerge({
         >
           ›
         </Button>
-        <span className="text-xs text-muted-foreground">
+        <Badge tone={unresolved.length ? "warning" : "success"}>
           已解决 {solved}/{conflictIndexes.length}
-        </span>
+        </Badge>
+        <span className="flex-1" />
         <Button size="sm" variant="outline" onClick={() => decideAll("local")}>
           整篇采用本地
         </Button>
@@ -352,20 +375,29 @@ export function ContentThreeWayMerge({
         </p>
       ) : null}
 
-      <div className="grid grid-cols-3 gap-2" data-testid="content-three-way-panes">
-        {(["local", "base", "remote"] as const).map((side) => (
-          <div key={side} className="overflow-hidden rounded-xl border border-border">
-            <p className="border-b border-border bg-muted/46 px-2 py-1 text-[11px] font-medium text-muted-foreground">
-              {PANE_LABEL[side]}
-            </p>
+      <div
+        className="overflow-hidden rounded-2xl border border-border bg-code-surface"
+        data-testid="content-three-way-panes"
+      >
+        <div className="grid grid-cols-3 divide-x divide-border border-b border-border bg-muted/40">
+          {(["local", "base", "remote"] as const).map((side) => (
+            <div key={side} className="flex items-baseline justify-between gap-2 px-3 py-1.5">
+              <span className="text-[11px] font-semibold text-foreground">{PANE_LABEL[side]}</span>
+              <span className="text-[10px] text-muted-foreground">{PANE_HINT[side]}</span>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-3 divide-x divide-border">
+          {(["local", "base", "remote"] as const).map((side) => (
             <div
+              key={side}
               ref={(element) => {
                 hosts.current[side] = element;
               }}
-              className="h-64 overflow-auto text-xs"
+              className="h-96 overflow-hidden text-xs"
             />
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
