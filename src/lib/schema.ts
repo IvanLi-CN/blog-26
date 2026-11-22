@@ -1195,6 +1195,14 @@ export const contentRepoBaselines = sqliteTable(
   })
 );
 
+export const contentMedia = sqliteTable("content_media", {
+  path: text("path").primaryKey(),
+  sha256: text("sha256").notNull(),
+  bytes: integer("bytes").notNull(),
+  mime: text("mime"),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 export const contentTaskCounters = sqliteTable("content_task_counters", {
   source: text("source").primaryKey(),
   total: integer("total").notNull().default(0),

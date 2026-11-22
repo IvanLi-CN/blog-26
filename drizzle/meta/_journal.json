@@ -239,6 +239,13 @@
       "when": 1793700000000,
       "tag": "0033_content_repo_baselines",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1793700000001,
+      "tag": "0034_content_media",
+      "breakpoints": true
     }
   ]
 }

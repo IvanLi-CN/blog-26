@@ -37,6 +37,7 @@ import {
 import { db } from "@/lib/db";
 import { contentRepoBaselines, memoClippings, posts } from "@/lib/schema";
 import { beginContentTask, finishContentTask, updateContentTask } from "./content-tasks";
+import { recordMediaIdentity, verifyMediaIdentity } from "./media-identity";
 
 const FILE_LIMITS = {
   post: CONTENT_REPO_MAX_POST_FILE_BYTES,
@@ -137,7 +138,14 @@ export async function loadContentRepoEntries(
       }
       if (bytes.byteLength > FILE_LIMITS[kind])
         throw new ContentRepoError("invalid", `Attachment exceeds the size limit: ${path}`);
-      media.push({ path, bytes, sha256: sha256Hex(bytes) });
+      const identity = verifyMediaIdentity(path, bytes);
+      if (identity.status === "mismatch")
+        throw new ContentRepoError(
+          "invalid",
+          `Attachment changed outside the content library: ${path}`
+        );
+      if (identity.status === "record") recordMediaIdentity(path, bytes);
+      media.push({ path, bytes, sha256: identity.sha256 });
     }
     if (missing.length) missingMedia.set(document.path, missing);
     entries.push({ contentId: record.id, document, media });

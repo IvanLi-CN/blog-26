@@ -11,6 +11,7 @@ import {
   createPublicCorsPreflightResponse,
   resolveRequestOrigin,
 } from "@/lib/public-cors";
+import { recordMediaIdentity } from "@/server/services/media-identity";
 
 const FILES_API_ALLOWED_METHODS = ["GET", "HEAD", "POST", "PUT", "OPTIONS"] as const;
 
@@ -197,7 +198,9 @@ export async function handleFilesApiRequest(
       }
 
       const body = await request.arrayBuffer();
-      await uploadLocalFile(filePath, Buffer.from(body));
+      const buffer = Buffer.from(body);
+      await uploadLocalFile(filePath, buffer);
+      recordMediaIdentity(filePath, buffer, request.headers.get("content-type"));
       return json(
         request,
         { ok: true, success: true, source: "local", path: filePath },
