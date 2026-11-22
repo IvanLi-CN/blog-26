@@ -4,15 +4,21 @@
   "base_sha": "0e2bf6194464d17ba976e5ba8ca86c9e33f83dc7",
   "covered_files": {
     "GLOSSARY.md": "d5b29409e356d90b71d2ed9aa9cbb44c92b6f599",
+    "apps/admin/src/components/app-shell.tsx": "c58b7da5a741cf20c96436e5c117b07afe083034",
+    "apps/admin/src/demo/mock-admin-api.ts": "66e24f4b746911db0f780ec014b7adec5fe3cbfd",
+    "apps/admin/src/pages/content-merge.test.tsx": "dfe1b2059f14195ee90b9519fec14d30c00cc9d6",
+    "apps/admin/src/pages/content-merge.tsx": "007bf42317fabd492439019bb8546dcf3d9dc97d",
+    "apps/admin/src/router.tsx": "aad616093220faeb0d82027314ecdd3ab27b142a",
     "docs/adr/0043-database-content-authority-and-repository-sync.md": "ed536b4d68b7ad1fc98c5f08056a139f54d4d8c1",
     "docs/specs/README.md": "52cc61f4c0dd149e989deb4f9ab1a57fb3806ee7",
     "docs/specs/content-git-sync/HISTORY.md": "46da7ebe73b7de5f6337312ada6e007254ea0bdb",
-    "docs/specs/content-git-sync/IMPLEMENTATION.md": "3613265ec7cf3e22fb65344eb64cbb7568c833df",
+    "docs/specs/content-git-sync/IMPLEMENTATION.md": "410618084295bdc1d4c44b6272483241bedd0941",
     "docs/specs/content-git-sync/SPEC.md": "f2ad86ec583af6b66831653caab8bd7bdeb6abda",
     "drizzle/0033_content_repo_baselines.sql": "e2f4ffa7430f2c5954ed4ea138d6fd2869ea1c4b",
     "drizzle/0034_content_media.sql": "2b2e1843636da9cb73dd45cb50ae15e6603f544c",
     "drizzle/0035_content_repo_baseline_document.sql": "7de677f23ebbfc3a97c282b4d4bfdaffac74858f",
     "drizzle/meta/_journal.json": "cdf171f7bc2cb6141a4aab2357936e9b3f02c6c0",
+    "src/lib/admin-api-client.ts": "458643170d3be81360ea3abb2aa2e02fae88bec8",
     "src/lib/content-repo/canonical.test.ts": "c7f05a3e5cbf0e3fe4b32f5321b5b35d366adcff",
     "src/lib/content-repo/canonical.ts": "7342aabb0971e092c907304a08a3daba69147e11",
     "src/lib/content-repo/config.ts": "46888f9fd075a137241c98643407143bdbd69006",
@@ -29,11 +35,12 @@
     "src/lib/content-repo/state.test.ts": "e29e0a68818c94a9acdd1142537fa5bc388776a1",
     "src/lib/content-repo/state.ts": "6dfb3be49c16437809095646749f7ccc009f7889",
     "src/lib/schema.ts": "7d8cafde7750c8c405a286aef43551f8b146ecc9",
+    "src/server/admin-api/router.ts": "267ac0791b28207ead00f3b5a6bd0acfb83436e0",
     "src/server/files-api/router.ts": "5ae3c0e652f55be7acb138c1781fbea2ba7bbb55",
-    "src/server/routers/admin/content-repo.ts": "3c079fa0f8432921e1db434146665bdbd18544a3",
+    "src/server/routers/admin/content-repo.ts": "58686ea263a0361807099b65e87bf89f8de47ffe",
     "src/server/routers/admin/index.ts": "c53193b2a224373f3c98e818ccf2242e81058c1d",
     "src/server/services/content-repo-sync.test.ts": "623bdb05d3b09a9b9568f4d6ad0a6ca68f5b96de",
-    "src/server/services/content-repo-sync.ts": "09bd4a3dbe4ba1883651dec97d4ffafa2e384af5",
+    "src/server/services/content-repo-sync.ts": "4b070e3d5e9b4e4e6ec8bb1cd335ea2c0eaf4110",
     "src/server/services/content-tasks.ts": "f30dc5063da35877508856391d2b18ab88d1c893",
     "src/server/services/media-identity.ts": "93d8e51cc5390b60214d6d20d4165d93a9e4d260",
     "tests/server/system-share-api.test.ts": "9a566306fe62febb5c142412c37e4a068f717112"
@@ -41,7 +48,7 @@
   "change": {
     "description": "Add the server-side content repository push foundation: canonical content form, API-only GitHub transport, push planning from sync baselines and an additive content_repo_baselines table.",
     "release_unit_description": "static frontend and full-feature Docker image",
-    "affected_contracts": ["persistent-state"]
+    "affected_contracts": ["public-api", "persistent-state"]
   },
   "classification": {
     "planned": {
@@ -77,6 +84,11 @@
       "reasoning": "Focused tests pass, the additive migration applies, and no existing module outside the new library changed behaviour.",
       "assessed_at": "2026-11-22T03:52:58+08:00",
       "evidence": [
+        {
+          "path": "apps/admin/src/pages/content-merge.test.tsx",
+          "blob": "dfe1b2059f14195ee90b9519fec14d30c00cc9d6",
+          "command": "bun test --isolate apps/admin/src/pages/content-merge.test.tsx"
+        },
         {
           "path": "src/lib/content-repo/merge.test.ts",
           "blob": "fe93676a0c544a74563b5554010b60e0d44a822c",
@@ -153,7 +165,7 @@
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
           "blob": "f2ad86ec583af6b66831653caab8bd7bdeb6abda",
-          "command": "Public routes, payloads and search responses are untouched"
+          "command": "Admin routes are administrator-only; public routes, payloads and search responses are untouched"
         }
       ]
     },
