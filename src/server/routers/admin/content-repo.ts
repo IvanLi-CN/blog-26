@@ -1,10 +1,18 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { pushContentRepo, readContentRepoStatus } from "../../services/content-repo-sync";
+import {
+  checkContentRepo,
+  pushContentRepo,
+  readContentRepoStatus,
+} from "../../services/content-repo-sync";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 export const adminContentRepoRouter = createTRPCRouter({
   status: adminProcedure.query(() => readContentRepoStatus()),
+
+  check: adminProcedure
+    .input(z.object({ ids: z.array(z.string().min(1)).max(200).optional() }).optional())
+    .query(({ input }) => checkContentRepo(input ?? {})),
 
   push: adminProcedure
     .input(

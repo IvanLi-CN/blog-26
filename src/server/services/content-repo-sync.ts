@@ -28,6 +28,12 @@ import {
   type PushPlan,
   planPush,
 } from "@/lib/content-repo/push";
+import {
+  type ContentSyncCounts,
+  type ContentSyncStateItem,
+  computeSyncStates,
+  summarizeSyncStates,
+} from "@/lib/content-repo/state";
 import { db } from "@/lib/db";
 import { contentRepoBaselines, memoClippings, posts } from "@/lib/schema";
 import { beginContentTask, finishContentTask, updateContentTask } from "./content-tasks";
@@ -81,7 +87,10 @@ function toContentRecord(row: typeof posts.$inferSelect): ContentRecord {
   };
 }
 
-export async function loadContentRepoEntries(ids?: string[]): Promise<ContentRepoEntry[]> {
+export async function loadContentRepoEntries(
+  ids?: string[],
+  options: { tolerateMissingMedia?: boolean } = {}
+): Promise<{ entries: ContentRepoEntry[]; missingMedia: Map<string, string[]> }> {
   const where = ids?.length ? inArray(posts.id, ids) : inArray(posts.type, ["post", "memo"]);
   const rows = db
     .select()
@@ -96,6 +105,7 @@ export async function loadContentRepoEntries(ids?: string[]): Promise<ContentRep
     );
 
   const entries: ContentRepoEntry[] = [];
+  const missingMedia = new Map<string, string[]>();
   for (const row of rows) {
     const record = toContentRecord(row);
     const kind = record.type === "memo" ? "memo" : "post";
@@ -109,6 +119,7 @@ export async function loadContentRepoEntries(ids?: string[]): Promise<ContentRep
         : null,
     });
     const media: ContentRepoMediaFile[] = [];
+    const missing: string[] = [];
     for (const path of document.media) {
       if (!isLocalContentEnabled())
         throw new ContentRepoError("failed", "Media storage is not configured");
@@ -116,6 +127,10 @@ export async function loadContentRepoEntries(ids?: string[]): Promise<ContentRep
       try {
         bytes = await readFile(getLocalPath(path));
       } catch (error) {
+        if (options.tolerateMissingMedia) {
+          missing.push(path);
+          continue;
+        }
         throw new ContentRepoError("failed", `Attachment is unavailable: ${path}`, {
           cause: error,
         });
@@ -124,9 +139,10 @@ export async function loadContentRepoEntries(ids?: string[]): Promise<ContentRep
         throw new ContentRepoError("invalid", `Attachment exceeds the size limit: ${path}`);
       media.push({ path, bytes, sha256: sha256Hex(bytes) });
     }
+    if (missing.length) missingMedia.set(document.path, missing);
     entries.push({ contentId: record.id, document, media });
   }
-  return entries;
+  return { entries, missingMedia };
 }
 
 export function loadContentRepoBaselines(): Map<string, ContentRepoBaseline> {
@@ -309,7 +325,7 @@ export function pushContentRepo(input: ContentRepoPushInput = {}): Promise<Conte
     });
 
     try {
-      const entries = await loadContentRepoEntries(ids);
+      const { entries } = await loadContentRepoEntries(ids);
       await updateContentTask(task.id, { phase: "planning", total: entries.length });
       const baselines = loadContentRepoBaselines();
       const transport = createContentRepoTransport(config);
@@ -345,6 +361,64 @@ export function pushContentRepo(input: ContentRepoPushInput = {}): Promise<Conte
     flight = undefined;
   });
   return flight;
+}
+
+export interface ContentRepoCheckOutcome {
+  status: "checked" | "unconfigured" | "failed";
+  repository: string | null;
+  ref: string | null;
+  commit?: string;
+  items?: ContentSyncStateItem[];
+  counts?: ContentSyncCounts;
+  message?: string;
+}
+
+export async function checkContentRepo(
+  input: { ids?: string[] } = {}
+): Promise<ContentRepoCheckOutcome> {
+  let config: ContentRepoConfig;
+  try {
+    config = readContentRepoConfig();
+  } catch (error) {
+    return {
+      status: "failed",
+      repository: null,
+      ref: null,
+      message: error instanceof Error ? error.message : "Invalid configuration",
+    };
+  }
+  if (!config.token)
+    return { status: "unconfigured", repository: config.repository, ref: config.ref };
+
+  try {
+    const { entries, missingMedia } = await loadContentRepoEntries(input.ids, {
+      tolerateMissingMedia: true,
+    });
+    const transport = createContentRepoTransport(config);
+    const head = await transport.resolveHead();
+    const remote = await transport.listTree(head.tree);
+    const items = computeSyncStates({
+      entries,
+      baselines: loadContentRepoBaselines(),
+      remote,
+      missingMedia,
+    });
+    return {
+      status: "checked",
+      repository: config.repository,
+      ref: config.ref,
+      commit: head.commit,
+      items,
+      counts: summarizeSyncStates(items),
+    };
+  } catch (error) {
+    return {
+      status: "failed",
+      repository: config.repository,
+      ref: config.ref,
+      message: error instanceof Error ? error.message : "Content repository check failed",
+    };
+  }
 }
 
 export function readContentRepoStatus(): ContentRepoStatus {
