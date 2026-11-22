@@ -530,6 +530,194 @@ export function pullContentRepo(input: { ids?: string[] } = {}): Promise<Content
   return pullFlight;
 }
 
+export interface ContentRepoAdoptOutcome {
+  status: "accepted" | "removed" | "nothing" | "unconfigured" | "failed";
+  repository: string | null;
+  ref: string | null;
+  commit?: string;
+  paths?: string[];
+  skipped?: { path: string; reason: string }[];
+  message?: string;
+}
+
+async function inspectContentRepo(config: ContentRepoConfig) {
+  const { entries, missingMedia } = await loadContentRepoEntries(undefined, {
+    tolerateMissingMedia: true,
+  });
+  const baselines = loadContentRepoBaselines();
+  const transport = createContentRepoTransport(config);
+  const head = await transport.resolveHead();
+  const remote = await transport.listTree(head.tree);
+  const items = computeSyncStates({ entries, baselines, remote, missingMedia });
+  return { entries, baselines, transport, head, remote, items };
+}
+
+function readContentRepoConfigOrFail() {
+  try {
+    return { config: readContentRepoConfig(), error: null as string | null };
+  } catch (error) {
+    return {
+      config: null,
+      error: error instanceof Error ? error.message : "Invalid configuration",
+    };
+  }
+}
+
+/**
+ * Adopt repository files the content library has never seen. Only `remote-new`
+ * paths are eligible; anything else is refused by name.
+ */
+export async function acceptRemoteNew(
+  input: { paths?: string[] } = {}
+): Promise<ContentRepoAdoptOutcome> {
+  const { config, error } = readContentRepoConfigOrFail();
+  if (!config) return { status: "failed", repository: null, ref: null, message: error ?? "" };
+  if (!config.token)
+    return { status: "unconfigured", repository: config.repository, ref: config.ref };
+  const wanted = new Set(input.paths?.length ? input.paths : []);
+  const accepted: string[] = [];
+  const skipped: { path: string; reason: string }[] = [];
+  try {
+    const context = await inspectContentRepo(config);
+    const decoder = new TextDecoder();
+    for (const item of context.items) {
+      if (item.state !== "remote-new") continue;
+      if (wanted.size && !wanted.has(item.path)) continue;
+      if (item.kind !== "post") {
+        skipped.push({ path: item.path, reason: "memo-adoption-requires-authority-cutover" });
+        continue;
+      }
+      if (!item.remoteSha) continue;
+      const bytes = await context.transport.readBlob(item.remoteSha);
+      const update = toDocumentUpdate(parseRemoteDocument(bytes));
+      const document = buildCanonicalDocument({
+        id: item.path,
+        type: "post",
+        slug: update.slug,
+        title: update.title,
+        excerpt: null,
+        body: update.body,
+        draft: update.draft,
+        public: update.public,
+        category: update.category,
+        tags: JSON.stringify(update.tags),
+        author: update.author,
+        image: update.image,
+        publishDate: update.publishDate,
+        updateDate: update.updateDate,
+        filePath: item.path,
+        metadata: null,
+      });
+      const now = Date.now();
+      db.insert(posts)
+        .values({
+          id: item.path,
+          slug: update.slug,
+          type: "post",
+          title: update.title,
+          excerpt: update.body.slice(0, 200),
+          body: update.body,
+          publishDate: update.publishDate,
+          updateDate: update.updateDate,
+          draft: update.draft,
+          public: update.public,
+          category: update.category,
+          tags: JSON.stringify(update.tags),
+          author: update.author,
+          image: update.image,
+          metadata: null,
+          dataSource: "content-repo",
+          contentHash: document.contentHash,
+          lastModified: now,
+          source: "content-repo",
+          filePath: item.path,
+        })
+        .run();
+      persistBaselineRow({
+        path: item.path,
+        contentId: item.path,
+        kind: "post",
+        contentHash: document.contentHash,
+        document: decoder.decode(document.bytes),
+        media: JSON.stringify({}),
+        remoteBlobs: JSON.stringify({ [item.path]: item.remoteSha }),
+        commitSha: context.head.commit,
+        updatedAt: now,
+      });
+      accepted.push(item.path);
+    }
+    if (accepted.length) clearSearchCache();
+    return {
+      status: accepted.length ? "accepted" : "nothing",
+      repository: config.repository,
+      ref: config.ref,
+      commit: context.head.commit,
+      paths: accepted,
+      skipped,
+    };
+  } catch (caught) {
+    return {
+      status: "failed",
+      repository: config.repository,
+      ref: config.ref,
+      paths: accepted,
+      skipped,
+      message: caught instanceof Error ? caught.message : "Content repository adoption failed",
+    };
+  }
+}
+
+/**
+ * Remove content whose repository file disappeared and whose local text never
+ * changed after the last sync. Any other state is refused by name.
+ */
+export async function removeRemoteDeleted(
+  input: { paths?: string[] } = {}
+): Promise<ContentRepoAdoptOutcome> {
+  const { config, error } = readContentRepoConfigOrFail();
+  if (!config) return { status: "failed", repository: null, ref: null, message: error ?? "" };
+  if (!config.token)
+    return { status: "unconfigured", repository: config.repository, ref: config.ref };
+  const wanted = new Set(input.paths?.length ? input.paths : []);
+  const removed: string[] = [];
+  const skipped: { path: string; reason: string }[] = [];
+  try {
+    const context = await inspectContentRepo(config);
+    for (const item of context.items) {
+      if (item.state !== "remote-deleted") continue;
+      if (wanted.size && !wanted.has(item.path)) continue;
+      const row = db.select().from(posts).where(eq(posts.filePath, item.path)).get();
+      if (!row) {
+        skipped.push({ path: item.path, reason: "missing-local-content" });
+        continue;
+      }
+      db.transaction((tx) => {
+        tx.delete(posts).where(eq(posts.id, row.id)).run();
+        tx.delete(contentRepoBaselines).where(eq(contentRepoBaselines.path, item.path)).run();
+      });
+      removed.push(item.path);
+    }
+    if (removed.length) clearSearchCache();
+    return {
+      status: removed.length ? "removed" : "nothing",
+      repository: config.repository,
+      ref: config.ref,
+      commit: context.head.commit,
+      paths: removed,
+      skipped,
+    };
+  } catch (caught) {
+    return {
+      status: "failed",
+      repository: config.repository,
+      ref: config.ref,
+      paths: removed,
+      skipped,
+      message: caught instanceof Error ? caught.message : "Content repository removal failed",
+    };
+  }
+}
+
 export interface ContentRepoMergeConflict {
   path: string;
   fields: string[];

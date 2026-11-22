@@ -1,11 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
+  acceptRemoteNew,
   checkContentRepo,
   mergeContentRepo,
   pullContentRepo,
   pushContentRepo,
   readContentRepoStatus,
+  removeRemoteDeleted,
 } from "../../services/content-repo-sync";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
@@ -15,6 +17,14 @@ export const adminContentRepoRouter = createTRPCRouter({
   check: adminProcedure
     .input(z.object({ ids: z.array(z.string().min(1)).max(200).optional() }).optional())
     .query(({ input }) => checkContentRepo(input ?? {})),
+
+  acceptRemote: adminProcedure
+    .input(z.object({ paths: z.array(z.string().min(1)).max(200).optional() }).optional())
+    .mutation(({ input }) => acceptRemoteNew(input ?? {})),
+
+  removeRemoteDeleted: adminProcedure
+    .input(z.object({ paths: z.array(z.string().min(1)).max(200).optional() }).optional())
+    .mutation(({ input }) => removeRemoteDeleted(input ?? {})),
 
   merge: adminProcedure
     .input(z.object({ ids: z.array(z.string().min(1)).max(200).optional() }).optional())
