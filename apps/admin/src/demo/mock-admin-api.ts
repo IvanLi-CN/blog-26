@@ -2128,6 +2128,7 @@ async function handleAdminRequest(
           "merge-conflict": 1,
         },
       });
+    if (path === "/api/admin/content-repo/media/remote") return demoMediaResponse();
     if (path === "/api/admin/content-repo/media") {
       const target = url.searchParams.get("path") ?? demoItems[1].path;
       return json({
@@ -2465,7 +2466,20 @@ async function handleAdminRequest(
   return json({ error: { message: `未实现的 demo API: ${path}` } }, 404);
 }
 
+const DEMO_MEDIA_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAUAAAADICAYAAACZBDirAAAE1ElEQVR42u3dsQ2AMBAEQTdDAXSAqIE66D8zTexHTOB89Cdt6nWc9y7f9bzp4+Pj45vyLQfk4+MTQAfk4+MTQAfk4+MTQAfk4+MTQAfk4+MTQAfk4+MTQAfk4+MTQAPz8fEJoIH5+PgE0MB8fHwCaGA+Pj4BNDAfH58AGpiPj08ADczHxyeABubj4xNAA/Px8Qmggfn4+ATQwHx8fALIx8fHNxRAg/Dx8f3VJ4B8fHwC6IB8fHwC6IB8fHwC6IB8fHwC6IB8fHwC6IB8fHwC6IB8fHwC6IB8fHwCaGA+Pj4BNDAfH58AGpiPj08ADczHxyeABubj4xNAA/Px8Qmggfn4+ATQwHx8fAJoYD4+PgE0MB8fnwDy8fHxTQXQIHx8fH6Fc0A+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BNDAfH58AGpiPj08ADczHxyeABubj4xNAA/Px8Qmggfn4+ATQwHx8fAJoYD4+PgE0MB8fnwAamI+PTwANzMfHJ4B8fHx8AsjHx8fXBtAgfHx8foVzQD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgE0MB8fnwAamI+PTwANzMfHJ4AG5uPjE0AD8/HxCaCB+fj4BNDAfHx8AmhgPj4+ATQwHx+fABqYj49PAA3Mx8cngHx8fHwCyMfHx9cG0CB8fHx+hXNAPj4+AXRAPj4+AXRAPj4+AXRAPj4+AXRAPj4+AXRAPj4+ATQwHx+fABqYj49PAA3Mx8cngAbm4+MTQAPz8fEJoIH5+PgE0MB8fHwCaGA+Pj4BNDAfH58AGpiPj08ADczHxyeAfHx8fALIx8fH1wbQIHx8fH6Fc0A+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BNDAfH58AGpiPj08ADczHxyeABubj4xNAA/Px8Qmggfn4+ATQwHx8fAJoYD4+PgE0MB8fnwAamI+PTwANzMfHJ4B8fHx8AsjHx8fXBtAgfHx8foVzQD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgE0MB8fnwAamI+PTwANzMfHJ4AG5uPjE0AD8/HxCaCB+fj4BNDAfHx8AmhgPj4+ATQwHx+fABqYj49PAA3Mx8cngHx8fHwCyMfHx9cG0CB8fHx+hXNAPj4+AXRAPj4+AXRAPj4+AXRAPj4+AXRAPj4+AXRAPj4+ATQwHx+fABqYj49PAA3Mx8cngAbm4+MTQAPz8fEJoIH5+PgE0MB8fHwCaGA+Pj4BNDAfH58AGpiPj08ADczHxyeAfHx8fALIx8fH1wbQIHx8fH6Fc0A+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BNDAfH58AGpiPj08ADczHxyeABubj4xNAA/Px8Qmggfn4+ATQwHx8fAJoYD4+PgE0MB8fnwAamI+PTwANzMfHJ4B8fHx8AsjHx8fXBtAgfHx8foVzQD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgE0MB8fnwAamI+PTwANzMfHJ4AG5uPjE0AD8/HxCaCB+fj4BNDAfHx8AmhgPj4+ATQwHx+fABqYj49PAA3Mx8cngHx8fHwCyMfHx5e+D6h7UlD+z/KnAAAAAElFTkSuQmCC";
+
+function demoMediaResponse() {
+  const raw = atob(DEMO_MEDIA_PNG);
+  const bytes = new Uint8Array(raw.length);
+  for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
+  return new Response(bytes, {
+    headers: { "content-type": "image/png", "cache-control": "no-store" },
+  });
+}
+
 function handleFileAssetRequest(url: URL) {
+  if (/\.(png|jpe?g|gif|webp|avif)$/iu.test(url.pathname)) return demoMediaResponse();
   return json({ url: url.pathname });
 }
 

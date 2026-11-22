@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Button } from "~/components/ui";
 
 export interface ContentRepoMediaRow {
@@ -28,27 +29,68 @@ function MediaPreview({
   mime: string;
   fileName: string;
 }) {
+  const sourceUrl = url;
   const previewable =
     mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/");
+  const [failed, setFailed] = useState(false);
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!previewable) return undefined;
+    let cancelled = false;
+    let url: string | null = null;
+    setFailed(false);
+    setObjectUrl(null);
+    void fetch(sourceUrl)
+      .then(async (response) => {
+        if (!response.ok) throw new Error(String(response.status));
+        return response.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        url = URL.createObjectURL(blob);
+        setObjectUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [previewable, sourceUrl]);
+
+  const source = objectUrl ?? url;
   return (
     <div className="min-w-0 space-y-1">
       <p className="text-xs text-muted-foreground">{label}</p>
-      {mime.startsWith("image/") ? (
+      {mime.startsWith("image/") && failed ? (
+        <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border bg-muted/32 px-3 text-center text-xs text-muted-foreground">
+          {fileName} · 预览不可用
+        </div>
+      ) : mime.startsWith("image/") && !objectUrl ? (
+        <div
+          className="h-32 animate-pulse rounded-xl bg-muted/46"
+          role="status"
+          aria-label="加载预览"
+        />
+      ) : mime.startsWith("image/") ? (
         // biome-ignore lint/performance/noImgElement: user attachments are served directly
         <img
-          src={url}
+          src={source}
           alt={`${label} ${fileName}`}
+          onError={() => setFailed(true)}
           className="max-h-40 rounded-xl bg-muted/46 object-contain"
         />
       ) : mime.startsWith("video/") ? (
         // biome-ignore lint/a11y/useMediaCaption: attachments carry no caption tracks
-        <video src={url} controls className="max-h-40 w-full rounded-xl bg-muted/46" />
+        <video src={source} controls className="max-h-40 w-full rounded-xl bg-muted/46" />
       ) : mime.startsWith("audio/") ? (
         // biome-ignore lint/a11y/useMediaCaption: attachments carry no caption tracks
-        <audio src={url} controls className="w-full" />
+        <audio src={source} controls className="w-full" />
       ) : null}
       <a
-        href={url}
+        href={source}
         download={previewable ? undefined : fileName}
         target="_blank"
         rel="noreferrer"

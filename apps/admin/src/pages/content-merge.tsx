@@ -37,14 +37,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Disclosure,
   EmptyState,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Separator,
   Spinner,
 } from "~/components/ui";
@@ -258,7 +255,7 @@ function FileCard({
   mode: "inline" | "split" | "three";
   onModeChange: (mode: "inline" | "split" | "three") => void;
   onCount: (path: string, count: number) => void;
-  onSave: (path: string, text: string, unresolved: number) => void;
+  onSave: (path: string, text: string) => void;
   onAdopt: (path: string, media: string) => void;
   onMerge: (path: string) => void;
   onPull: (path: string) => void;
@@ -268,6 +265,7 @@ function FileCard({
 }) {
   const { ref, seen } = useInView<HTMLDivElement>(true);
   const handle = useRef<ContentMergeHandle | null>(null);
+  const [confirm, setConfirm] = useState<{ text: string; unresolved: number } | null>(null);
 
   const diff = useQuery({
     queryKey: ["content-repo", "diff", row.path],
@@ -304,18 +302,57 @@ function FileCard({
             </CardDescription>
           </div>
           {!row.media ? (
-            <Button
-              size="lg"
-              onClick={() => {
-                const text = handle.current?.getText();
-                const unresolved = handle.current?.pending().unresolved ?? 0;
-                if (text !== undefined) onSave(row.path, text, unresolved);
+            <Popover
+              open={Boolean(confirm)}
+              onOpenChange={(open) => {
+                if (!open) setConfirm(null);
               }}
-              disabled={!diff.data || diff.data.status !== "ready"}
             >
-              <Save />
-              保存
-            </Button>
+              <PopoverTrigger asChild>
+                <Button
+                  size="lg"
+                  disabled={!diff.data || diff.data.status !== "ready"}
+                  onClick={() => {
+                    const text = handle.current?.getText();
+                    const unresolved = handle.current?.pending().unresolved ?? 0;
+                    if (text === undefined) return;
+                    if (unresolved > 0) {
+                      setConfirm({ text, unresolved });
+                      return;
+                    }
+                    onSave(row.path, text);
+                  }}
+                >
+                  <Save />
+                  保存
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 space-y-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    仍有 {confirm?.unresolved ?? 0} 处冲突未解决
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    保存会把当前合并结果写入内容库并推送；未裁决的部分保持本地窗格的现有内容。
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setConfirm(null)}>
+                    取消
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (!confirm) return;
+                      onSave(row.path, confirm.text);
+                      setConfirm(null);
+                    }}
+                  >
+                    继续保存
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           ) : null}
         </CardHeader>
         <CardContent className="space-y-4">
@@ -627,12 +664,6 @@ export function ContentMergePage() {
   const [saved, setSaved] = useState<Record<string, SavedMark>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [snapshot, setSnapshot] = useState<ContentRepoSyncItem[] | null>(null);
-  const [confirmSave, setConfirmSave] = useState<{
-    path: string;
-    text: string;
-    remoteSha: string | null;
-    unresolved: number;
-  } | null>(null);
 
   const status = useQuery({
     queryKey: ["content-repo", "status"],
@@ -906,13 +937,7 @@ export function ContentMergePage() {
               mode={mode}
               onModeChange={setMode}
               onCount={onCount}
-              onSave={(path, text, unresolved) => {
-                if (unresolved > 0) {
-                  setConfirmSave({ path, text, remoteSha: row.item.remoteSha, unresolved });
-                  return;
-                }
-                resolve.mutate({ path, text, remoteSha: row.item.remoteSha });
-              }}
+              onSave={(path, text) => resolve.mutate({ path, text, remoteSha: row.item.remoteSha })}
               onAdopt={(path, media) => adoptMedia.mutate({ path, media })}
               onMerge={(path) => merge.mutate({ ids: [path] })}
               onPull={(path) => pull.mutate({ ids: [path] })}
@@ -923,35 +948,6 @@ export function ContentMergePage() {
           ))
         )}
       </div>
-
-      <Dialog open={Boolean(confirmSave)} onOpenChange={(open) => !open && setConfirmSave(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>仍有 {confirmSave?.unresolved ?? 0} 处冲突未解决</DialogTitle>
-            <DialogDescription>
-              保存会把当前合并结果写入内容库并推送；未裁决的部分保持本地窗格的现有内容。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmSave(null)}>
-              取消
-            </Button>
-            <Button
-              onClick={() => {
-                if (!confirmSave) return;
-                resolve.mutate({
-                  path: confirmSave.path,
-                  text: confirmSave.text,
-                  remoteSha: confirmSave.remoteSha,
-                });
-                setConfirmSave(null);
-              }}
-            >
-              继续保存
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
