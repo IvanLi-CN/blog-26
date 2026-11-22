@@ -53,6 +53,41 @@ const STATE_TONE: Record<
   "merge-conflict": "danger",
 };
 
+type FileRow = {
+  key: string;
+  path: string;
+  label: "文章" | "闪念" | "附件";
+  item: ContentRepoSyncItem;
+  media?: { path: string; missing: boolean };
+};
+
+/** One row per file: documents and attachments never share a merge surface. */
+function buildFileRows(items: ContentRepoSyncItem[]): FileRow[] {
+  const rows = new Map<string, FileRow>();
+  for (const item of items) {
+    if (rows.has(item.path)) continue;
+    rows.set(item.path, {
+      key: item.path,
+      path: item.path,
+      label: item.kind === "memo" ? "闪念" : "文章",
+      item,
+    });
+  }
+  for (const item of items) {
+    for (const mediaPath of [...item.missingMedia, ...item.changedMedia]) {
+      if (rows.has(mediaPath)) continue;
+      rows.set(mediaPath, {
+        key: mediaPath,
+        path: mediaPath,
+        label: "附件",
+        item,
+        media: { path: mediaPath, missing: item.missingMedia.includes(mediaPath) },
+      });
+    }
+  }
+  return [...rows.values()].sort((left, right) => left.path.localeCompare(right.path));
+}
+
 function TextPane({ title, text }: { title: string; text: string | null | undefined }) {
   return (
     <div className="min-w-0 space-y-2">
@@ -145,7 +180,7 @@ function actionSummary(result: ContentRepoActionPayload) {
 
 export function ContentMergePage() {
   const queryClient = useQueryClient();
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [mode, setMode] = useState<"inline" | "split" | "three">("inline");
 
@@ -157,10 +192,12 @@ export function ContentMergePage() {
     queryKey: ["content-repo", "check"],
     queryFn: adminApi.checkContentRepo,
   });
+  const rows = buildFileRows(check.data?.items ?? []);
+  const selected = rows.find((row) => row.key === selectedKey) ?? null;
   const media = useQuery({
-    queryKey: ["content-repo", "media", selectedPath],
-    queryFn: () => adminApi.getContentRepoMedia(selectedPath ?? ""),
-    enabled: Boolean(selectedPath),
+    queryKey: ["content-repo", "media", selected?.item.path],
+    queryFn: () => adminApi.getContentRepoMedia(selected?.item.path ?? ""),
+    enabled: Boolean(selected?.media),
   });
   const adoptMedia = useMutation({
     mutationFn: (input: { path: string; media: string }) => adminApi.adoptRemoteMedia(input),
@@ -175,9 +212,9 @@ export function ContentMergePage() {
     onError: (error) => setNotice(getErrorMessage(error)),
   });
   const diff = useQuery({
-    queryKey: ["content-repo", "diff", selectedPath],
-    queryFn: () => adminApi.getContentRepoDiff(selectedPath ?? ""),
-    enabled: Boolean(selectedPath),
+    queryKey: ["content-repo", "diff", selected?.path],
+    queryFn: () => adminApi.getContentRepoDiff(selected?.path ?? ""),
+    enabled: Boolean(selected && !selected.media),
   });
 
   const refresh = async () => {
@@ -227,12 +264,6 @@ export function ContentMergePage() {
     onError,
   });
 
-  const items = [...(check.data?.items ?? [])].sort((left, right) =>
-    left.path.localeCompare(right.path)
-  );
-  const selected = items.find((item) => item.path === selectedPath) ?? null;
-  const selectedIds = selectedPath ? [selectedPath] : [];
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -277,47 +308,43 @@ export function ContentMergePage() {
             <Separator />
             {check.isLoading ? (
               <Spinner />
-            ) : items.length === 0 ? (
+            ) : rows.length === 0 ? (
               <EmptyState title="没有内容" description="内容库为空，或尚未与内容仓库建立基线。" />
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>对象</TableHead>
+                      <TableHead>文件</TableHead>
                       <TableHead>类型</TableHead>
                       <TableHead>状态</TableHead>
-                      <TableHead className="whitespace-nowrap">附件</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {items.map((item) => (
+                    {rows.map((row) => (
                       <TableRow
-                        key={item.path}
-                        data-selected={item.path === selectedPath ? "true" : undefined}
-                        className={item.path === selectedPath ? "bg-muted/46" : undefined}
+                        key={row.key}
+                        data-selected={row.key === selectedKey ? "true" : undefined}
+                        className={row.key === selectedKey ? "bg-muted/46" : undefined}
                       >
                         <TableCell className="max-w-[18rem] truncate">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedPath(item.path)}
-                          >
-                            {item.path}
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedKey(row.key)}>
+                            {row.path}
                           </Button>
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                          {item.kind === "memo" ? "闪念" : "文章"}
+                          {row.label}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <Badge tone={STATE_TONE[item.state]}>{STATE_LABEL[item.state]}</Badge>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {item.missingMedia.length
-                            ? `缺失 ${item.missingMedia.length}`
-                            : item.changedMedia.length
-                              ? `变更 ${item.changedMedia.length}`
-                              : "-"}
+                          {row.media ? (
+                            <Badge tone={row.media.missing ? "danger" : "warning"}>
+                              {row.media.missing ? "附件缺失" : "附件变更"}
+                            </Badge>
+                          ) : (
+                            <Badge tone={STATE_TONE[row.item.state]}>
+                              {STATE_LABEL[row.item.state]}
+                            </Badge>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -330,21 +357,42 @@ export function ContentMergePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>{selected ? selected.path : "选择一条内容"}</CardTitle>
+            <CardTitle>{selected ? selected.path : "选择一个文件"}</CardTitle>
             <CardDescription>
-              {selected
-                ? `${STATE_LABEL[selected.state]} · 基线 ${selected.baselineHash?.slice(0, 8) ?? "-"} · 远端 ${selected.remoteSha?.slice(0, 8) ?? "-"}`
-                : "左侧列表选择内容后查看三方差异。"}
+              {!selected
+                ? "左侧列表选择一个文件后查看三方差异。"
+                : selected.media
+                  ? `附件文件 · 所属 ${selected.item.path} · ${selected.media.missing ? "本地缺失" : "两侧不同"}`
+                  : `${STATE_LABEL[selected.item.state]} · 基线 ${selected.item.baselineHash?.slice(0, 8) ?? "-"} · 远端 ${selected.item.remoteSha?.slice(0, 8) ?? "-"}`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {!selected ? (
-              <EmptyState title="未选择内容" description="选择一条内容查看基线、本地与远端差异。" />
+              <EmptyState title="未选择文件" description="选择一条文件查看基线、本地与远端差异。" />
+            ) : selected.media ? (
+              <>
+                {selected.media.missing ? (
+                  <Alert tone="danger">本地缺少这个附件文件。</Alert>
+                ) : null}
+                {media.isLoading ? (
+                  <Spinner />
+                ) : media.data?.items?.length ? (
+                  <ContentMediaCompare
+                    items={media.data.items.filter((entry) => entry.path === selected.media?.path)}
+                    busy={adoptMedia.isPending}
+                    onAdopt={(mediaPath) =>
+                      adoptMedia.mutate({ path: selected.item.path, media: mediaPath })
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    title="附件暂不可预览"
+                    description="远端没有提供这个文件的可读版本。"
+                  />
+                )}
+              </>
             ) : (
               <>
-                {selected.missingMedia.length ? (
-                  <Alert tone="danger">附件缺失：{selected.missingMedia.join("、")}</Alert>
-                ) : null}
                 {diff.isLoading ? (
                   <Spinner />
                 ) : (
@@ -352,35 +400,32 @@ export function ContentMergePage() {
                     diff={diff.data}
                     mode={mode}
                     onModeChange={setMode}
-                    onSave={(text) => selected && resolve.mutate({ path: selected.path, text })}
+                    onSave={(text) => resolve.mutate({ path: selected.path, text })}
                   />
                 )}
-                {media.data?.items?.length ? (
-                  <ContentMediaCompare
-                    items={media.data.items}
-                    busy={adoptMedia.isPending}
-                    onAdopt={(mediaPath) =>
-                      selected && adoptMedia.mutate({ path: selected.path, media: mediaPath })
-                    }
-                  />
-                ) : null}
                 <Separator />
                 <div className="flex flex-wrap gap-2">
-                  {selected.state === "merge-conflict" ? (
-                    <Button onClick={() => merge.mutate({ ids: selectedIds })}>尝试自动合并</Button>
+                  {selected.item.state === "merge-conflict" ? (
+                    <Button onClick={() => merge.mutate({ ids: [selected.path] })}>
+                      尝试自动合并
+                    </Button>
                   ) : null}
-                  {selected.state === "to-pull" ? (
-                    <Button onClick={() => pull.mutate({ ids: selectedIds })}>拉取到内容库</Button>
+                  {selected.item.state === "to-pull" ? (
+                    <Button onClick={() => pull.mutate({ ids: [selected.path] })}>
+                      拉取到内容库
+                    </Button>
                   ) : null}
-                  {selected.state === "to-push" ? (
-                    <Button onClick={() => push.mutate({ ids: selectedIds })}>推送到仓库</Button>
+                  {selected.item.state === "to-push" ? (
+                    <Button onClick={() => push.mutate({ ids: [selected.path] })}>
+                      推送到仓库
+                    </Button>
                   ) : null}
-                  {selected.state === "remote-new" ? (
+                  {selected.item.state === "remote-new" ? (
                     <Button onClick={() => accept.mutate({ paths: [selected.path] })}>
                       接受远端新增
                     </Button>
                   ) : null}
-                  {selected.state === "remote-deleted" ? (
+                  {selected.item.state === "remote-deleted" ? (
                     <Button
                       variant="destructive"
                       onClick={() => remove.mutate({ paths: [selected.path] })}
@@ -388,7 +433,7 @@ export function ContentMergePage() {
                       确认远端删除
                     </Button>
                   ) : null}
-                  {selected.state === "synced" ? (
+                  {selected.item.state === "synced" ? (
                     <p className="text-sm text-muted-foreground">两侧一致，无需操作。</p>
                   ) : null}
                 </div>
