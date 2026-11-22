@@ -11,7 +11,8 @@
     "docs/specs/content-git-sync/SPEC.md": "f2ad86ec583af6b66831653caab8bd7bdeb6abda",
     "drizzle/0033_content_repo_baselines.sql": "e2f4ffa7430f2c5954ed4ea138d6fd2869ea1c4b",
     "drizzle/0034_content_media.sql": "2b2e1843636da9cb73dd45cb50ae15e6603f544c",
-    "drizzle/meta/_journal.json": "13a5e794f2d45d68f7ba55b3482c2c225c489bdd",
+    "drizzle/0035_content_repo_baseline_document.sql": "7de677f23ebbfc3a97c282b4d4bfdaffac74858f",
+    "drizzle/meta/_journal.json": "cdf171f7bc2cb6141a4aab2357936e9b3f02c6c0",
     "src/lib/content-repo/canonical.test.ts": "c7f05a3e5cbf0e3fe4b32f5321b5b35d366adcff",
     "src/lib/content-repo/canonical.ts": "7342aabb0971e092c907304a08a3daba69147e11",
     "src/lib/content-repo/config.ts": "46888f9fd075a137241c98643407143bdbd69006",
@@ -21,16 +22,18 @@
     "src/lib/content-repo/github.ts": "75631c95c1747e6c82ba841e98f8b01747e27262",
     "src/lib/content-repo/media-identity.test.ts": "86c3e3fd65854eb2f7e18ee4eaa01927a635b66a",
     "src/lib/content-repo/media-identity.ts": "6d1304e7eac6e85becbbe40050a1db0f95d6f3fd",
+    "src/lib/content-repo/merge.test.ts": "fe93676a0c544a74563b5554010b60e0d44a822c",
+    "src/lib/content-repo/merge.ts": "51cae8bdb8d9cdc77d5798f183d40d48afcf0202",
     "src/lib/content-repo/push.test.ts": "8857f8095fe5ab99f9d73fa097238744e0a87f0c",
-    "src/lib/content-repo/push.ts": "f2e439491bc05320ccde3c040e4a5e6d2f3986a4",
+    "src/lib/content-repo/push.ts": "fca468633b9f6de2c81a51b6d7b59a2a92761ffb",
     "src/lib/content-repo/state.test.ts": "e29e0a68818c94a9acdd1142537fa5bc388776a1",
     "src/lib/content-repo/state.ts": "6dfb3be49c16437809095646749f7ccc009f7889",
-    "src/lib/schema.ts": "1cb4b34aad8d633b120cb33c8668bfa49392ed9a",
+    "src/lib/schema.ts": "7d8cafde7750c8c405a286aef43551f8b146ecc9",
     "src/server/files-api/router.ts": "5ae3c0e652f55be7acb138c1781fbea2ba7bbb55",
     "src/server/routers/admin/content-repo.ts": "3147fc66e80807096b7bef5f71ec9ab12955a884",
     "src/server/routers/admin/index.ts": "c53193b2a224373f3c98e818ccf2242e81058c1d",
     "src/server/services/content-repo-sync.test.ts": "623bdb05d3b09a9b9568f4d6ad0a6ca68f5b96de",
-    "src/server/services/content-repo-sync.ts": "2437f515c103fe5a21b4141c5723902059bc06b1",
+    "src/server/services/content-repo-sync.ts": "adbaec811bf7f065d23ee4665596f0898795a5d3",
     "src/server/services/content-tasks.ts": "f30dc5063da35877508856391d2b18ab88d1c893",
     "src/server/services/media-identity.ts": "93d8e51cc5390b60214d6d20d4165d93a9e4d260",
     "tests/server/system-share-api.test.ts": "9a566306fe62febb5c142412c37e4a068f717112"
@@ -75,14 +78,9 @@
       "assessed_at": "2026-11-22T03:52:58+08:00",
       "evidence": [
         {
-          "path": "src/lib/content-repo/document.test.ts",
-          "blob": "63150b8eee2eac9221640a2a8f0e59834b9f60b0",
+          "path": "src/lib/content-repo/merge.test.ts",
+          "blob": "fe93676a0c544a74563b5554010b60e0d44a822c",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts"
-        },
-        {
-          "path": "tests/server/system-share-api.test.ts",
-          "blob": "9a566306fe62febb5c142412c37e4a068f717112",
-          "command": "bun test tests/server/system-share-api.test.ts"
         }
       ]
     }
@@ -285,8 +283,8 @@
       ],
       "evidence": [
         {
-          "path": "drizzle/0034_content_media.sql",
-          "blob": "2b2e1843636da9cb73dd45cb50ae15e6603f544c",
+          "path": "drizzle/0035_content_repo_baseline_document.sql",
+          "blob": "7de677f23ebbfc3a97c282b4d4bfdaffac74858f",
           "command": "DB_PATH=<tmp> bun run migrate"
         }
       ]
