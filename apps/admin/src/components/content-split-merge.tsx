@@ -1,7 +1,63 @@
 import { getChunks, goToNextChunk, goToPreviousChunk, MergeView } from "@codemirror/merge";
-import { EditorView } from "@codemirror/view";
+import { RangeSet, StateEffect } from "@codemirror/state";
+import { EditorView, GutterMarker, gutter } from "@codemirror/view";
 import { useEffect, useRef } from "react";
 import { Button } from "~/components/ui";
+
+type Chunk = { fromA: number; toA: number; fromB: number; toB: number };
+
+class ChunkAction extends GutterMarker {
+  constructor(
+    private readonly chunk: Chunk,
+    private readonly run: () => void
+  ) {
+    super();
+  }
+
+  override toDOM() {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.title = "本处采用远端";
+    button.textContent = "←";
+    button.className = "mr-1 cursor-pointer rounded px-1 text-[10px] leading-4 text-primary";
+    button.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.run();
+    });
+    return button;
+  }
+
+  override eq() {
+    return false;
+  }
+}
+
+/** One accept control per change chunk, drawn inside the local pane gutter. */
+function chunkActions(getRemote: () => EditorView | null) {
+  return gutter({
+    class: "cm-chunk-actions",
+    markers: (view) => {
+      const chunks = getChunks(view.state)?.chunks ?? [];
+      return RangeSet.of(
+        chunks.map((chunk) =>
+          new ChunkAction(chunk, () => {
+            const remote = getRemote();
+            if (!remote) return;
+            view.dispatch({
+              changes: {
+                from: chunk.fromB,
+                to: chunk.toB,
+                insert: remote.state.sliceDoc(chunk.fromA, chunk.toA),
+              },
+            });
+          }).range(view.state.doc.lineAt(chunk.fromB).from)
+        ),
+        true
+      );
+    },
+  });
+}
 
 /** Side-by-side comparison; chunk boundaries come from the CodeMirror merge view. */
 export function ContentSplitMerge({
@@ -27,6 +83,9 @@ export function ContentSplitMerge({
       highlightChanges: true,
       gutter: true,
       collapseUnchanged: { margin: 3 },
+    });
+    next.b.dispatch({
+      effects: StateEffect.appendConfig.of(chunkActions(() => view.current?.a ?? null)),
     });
     view.current = next;
     return () => {

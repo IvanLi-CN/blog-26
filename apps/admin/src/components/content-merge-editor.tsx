@@ -47,7 +47,15 @@ export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMer
           }),
           unifiedMergeView({
             original: remoteText,
-            mergeControls: false,
+            mergeControls: (type, action) => {
+              const button = document.createElement("button");
+              button.type = "button";
+              button.textContent = type === "accept" ? "保留本地" : "采用远端";
+              button.className =
+                "mr-1 cursor-pointer rounded border border-border bg-surface px-1.5 py-0.5 text-[10px] font-medium text-foreground hover:bg-muted";
+              button.addEventListener("mousedown", action);
+              return button;
+            },
             collapseUnchanged: { margin: 3, minSize: 4 },
           }),
         ],
