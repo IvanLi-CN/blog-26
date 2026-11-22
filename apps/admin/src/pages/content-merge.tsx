@@ -290,17 +290,10 @@ function FileCard({
     <div ref={ref}>
       <Card data-testid={`file-card-${row.path}`}>
         <CardHeader className="flex-row items-start justify-between gap-4">
-          <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileText className="size-4 text-muted-foreground" />
-              {row.path}
-            </CardTitle>
-            <CardDescription>
-              {row.media
-                ? `附件文件 · 所属 ${row.item.path} · ${row.media.missing ? "本地缺失" : "两侧不同"}`
-                : `${STATE_LABEL[row.item.state]} · 基线 ${row.item.baselineHash?.slice(0, 8) ?? "-"} · 远端 ${row.item.remoteSha?.slice(0, 8) ?? "-"}`}
-            </CardDescription>
-          </div>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="size-4 text-muted-foreground" />
+            {row.path}
+          </CardTitle>
           {!row.media ? (
             <Popover
               open={Boolean(confirm)}

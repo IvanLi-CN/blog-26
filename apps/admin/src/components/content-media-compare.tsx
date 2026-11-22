@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui";
 
 export interface ContentRepoMediaRow {
@@ -34,6 +34,9 @@ function MediaPreview({
     mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/");
   const [failed, setFailed] = useState(false);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [natural, setNatural] = useState<{ width: number; height: number } | null>(null);
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  const frameRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!previewable) return undefined;
@@ -61,27 +64,60 @@ function MediaPreview({
   }, [previewable, sourceUrl]);
 
   const source = objectUrl ?? url;
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame || !objectUrl || !mime.startsWith("image/")) return undefined;
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (rect) setBox({ width: rect.width, height: rect.height });
+    });
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [mime, objectUrl]);
+
+  useEffect(() => {
+    if (!objectUrl) return undefined;
+    const probe = new Image();
+    probe.onload = () => setNatural({ width: probe.naturalWidth, height: probe.naturalHeight });
+    probe.src = objectUrl;
+    return () => {
+      probe.onload = null;
+    };
+  }, [objectUrl]);
+
+  const fitted = (() => {
+    if (!natural || !box.width || !box.height) return null;
+    const scale = Math.min(box.width / natural.width, box.height / natural.height, 2);
+    return { width: natural.width * scale, height: natural.height * scale };
+  })();
   return (
     <div className="min-w-0 space-y-1">
       <p className="text-xs text-muted-foreground">{label}</p>
       {mime.startsWith("image/") && failed ? (
-        <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border bg-muted/32 px-3 text-center text-xs text-muted-foreground">
+        <div className="flex aspect-[4/3] w-full items-center justify-center rounded-xl border border-dashed border-border bg-muted/32 px-3 text-center text-xs text-muted-foreground">
           {fileName} · 预览不可用
         </div>
       ) : mime.startsWith("image/") && !objectUrl ? (
         <div
-          className="h-32 animate-pulse rounded-xl bg-muted/46"
+          className="aspect-[4/3] w-full animate-pulse rounded-xl bg-muted/46"
           role="status"
           aria-label="加载预览"
         />
       ) : mime.startsWith("image/") ? (
-        // biome-ignore lint/performance/noImgElement: user attachments are served directly
-        <img
-          src={source}
-          alt={`${label} ${fileName}`}
-          onError={() => setFailed(true)}
-          className="max-h-40 rounded-xl bg-muted/46 object-contain"
-        />
+        <div
+          ref={frameRef}
+          className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-muted/32"
+        >
+          {/* biome-ignore lint/performance/noImgElement: user attachments are served directly */}
+          <img
+            src={source}
+            alt={`${label} ${fileName}`}
+            onError={() => setFailed(true)}
+            style={fitted ?? { maxWidth: "100%", maxHeight: "100%" }}
+            className="object-contain"
+          />
+        </div>
       ) : mime.startsWith("video/") ? (
         // biome-ignore lint/a11y/useMediaCaption: attachments carry no caption tracks
         <video src={source} controls className="max-h-40 w-full rounded-xl bg-muted/46" />
