@@ -23,9 +23,9 @@ type Pane = Side;
 
 const PANE_LABEL: Record<Pane, string> = { local: "本地", base: "基线", remote: "远端" };
 const PANE_HINT: Record<Pane, string> = {
-  local: "可编辑 · 合并结果",
-  base: "只读 · 共同祖先",
-  remote: "只读 · 仓库版本",
+  local: "可编辑 · 保存的就是这一栏",
+  base: "只读 · 共同祖先，仅作参照",
+  remote: "只读 · 仓库版本，仅作参照",
 };
 const DECISION_LABEL: Record<Side, string> = {
   local: "采用本地",
@@ -382,6 +382,9 @@ export function ContentThreeWayMerge({
           保存到内容库
         </Button>
       </div>
+      <p className="text-xs text-muted-foreground">
+        左栏（本地）是可编辑的合并结果，保存写回它；中栏基线与右栏远端只作参照。
+      </p>
       {unresolved.length ? (
         <p className="text-xs text-warning">
           仍有 {unresolved.length} 处未解决；现在保存会保留本地窗格的当前内容。
@@ -394,9 +397,10 @@ export function ContentThreeWayMerge({
       >
         <div className="grid grid-cols-3 divide-x divide-border border-b border-border bg-muted/40">
           {(["local", "base", "remote"] as const).map((side) => (
-            <div key={side} className="flex items-baseline justify-between gap-2 px-3 py-1.5">
+            <div key={side} className="flex items-center gap-2 px-3 py-1.5">
               <span className="text-[11px] font-semibold text-foreground">{PANE_LABEL[side]}</span>
-              <span className="text-[10px] text-muted-foreground">{PANE_HINT[side]}</span>
+              {side === "local" ? <Badge tone="default">合并结果</Badge> : null}
+              <span className="ml-auto text-[10px] text-muted-foreground">{PANE_HINT[side]}</span>
             </div>
           ))}
         </div>
