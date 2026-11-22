@@ -6,11 +6,11 @@
     "GLOSSARY.md": "d5b29409e356d90b71d2ed9aa9cbb44c92b6f599",
     "apps/admin/src/components/app-shell.tsx": "c58b7da5a741cf20c96436e5c117b07afe083034",
     "apps/admin/src/components/content-media-compare.tsx": "338bc2f61fa3e5063409a7a62eda183c7dde6948",
-    "apps/admin/src/components/content-merge-editor.tsx": "e230d4e4de31cd332e6a065f7660ffeeb22a7c0d",
-    "apps/admin/src/components/content-split-merge.tsx": "63c2093e1ead25db0524c6c1908baaa64e84cf95",
+    "apps/admin/src/components/content-merge-editor.tsx": "0e31b33db73aadc4735a19d6b3ba24ac0d1a1945",
+    "apps/admin/src/components/content-split-merge.tsx": "68c9559e61de36bca5f5b64c6741ab436b2a8859",
     "apps/admin/src/components/content-text-diff.tsx": "73195236e642b91806b09f5b97dc5ca347005653",
-    "apps/admin/src/components/content-three-way-merge.tsx": "0151af40e0849fbca1c129c480c9bd4e8c2a7870",
-    "apps/admin/src/demo/mock-admin-api.ts": "e70439a616750b9f417178f390fcb983b2926397",
+    "apps/admin/src/components/content-three-way-merge.tsx": "1fb97f4d12f36874f81d8bc876a54364699ed0b5",
+    "apps/admin/src/demo/mock-admin-api.ts": "e97749e119805c63162d5ab10e473dbba3cff07a",
     "apps/admin/src/pages/content-merge.test.tsx": "81b705d8c343893f00f772c922552925f85accff",
     "apps/admin/src/pages/content-merge.tsx": "6eee77ed1488769f0eca341ec753bc1d5560dbcd",
     "apps/admin/src/router.tsx": "aad616093220faeb0d82027314ecdd3ab27b142a",
@@ -18,8 +18,8 @@
     "docs/adr/0043-database-content-authority-and-repository-sync.md": "ed536b4d68b7ad1fc98c5f08056a139f54d4d8c1",
     "docs/specs/README.md": "52cc61f4c0dd149e989deb4f9ab1a57fb3806ee7",
     "docs/specs/content-git-sync/HISTORY.md": "46da7ebe73b7de5f6337312ada6e007254ea0bdb",
-    "docs/specs/content-git-sync/IMPLEMENTATION.md": "91f789332b8b9d41e11d8420837c170a99510b0d",
-    "docs/specs/content-git-sync/SPEC.md": "3daa28b9d0c270c6ab354137a6cc9dd38f6219a8",
+    "docs/specs/content-git-sync/IMPLEMENTATION.md": "6b0fe78145a3bbda4e6fc5d786c79ddd1b0e03ba",
+    "docs/specs/content-git-sync/SPEC.md": "35b131ae0d8a6a95cafba99db39b320e9d7fbd40",
     "drizzle/0033_content_repo_baselines.sql": "e2f4ffa7430f2c5954ed4ea138d6fd2869ea1c4b",
     "drizzle/0034_content_media.sql": "2b2e1843636da9cb73dd45cb50ae15e6603f544c",
     "drizzle/0035_content_repo_baseline_document.sql": "7de677f23ebbfc3a97c282b4d4bfdaffac74858f",
@@ -65,7 +65,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "3daa28b9d0c270c6ab354137a6cc9dd38f6219a8",
+          "blob": "35b131ae0d8a6a95cafba99db39b320e9d7fbd40",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts"
         }
       ]
@@ -77,7 +77,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "3daa28b9d0c270c6ab354137a6cc9dd38f6219a8",
+          "blob": "35b131ae0d8a6a95cafba99db39b320e9d7fbd40",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts"
         }
       ],
@@ -171,7 +171,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "f2ad86ec583af6b66831653caab8bd7bdeb6abda",
+          "blob": "35b131ae0d8a6a95cafba99db39b320e9d7fbd40",
           "command": "Admin routes are administrator-only; public routes, payloads and search responses are untouched"
         }
       ]
