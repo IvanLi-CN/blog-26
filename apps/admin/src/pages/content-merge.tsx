@@ -3,6 +3,9 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Download,
+  FileMinus2,
+  FilePlus2,
   FileText,
   Folder,
   GitMerge,
@@ -10,6 +13,7 @@ import {
   RefreshCcw,
   Save,
   StickyNote,
+  Upload,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -142,33 +146,91 @@ function VirtualList<T>({
   );
 }
 
-function FileStatusMarker({ row, conflicts }: { row: FileRow; conflicts: number | null }) {
-  if (row.media) {
-    return (
-      <span title="二进制文件存在冲突" className="text-destructive">
-        <GitMerge className="size-4" />
-      </span>
-    );
-  }
-  if (row.item.state === "merge-conflict") {
-    return (
-      <Badge tone="danger" className="whitespace-nowrap">
-        冲突 {conflicts ?? "?"}
-      </Badge>
-    );
-  }
-  if (row.item.state !== "synced") {
-    return (
-      <Badge tone="warning" className="whitespace-nowrap">
-        {STATE_LABEL[row.item.state]}
-      </Badge>
-    );
-  }
+const STATUS_ICON: Record<ContentRepoSyncItem["state"], typeof Check> = {
+  synced: Check,
+  "to-push": Upload,
+  "to-pull": Download,
+  "remote-new": FilePlus2,
+  "remote-deleted": FileMinus2,
+  "merge-conflict": GitMerge,
+};
+
+const STATUS_TONE: Record<ContentRepoSyncItem["state"], string> = {
+  synced: "bg-success/15 text-success",
+  "to-push": "bg-primary/15 text-primary",
+  "to-pull": "bg-accent text-accent-foreground",
+  "remote-new": "bg-warning/18 text-warning",
+  "remote-deleted": "bg-destructive/15 text-destructive",
+  "merge-conflict": "bg-destructive/15 text-destructive",
+};
+
+const STATUS_ORDER: ContentRepoSyncItem["state"][] = [
+  "merge-conflict",
+  "to-pull",
+  "to-push",
+  "remote-new",
+  "remote-deleted",
+  "synced",
+];
+
+function StatusChip({
+  status,
+  count,
+  title,
+}: {
+  status: ContentRepoSyncItem["state"];
+  count?: number;
+  title?: string;
+}) {
+  const Icon = STATUS_ICON[status];
   return (
-    <span title="无冲突" className="text-success">
-      <Check className="size-4" />
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${STATUS_TONE[status]}`}
+      title={title ?? STATE_LABEL[status]}
+    >
+      <Icon className="size-3" />
+      {typeof count === "number" && count > 0 ? <span>{count}</span> : null}
     </span>
   );
+}
+
+function FileStatusMarker({ row, conflicts }: { row: FileRow; conflicts: number | null }) {
+  if (row.media) return <StatusChip status="merge-conflict" title="二进制文件存在冲突" />;
+  if (row.item.state === "merge-conflict")
+    return <StatusChip status="merge-conflict" count={conflicts ?? undefined} />;
+  if (row.item.state === "synced") return <StatusChip status="synced" title="无冲突" />;
+  return <StatusChip status={row.item.state} />;
+}
+
+function dirStatusSummary(
+  node: TreeNode,
+  conflicts: Record<string, number>,
+  saved: (row: FileRow) => boolean
+) {
+  const counts = new Map<ContentRepoSyncItem["state"], number>();
+  const walk = (current: TreeNode) => {
+    if (current.type === "file" && current.row) {
+      const row = current.row;
+      if (saved(row)) {
+        counts.set("synced", (counts.get("synced") ?? 0) + 1);
+        return;
+      }
+      if (row.media) {
+        counts.set("merge-conflict", (counts.get("merge-conflict") ?? 0) + 1);
+        return;
+      }
+      if (row.item.state === "merge-conflict") {
+        const count = conflicts[row.path] ?? 1;
+        counts.set("merge-conflict", (counts.get("merge-conflict") ?? 0) + count);
+        return;
+      }
+      counts.set(row.item.state, (counts.get(row.item.state) ?? 0) + 1);
+      return;
+    }
+    for (const child of current.children) walk(child);
+  };
+  walk(node);
+  return counts;
 }
 
 function FileCard({
@@ -451,11 +513,6 @@ function collectDirPaths(nodes: TreeNode[], out: string[] = []) {
   return out;
 }
 
-function countFiles(node: TreeNode): number {
-  if (node.type === "file") return 1;
-  return node.children.reduce((total, child) => total + countFiles(child), 0);
-}
-
 type FlatNode = { node: TreeNode; depth: number };
 
 function flattenTree(nodes: TreeNode[], expanded: Set<string>, depth = 0, out: FlatNode[] = []) {
@@ -472,11 +529,13 @@ function DirRow({
   depth,
   open,
   onToggle,
+  statuses,
 }: {
   node: TreeNode;
   depth: number;
   open: boolean;
   onToggle: () => void;
+  statuses: Map<ContentRepoSyncItem["state"], number>;
 }) {
   return (
     <Button
@@ -494,7 +553,13 @@ function DirRow({
       )}
       <Folder className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="truncate">{node.name}</span>
-      <span className="ml-auto pr-2 text-[10px] text-muted-foreground">{countFiles(node)} 项</span>
+      <span className="ml-auto flex shrink-0 items-center gap-1 pr-2">
+        {STATUS_ORDER.map((status) =>
+          (statuses.get(status) ?? 0) > 0 ? (
+            <StatusChip key={status} status={status} count={statuses.get(status)} />
+          ) : null
+        )}
+      </span>
     </Button>
   );
 }
@@ -656,6 +721,17 @@ export function ContentMergePage() {
     onError,
   });
 
+  const isSavedRow = useCallback(
+    (row: FileRow) =>
+      Boolean(
+        saved[row.path] &&
+          saved[row.path].contentHash ===
+            (liveItems.get(row.item.path)?.localHash ?? row.item.localHash) &&
+          saved[row.path].remoteSha === row.item.remoteSha
+      ),
+    [liveItems, saved]
+  );
+
   const onCount = (path: string, count: number) =>
     setConflicts((current) => (current[path] === count ? current : { ...current, [path]: count }));
 
@@ -717,6 +793,7 @@ export function ContentMergePage() {
                         node={node}
                         depth={depth}
                         open={expanded.has(node.path)}
+                        statuses={dirStatusSummary(node, conflicts, isSavedRow)}
                         onToggle={() =>
                           setExpanded((current) => {
                             const next = new Set(current);
@@ -763,6 +840,7 @@ export function ContentMergePage() {
       expanded,
       flatTree,
       liveItems,
+      isSavedRow,
       resync,
       rows,
       saved,
