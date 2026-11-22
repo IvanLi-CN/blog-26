@@ -19,7 +19,7 @@
 - `REQ-CGS-014`：`CONTENT_REPO_REPOSITORY`、`CONTENT_REPO_REF`、`CONTENT_REPO_TOKEN` 仅服务端读取；缺少令牌返回 `unconfigured`，不阻塞其它功能；路径经规范化拒绝越界。
 - `REQ-CGS-016`：认证与权限失败不重试；前置条件冲突在 ref 更新处有界重试一次；重复推送无新提交；差异不是失败。
 
-- 未实现：`REQ-CGS-001`（Memo 与媒体仍来自本地文件）、`REQ-CGS-005`（完整差异状态仅实现推送侧所需部分）、`REQ-CGS-007`（拉取）、`REQ-CGS-008`（三方合并）、`REQ-CGS-009`（远端新增与删除）、`REQ-CGS-011`（合并落地）、`REQ-CGS-013`（权威切换）、`REQ-CGS-015`（差异对比界面与文件树退役）。
+- 未实现：`REQ-CGS-001`（Memo 仍由本地文件内容源扫描；媒体文件按设计留在本地媒体存储，但内容库尚未记录并核对媒体身份）、`REQ-CGS-005`（完整差异状态仅实现推送侧所需部分）、`REQ-CGS-007`（拉取）、`REQ-CGS-008`（三方合并）、`REQ-CGS-009`（远端新增与删除）、`REQ-CGS-011`（合并落地）、`REQ-CGS-013`（权威切换）、`REQ-CGS-015`（差异对比界面、文件树退役与附件身份更新）。
 - Verification commands: `bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts`；`bun run db:migrations:validate`；`DB_PATH=<tmp> bun run migrate`。
 - Rollout facts: 推送入口当前只有管理员 tRPC `contentRepo.status` 与 `contentRepo.push`，没有界面入口，也没有定时任务；权威切换与本地源退役不在本次范围内。
 
@@ -29,7 +29,7 @@
 
 ## Remaining Gaps
 
-- 媒体字节仍存放在本地媒体根，尚未迁入内容寻址表（`REQ-CGS-001`、`REQ-CGS-015`）。
+- 媒体文件按设计保存在本地媒体存储，内容库尚未记录路径、sha 与大小，也没有在推送前核对实际文件（`REQ-CGS-001`、`REQ-CGS-015`）。
 - 拉取、三方合并、远端新增/删除、差异对比与合并界面尚未实现。
 - 与真实仓库的 smoke 验证尚未执行；当前只有注入式 transport 与纯函数测试。
 - 权威切换（导入 + 停止注册本地源 + 移除判废路径）仍是未排期的一次性发布。
