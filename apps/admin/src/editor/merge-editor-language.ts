@@ -1,5 +1,4 @@
-import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { yaml } from "@codemirror/lang-yaml";
+import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 
@@ -28,11 +27,5 @@ const adminHighlightStyle = HighlightStyle.define([
 
 /** Markdown document with YAML frontmatter parsed by the YAML grammar. */
 export function contentLanguageExtension() {
-  return [
-    markdown({
-      base: markdownLanguage,
-      extensions: [{ ...yaml(), name: "yaml" }],
-    }),
-    syntaxHighlighting(adminHighlightStyle),
-  ];
+  return [markdown(), syntaxHighlighting(adminHighlightStyle)];
 }

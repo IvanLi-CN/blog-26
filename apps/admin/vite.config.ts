@@ -24,6 +24,16 @@ export default defineConfig({
   cacheDir: resolve(repoRoot, adminCacheDir),
   plugins: [react(), tailwindcss()],
   resolve: {
+    dedupe: [
+      "@codemirror/state",
+      "@codemirror/view",
+      "@codemirror/language",
+      "@codemirror/merge",
+      "@codemirror/search",
+      "@codemirror/lang-markdown",
+      "@lezer/highlight",
+      "@lezer/common",
+    ],
     alias: [
       { find: "@/components/WebDemoInspector", replacement: webDemoInspectorModule },
       { find: "@", replacement: resolve(repoRoot, "src") },
