@@ -1,18 +1,17 @@
 import { getChunks, goToNextChunk, goToPreviousChunk, MergeView } from "@codemirror/merge";
 import { EditorView } from "@codemirror/view";
 import { useEffect, useRef } from "react";
-import type { ContentMergeEditorHandle } from "~/components/content-merge-editor";
 import { Button } from "~/components/ui";
 
 /** Side-by-side comparison; chunk boundaries come from the CodeMirror merge view. */
 export function ContentSplitMerge({
   localText,
   remoteText,
-  onReady,
+  onSave,
 }: {
   localText: string;
   remoteText: string;
-  onReady?: (handle: ContentMergeEditorHandle) => void;
+  onSave?: (text: string) => void;
 }) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<MergeView | null>(null);
@@ -30,16 +29,11 @@ export function ContentSplitMerge({
       collapseUnchanged: { margin: 3 },
     });
     view.current = next;
-    onReady?.({
-      getText: () => next.b.state.doc.toString(),
-      setText: (text: string) =>
-        next.b.dispatch({ changes: { from: 0, to: next.b.state.doc.length, insert: text } }),
-    });
     return () => {
       next.destroy();
       view.current = null;
     };
-  }, [localText, remoteText, onReady]);
+  }, [localText, remoteText]);
 
   function takeRemoteChunk() {
     const merge = view.current;
@@ -78,6 +72,13 @@ export function ContentSplitMerge({
         </Button>
         <Button size="sm" onClick={takeRemoteChunk}>
           本处采用远端
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => view.current && onSave?.(view.current.b.state.doc.toString())}
+          disabled={!onSave}
+        >
+          保存到内容库
         </Button>
       </div>
       <div

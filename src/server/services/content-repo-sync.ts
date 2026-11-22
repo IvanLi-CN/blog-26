@@ -731,7 +731,6 @@ export interface ContentRepoDiffOutcome {
   localText?: string | null;
   remoteText?: string | null;
   mergedText?: string | null;
-  fields?: { key: string; base: unknown; local: unknown; remote: unknown }[];
   conflictingFields?: string[];
   bodyConflicts?: number;
   regions?: MergeRegionView[];
@@ -783,17 +782,6 @@ export async function diffContentRepo(input: { path: string }): Promise<ContentR
       localDoc.body.split("\n"),
       remoteDoc.body.split("\n")
     );
-    const keys = new Set([
-      ...Object.keys(baseDoc.frontmatter),
-      ...Object.keys(frontmatter.value),
-      ...frontmatter.conflicts,
-    ]);
-    const fields = [...keys].sort().map((key) => ({
-      key,
-      base: baseDoc.frontmatter[key] ?? null,
-      local: localDoc.frontmatter[key] ?? null,
-      remote: remoteDoc.frontmatter[key] ?? null,
-    }));
     return {
       status: "ready",
       path: input.path,
@@ -804,14 +792,9 @@ export async function diffContentRepo(input: { path: string }): Promise<ContentR
       mergedText: new TextDecoder().decode(
         serializeCanonicalDocument(frontmatter.value, body.lines.join("\n"))
       ),
-      fields,
       conflictingFields: frontmatter.conflicts,
       bodyConflicts: body.conflicts,
-      regions: mergeRegions(
-        baseDoc.body.split("\n"),
-        localDoc.body.split("\n"),
-        remoteDoc.body.split("\n")
-      ),
+      regions: mergeRegions(baseText.split("\n"), localText.split("\n"), remoteText.split("\n")),
     };
   } catch (caught) {
     return {

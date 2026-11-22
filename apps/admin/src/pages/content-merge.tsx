@@ -7,10 +7,7 @@ import {
   type ContentRepoSyncItem,
 } from "@/lib/admin-api-client";
 import { ContentMediaCompare } from "~/components/content-media-compare";
-import {
-  ContentMergeEditor,
-  type ContentMergeEditorHandle,
-} from "~/components/content-merge-editor";
+import { ContentMergeEditor } from "~/components/content-merge-editor";
 import { ContentSplitMerge } from "~/components/content-split-merge";
 import { ContentThreeWayMerge } from "~/components/content-three-way-merge";
 import {
@@ -34,7 +31,6 @@ import {
   TableRow,
 } from "~/components/ui";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
-import { applyFrontmatterChoice, pickFrontmatterValue } from "./content-merge-fields";
 
 const STATE_LABEL: Record<ContentRepoSyncItem["state"], string> = {
   synced: "已同步",
@@ -68,31 +64,32 @@ function TextPane({ title, text }: { title: string; text: string | null | undefi
   );
 }
 
+function conflictSummary(diff: ContentRepoDiffPayload) {
+  const parts = [
+    ...(diff.conflictingFields ?? []).map((key) => `${key}（frontmatter）`),
+    ...(diff.bodyConflicts ? [`正文 ${diff.bodyConflicts} 处`] : []),
+  ];
+  return parts.length ? `需要人工裁决：${parts.join("、")}` : null;
+}
+
 export function ContentRepoDiffView({
   diff,
   onSave,
-  onReady,
-  onChooseField,
   mode,
   onModeChange,
 }: {
   diff: ContentRepoDiffPayload | undefined;
   onSave?: (text: string) => void;
-  onReady?: (handle: ContentMergeEditorHandle) => void;
-  onChooseField?: (key: string, value: unknown) => void;
   mode: "inline" | "split" | "three";
   onModeChange: (mode: "inline" | "split" | "three") => void;
 }) {
-  const conflictKeys = new Set(diff?.conflictingFields ?? []);
   if (!diff) return null;
   if (diff.status !== "ready")
     return <Alert tone="warning">{diff.message ?? "差异暂不可用"}</Alert>;
+  const summary = conflictSummary(diff);
   return (
     <div className="space-y-3" data-testid="content-repo-diff">
-      {diff.conflictingFields?.length ? (
-        <Alert tone="warning">冲突字段：{diff.conflictingFields.join("、")}</Alert>
-      ) : null}
-      {diff.bodyConflicts ? <Alert tone="warning">正文冲突 {diff.bodyConflicts} 处</Alert> : null}
+      {summary ? <Alert tone="warning">{summary}</Alert> : null}
       <div className="flex flex-wrap items-center gap-2">
         {(
           [
@@ -117,73 +114,16 @@ export function ContentRepoDiffView({
           localText={diff.localText ?? ""}
           remoteText={diff.remoteText ?? ""}
           onSave={onSave}
-          onReady={onReady}
         />
       ) : mode === "split" ? (
         <ContentSplitMerge
           localText={diff.localText ?? ""}
           remoteText={diff.remoteText ?? ""}
-          onReady={onReady}
+          onSave={onSave}
         />
       ) : (
-        <ContentThreeWayMerge regions={diff.regions ?? []} onReady={onReady} />
+        <ContentThreeWayMerge regions={diff.regions ?? []} onSave={onSave} />
       )}
-      {diff.fields?.length ? (
-        <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            frontmatter 字段
-          </p>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>字段</TableHead>
-                <TableHead>基线</TableHead>
-                <TableHead>本地</TableHead>
-                <TableHead>远端</TableHead>
-                <TableHead>采用</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {diff.fields.map((field) => (
-                <TableRow
-                  key={field.key}
-                  data-conflict={conflictKeys.has(field.key) ? "true" : undefined}
-                >
-                  <TableCell className="whitespace-nowrap text-xs">
-                    {field.key}
-                    {conflictKeys.has(field.key) ? " ⚠" : ""}
-                  </TableCell>
-                  <TableCell className="max-w-[10rem] truncate text-xs">
-                    {formatFieldValue(field.base)}
-                  </TableCell>
-                  <TableCell className="max-w-[10rem] truncate text-xs">
-                    {formatFieldValue(field.local)}
-                  </TableCell>
-                  <TableCell className="max-w-[10rem] truncate text-xs">
-                    {formatFieldValue(field.remote)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {(["base", "local", "remote"] as const).map((side) => (
-                        <Button
-                          key={side}
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            onReady && onChooseField?.(field.key, pickFrontmatterValue(field, side))
-                          }
-                        >
-                          {side === "base" ? "基线" : side === "local" ? "本地" : "远端"}
-                        </Button>
-                      ))}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      ) : null}
       <Disclosure summary="基线（共同祖先）">
         <div className="mt-2">
           <TextPane title="基线" text={diff.baseText} />
@@ -192,13 +132,6 @@ export function ContentRepoDiffView({
       {diff.mergedText ? <TextPane title="合并预览" text={diff.mergedText} /> : null}
     </div>
   );
-}
-
-function formatFieldValue(value: unknown) {
-  if (value === null || value === undefined) return "（空）";
-  if (Array.isArray(value)) return value.length ? value.join(", ") : "（空）";
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
 }
 
 function actionSummary(result: ContentRepoActionPayload) {
@@ -214,7 +147,6 @@ export function ContentMergePage() {
   const queryClient = useQueryClient();
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [mergeHandle, setMergeHandle] = useState<ContentMergeEditorHandle | null>(null);
   const [mode, setMode] = useState<"inline" | "split" | "three">("inline");
 
   const status = useQuery({
@@ -295,7 +227,9 @@ export function ContentMergePage() {
     onError,
   });
 
-  const items = check.data?.items ?? [];
+  const items = [...(check.data?.items ?? [])].sort((left, right) =>
+    left.path.localeCompare(right.path)
+  );
   const selected = items.find((item) => item.path === selectedPath) ?? null;
   const selectedIds = selectedPath ? [selectedPath] : [];
 
@@ -350,7 +284,8 @@ export function ContentMergePage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>路径</TableHead>
+                      <TableHead>对象</TableHead>
+                      <TableHead>类型</TableHead>
                       <TableHead>状态</TableHead>
                       <TableHead className="whitespace-nowrap">附件</TableHead>
                     </TableRow>
@@ -370,6 +305,9 @@ export function ContentMergePage() {
                           >
                             {item.path}
                           </Button>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {item.kind === "memo" ? "闪念" : "文章"}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <Badge tone={STATE_TONE[item.state]}>{STATE_LABEL[item.state]}</Badge>
@@ -414,14 +352,7 @@ export function ContentMergePage() {
                     diff={diff.data}
                     mode={mode}
                     onModeChange={setMode}
-                    onReady={setMergeHandle}
                     onSave={(text) => selected && resolve.mutate({ path: selected.path, text })}
-                    onChooseField={(key, value) => {
-                      if (!mergeHandle) return;
-                      mergeHandle.setText(
-                        applyFrontmatterChoice(mergeHandle.getText(), key, value)
-                      );
-                    }}
                   />
                 )}
                 {media.data?.items?.length ? (

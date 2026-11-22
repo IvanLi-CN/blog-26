@@ -12,17 +12,11 @@ import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui";
 
-export interface ContentMergeEditorHandle {
-  getText(): string;
-  setText(text: string): void;
-}
-
 export interface ContentMergeEditorProps {
   /** Document kept in the content library. */
   localText: string;
   /** Document currently stored in the repository. */
   remoteText: string;
-  onReady?: (handle: ContentMergeEditorHandle) => void;
   onSave?: (text: string) => void;
 }
 
@@ -30,12 +24,7 @@ export interface ContentMergeEditorProps {
  * Unified merge view: the editable buffer is the local document, the reference
  * document is the repository version. Chunk accept/reject belong to CodeMirror.
  */
-export function ContentMergeEditor({
-  localText,
-  remoteText,
-  onReady,
-  onSave,
-}: ContentMergeEditorProps) {
+export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMergeEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
   const [chunkCount, setChunkCount] = useState(0);
@@ -56,23 +45,21 @@ export function ContentMergeEditor({
             if (update.docChanged || update.selectionSet)
               setChunkCount(getChunks(update.state)?.chunks.length ?? 0);
           }),
-          unifiedMergeView({ original: remoteText, mergeControls: false }),
+          unifiedMergeView({
+            original: remoteText,
+            mergeControls: false,
+            collapseUnchanged: { margin: 3, minSize: 4 },
+          }),
         ],
       }),
     });
     view.current = next;
     setChunkCount(getChunks(next.state)?.chunks.length ?? 0);
-    onReady?.({
-      getText: () => next.state.doc.toString(),
-      setText: (text: string) => {
-        next.dispatch({ changes: { from: 0, to: next.state.doc.length, insert: text } });
-      },
-    });
     return () => {
       next.destroy();
       view.current = null;
     };
-  }, [localText, remoteText, onReady]);
+  }, [localText, remoteText]);
 
   return (
     <div className="space-y-2">

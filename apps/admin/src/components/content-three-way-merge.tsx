@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ContentMergeEditorHandle } from "~/components/content-merge-editor";
-import { Badge, Button, Textarea } from "~/components/ui";
+import { Badge, Button, Disclosure, Textarea } from "~/components/ui";
 
 type Region =
   | { kind: "stable"; text: string }
@@ -16,10 +15,10 @@ const SIDE_LABEL: Record<Side, string> = { base: "基线", local: "本地", remo
  */
 export function ContentThreeWayMerge({
   regions,
-  onReady,
+  onSave,
 }: {
   regions: Region[];
-  onReady?: (handle: ContentMergeEditorHandle) => void;
+  onSave?: (text: string) => void;
 }) {
   const conflictIndexes = useMemo(
     () => regions.flatMap((region, index) => (region.kind === "conflict" ? [index] : [])),
@@ -56,10 +55,6 @@ export function ContentThreeWayMerge({
     setText(assembled);
   }, [assembled]);
 
-  useEffect(() => {
-    onReady?.({ getText: () => text, setText: (next: string) => setText(next) });
-  }, [onReady, text]);
-
   const unresolved = conflictIndexes.filter((index) => !choices[index]).length;
 
   return (
@@ -94,12 +89,15 @@ export function ContentThreeWayMerge({
         {regions.map((region, index) => {
           const key = `${region.kind}-${index}-${(region.kind === "stable" ? region.text : region.local).slice(0, 16)}`;
           return region.kind === "stable" ? (
-            <pre
+            <Disclosure
               key={key}
-              className="rounded-xl bg-muted/32 p-2 text-xs whitespace-pre-wrap break-words"
+              summary={`未更改 ${region.text ? region.text.split("\n").length : 0} 行`}
+              summaryClassName="text-xs"
             >
-              {region.text}
-            </pre>
+              <pre className="rounded-xl bg-muted/32 p-2 text-xs whitespace-pre-wrap break-words">
+                {region.text}
+              </pre>
+            </Disclosure>
           ) : (
             <div key={key} className="space-y-2 rounded-xl bg-warning/10 p-2">
               <div className="flex flex-wrap items-center gap-2">

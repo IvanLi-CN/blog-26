@@ -22,7 +22,6 @@ function diffPayload(overrides: Partial<ContentRepoDiffPayload> = {}): ContentRe
     localText: "local line",
     remoteText: "remote line",
     mergedText: null,
-    fields: [],
     conflictingFields: [],
     bodyConflicts: 0,
     ...overrides,
@@ -41,16 +40,16 @@ describe("ContentRepoDiffView", () => {
     expect(getByText("base line")).toBeTruthy();
   });
 
-  test("names the conflicting frontmatter fields and body conflicts", () => {
-    const { getByText } = render(
+  test("summarizes every conflict in one hint", () => {
+    const { getByText, getAllByText } = render(
       <ContentRepoDiffView
         diff={diffPayload({ conflictingFields: ["title", "tags"], bodyConflicts: 2 })}
         mode="inline"
         onModeChange={noop}
       />
     );
-    expect(getByText(/title、tags/u)).toBeTruthy();
-    expect(getByText(/正文冲突 2 处/u)).toBeTruthy();
+    expect(getAllByText(/需要人工裁决/u)).toHaveLength(1);
+    expect(getByText(/title（frontmatter）、tags（frontmatter）、正文 2 处/u)).toBeTruthy();
   });
 
   test("shows the merge preview when the sides merged cleanly", () => {
