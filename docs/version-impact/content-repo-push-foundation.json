@@ -3,12 +3,12 @@
   "kind": "version-impact-record",
   "base_sha": "0e2bf6194464d17ba976e5ba8ca86c9e33f83dc7",
   "covered_files": {
-    "GLOSSARY.md": "24494c15f18e0669cabed976ce5c76e4868d8b65",
-    "docs/adr/0043-database-content-authority-and-repository-sync.md": "ede69bfaeacdc512dad9166d837f429c81a6399f",
+    "GLOSSARY.md": "d5b29409e356d90b71d2ed9aa9cbb44c92b6f599",
+    "docs/adr/0043-database-content-authority-and-repository-sync.md": "ed536b4d68b7ad1fc98c5f08056a139f54d4d8c1",
     "docs/specs/README.md": "52cc61f4c0dd149e989deb4f9ab1a57fb3806ee7",
     "docs/specs/content-git-sync/HISTORY.md": "46da7ebe73b7de5f6337312ada6e007254ea0bdb",
-    "docs/specs/content-git-sync/IMPLEMENTATION.md": "f278eb3f21f2589dd796b91e4492ce94b2231172",
-    "docs/specs/content-git-sync/SPEC.md": "7340b9ffe4042bdd258ae329c0d55c589ca032db",
+    "docs/specs/content-git-sync/IMPLEMENTATION.md": "9f6a5b010964038f0bf7e11b16182e75306c937c",
+    "docs/specs/content-git-sync/SPEC.md": "f2ad86ec583af6b66831653caab8bd7bdeb6abda",
     "drizzle/0033_content_repo_baselines.sql": "e2f4ffa7430f2c5954ed4ea138d6fd2869ea1c4b",
     "drizzle/meta/_journal.json": "1f2b620dc16cfc83736ce1917882dfba35fcaaeb",
     "src/lib/content-repo/canonical.test.ts": "c7f05a3e5cbf0e3fe4b32f5321b5b35d366adcff",
@@ -39,7 +39,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "7340b9ffe4042bdd258ae329c0d55c589ca032db",
+          "blob": "f2ad86ec583af6b66831653caab8bd7bdeb6abda",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts"
         }
       ]
@@ -51,7 +51,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "7340b9ffe4042bdd258ae329c0d55c589ca032db",
+          "blob": "f2ad86ec583af6b66831653caab8bd7bdeb6abda",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts"
         }
       ],
@@ -145,7 +145,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "7340b9ffe4042bdd258ae329c0d55c589ca032db",
+          "blob": "f2ad86ec583af6b66831653caab8bd7bdeb6abda",
           "command": "Public routes, payloads and search responses are untouched"
         }
       ]
