@@ -2,7 +2,9 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { getChunks, goToNextChunk, goToPreviousChunk, unifiedMergeView } from "@codemirror/merge";
 import { EditorState, StateEffect, StateField, Text } from "@codemirror/state";
 import { Decoration, EditorView, keymap, lineNumbers, WidgetType } from "@codemirror/view";
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import type { ContentMergeHandle } from "~/components/content-merge-handle";
 import { Button } from "~/components/ui";
 import { contentLanguageExtension } from "~/editor/merge-editor-language";
 import { mergeEditorTheme } from "~/editor/merge-editor-theme";
@@ -119,7 +121,9 @@ export interface ContentMergeEditorProps {
   localText: string;
   /** Document currently stored in the repository. */
   remoteText: string;
-  onSave?: (text: string) => void;
+  onReady?: (handle: ContentMergeHandle) => void;
+  /** Rendered at the far right of the operation row. */
+  trailing?: ReactNode;
 }
 
 /**
@@ -128,7 +132,12 @@ export interface ContentMergeEditorProps {
  * control row inside the document; the toolbar only navigates and takes a
  * whole-file version.
  */
-export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMergeEditorProps) {
+export function ContentMergeEditor({
+  localText,
+  remoteText,
+  onReady,
+  trailing,
+}: ContentMergeEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
   const [chunks, setChunks] = useState({ count: 0, index: 0 });
@@ -168,12 +177,13 @@ export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMer
     });
     next.dispatch({ effects: StateEffect.appendConfig.of(mergeEditorTheme) });
     view.current = next;
+    onReady?.({ getText: () => next.state.doc.toString() });
     track(next);
     return () => {
       next.destroy();
       view.current = null;
     };
-  }, [localText, remoteText]);
+  }, [localText, remoteText, onReady]);
 
   function replaceWholeDocument(text: string) {
     const editor = view.current;
@@ -211,13 +221,8 @@ export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMer
         <Button size="sm" variant="outline" onClick={() => replaceWholeDocument(remoteText)}>
           整篇采用远端
         </Button>
-        <Button
-          size="sm"
-          onClick={() => onSave?.(view.current?.state.doc.toString() ?? "")}
-          disabled={!onSave}
-        >
-          保存到内容库
-        </Button>
+        <span className="flex-1" />
+        {trailing}
       </div>
       <div
         ref={host}

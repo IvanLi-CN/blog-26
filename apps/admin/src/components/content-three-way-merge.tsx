@@ -9,8 +9,9 @@ import {
   lineNumbers,
   WidgetType,
 } from "@codemirror/view";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import type { ContentMergeHandle } from "~/components/content-merge-handle";
 import { Badge, Button } from "~/components/ui";
 import { contentLanguageExtension } from "~/editor/merge-editor-language";
 import { mergeEditorTheme } from "~/editor/merge-editor-theme";
@@ -234,12 +235,14 @@ export function ContentThreeWayMerge({
   regions,
   localText,
   remoteText,
-  onSave,
+  onReady,
+  trailing,
 }: {
   regions: MergeRegion[];
   localText: string;
   remoteText: string;
-  onSave?: (text: string) => void;
+  onReady?: (handle: ContentMergeHandle) => void;
+  trailing?: ReactNode;
 }) {
   const hosts = useRef<Record<Pane, HTMLDivElement | null>>({
     local: null,
@@ -384,12 +387,15 @@ export function ContentThreeWayMerge({
       view.scrollDOM.addEventListener("scroll", () => syncScroll(pane));
     }
     const result = editors.current.result;
-    if (result) readStatus(result);
+    if (result) {
+      readStatus(result);
+      onReady?.({ getText: () => result.state.doc.toString() });
+    }
     return () => {
       for (const view of created) view.destroy();
       editors.current = {};
     };
-  }, [regions, texts, decide, syncScroll, readStatus]);
+  }, [regions, texts, decide, syncScroll, readStatus, onReady]);
 
   const unresolvedCount = Math.max(0, status.total - status.solved);
   const position = (() => {
@@ -438,13 +444,8 @@ export function ContentThreeWayMerge({
         <Button size="sm" variant="outline" onClick={() => decideAll("remote")}>
           整篇采用远端
         </Button>
-        <Button
-          size="sm"
-          onClick={() => onSave?.(editors.current.result?.state.doc.toString() ?? "")}
-          disabled={!onSave}
-        >
-          保存到内容库
-        </Button>
+        <span className="flex-1" />
+        {trailing}
       </div>
       <p className="text-xs text-muted-foreground">
         中栏（合并结果）可编辑，保存写回它；左栏本地与右栏远端只作参照。裁决后该处浮动面板消失，撤销会同时还原文本与裁决。

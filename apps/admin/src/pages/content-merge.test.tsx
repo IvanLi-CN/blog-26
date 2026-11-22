@@ -36,20 +36,8 @@ describe("ContentRepoDiffView", () => {
     expect(getByTestId("content-repo-diff")).toBeTruthy();
     expect(getByTestId("content-merge-editor")).toBeTruthy();
     expect(getByText("整篇采用远端")).toBeTruthy();
-    expect(getByText("保存到内容库")).toBeTruthy();
+    expect(getByText("行内")).toBeTruthy();
     expect(getByText("base line")).toBeTruthy();
-  });
-
-  test("summarizes every conflict in one hint", () => {
-    const { getByText, getAllByText } = render(
-      <ContentRepoDiffView
-        diff={diffPayload({ conflictingFields: ["title", "tags"], bodyConflicts: 2 })}
-        mode="inline"
-        onModeChange={noop}
-      />
-    );
-    expect(getAllByText(/需要人工裁决/u)).toHaveLength(1);
-    expect(getByText(/title（frontmatter）、tags（frontmatter）、正文 2 处/u)).toBeTruthy();
   });
 
   test("shows the merge preview when the sides merged cleanly", () => {

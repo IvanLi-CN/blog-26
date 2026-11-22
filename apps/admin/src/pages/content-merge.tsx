@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   adminApi,
   type ContentRepoActionPayload,
@@ -8,6 +8,7 @@ import {
 } from "@/lib/admin-api-client";
 import { ContentMediaCompare } from "~/components/content-media-compare";
 import { ContentMergeEditor } from "~/components/content-merge-editor";
+import type { ContentMergeHandle } from "~/components/content-merge-handle";
 import { ContentSplitMerge } from "~/components/content-split-merge";
 import { ContentThreeWayMerge } from "~/components/content-three-way-merge";
 import {
@@ -99,69 +100,64 @@ function TextPane({ title, text }: { title: string; text: string | null | undefi
   );
 }
 
-function conflictSummary(diff: ContentRepoDiffPayload) {
-  const parts = [
-    ...(diff.conflictingFields ?? []).map((key) => `${key}（frontmatter）`),
-    ...(diff.bodyConflicts ? [`正文 ${diff.bodyConflicts} 处`] : []),
-  ];
-  return parts.length ? `需要人工裁决：${parts.join("、")}` : null;
-}
-
 export function ContentRepoDiffView({
   diff,
-  onSave,
+  onReady,
   mode,
   onModeChange,
 }: {
   diff: ContentRepoDiffPayload | undefined;
-  onSave?: (text: string) => void;
+  onReady?: (handle: ContentMergeHandle) => void;
   mode: "inline" | "split" | "three";
   onModeChange: (mode: "inline" | "split" | "three") => void;
 }) {
   if (!diff) return null;
   if (diff.status !== "ready")
     return <Alert tone="warning">{diff.message ?? "差异暂不可用"}</Alert>;
-  const summary = conflictSummary(diff);
+  const modeSwitcher = (
+    <div className="ml-auto flex flex-wrap items-center gap-2">
+      {(
+        [
+          ["inline", "行内"],
+          ["split", "双栏"],
+          ["three", "三路"],
+        ] as const
+      ).map(([value, label]) => (
+        <Button
+          key={value}
+          size="sm"
+          variant={mode === value ? "default" : "outline"}
+          aria-pressed={mode === value}
+          onClick={() => onModeChange(value)}
+        >
+          {label}
+        </Button>
+      ))}
+    </div>
+  );
   return (
     <div className="space-y-3" data-testid="content-repo-diff">
-      {summary ? <Alert tone="warning">{summary}</Alert> : null}
-      <div className="flex flex-wrap items-center gap-2">
-        {(
-          [
-            ["inline", "行内"],
-            ["split", "双栏"],
-            ["three", "三路"],
-          ] as const
-        ).map(([value, label]) => (
-          <Button
-            key={value}
-            size="sm"
-            variant={mode === value ? "default" : "outline"}
-            aria-pressed={mode === value}
-            onClick={() => onModeChange(value)}
-          >
-            {label}
-          </Button>
-        ))}
-      </div>
       {mode === "inline" ? (
         <ContentMergeEditor
           localText={diff.localText ?? ""}
           remoteText={diff.remoteText ?? ""}
-          onSave={onSave}
+          onReady={onReady}
+          trailing={modeSwitcher}
         />
       ) : mode === "split" ? (
         <ContentSplitMerge
           localText={diff.localText ?? ""}
           remoteText={diff.remoteText ?? ""}
-          onSave={onSave}
+          onReady={onReady}
+          trailing={modeSwitcher}
         />
       ) : (
         <ContentThreeWayMerge
           regions={diff.regions ?? []}
           localText={diff.localText ?? ""}
           remoteText={diff.remoteText ?? ""}
-          onSave={onSave}
+          onReady={onReady}
+          trailing={modeSwitcher}
         />
       )}
       <Disclosure summary="基线（共同祖先）">
@@ -188,6 +184,7 @@ export function ContentMergePage() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [mode, setMode] = useState<"inline" | "split" | "three">("inline");
+  const mergeHandle = useRef<ContentMergeHandle | null>(null);
 
   const status = useQuery({
     queryKey: ["content-repo", "status"],
@@ -361,15 +358,29 @@ export function ContentMergePage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>{selected ? selected.path : "选择一个文件"}</CardTitle>
-            <CardDescription>
-              {!selected
-                ? "左侧列表选择一个文件后查看三方差异。"
-                : selected.media
-                  ? `附件文件 · 所属 ${selected.item.path} · ${selected.media.missing ? "本地缺失" : "两侧不同"}`
-                  : `${STATE_LABEL[selected.item.state]} · 基线 ${selected.item.baselineHash?.slice(0, 8) ?? "-"} · 远端 ${selected.item.remoteSha?.slice(0, 8) ?? "-"}`}
-            </CardDescription>
+          <CardHeader className="flex-row items-start justify-between gap-4">
+            <div className="space-y-1.5">
+              <CardTitle>{selected ? selected.path : "选择一个文件"}</CardTitle>
+              <CardDescription>
+                {!selected
+                  ? "左侧列表选择一个文件后查看三方差异。"
+                  : selected.media
+                    ? `附件文件 · 所属 ${selected.item.path} · ${selected.media.missing ? "本地缺失" : "两侧不同"}`
+                    : `${STATE_LABEL[selected.item.state]} · 基线 ${selected.item.baselineHash?.slice(0, 8) ?? "-"} · 远端 ${selected.item.remoteSha?.slice(0, 8) ?? "-"}`}
+              </CardDescription>
+            </div>
+            {selected && !selected.media ? (
+              <Button
+                size="sm"
+                onClick={() => {
+                  const text = mergeHandle.current?.getText();
+                  if (text !== undefined) resolve.mutate({ path: selected.path, text });
+                }}
+                disabled={!diff.data || diff.data.status !== "ready"}
+              >
+                保存到内容库
+              </Button>
+            ) : null}
           </CardHeader>
           <CardContent className="space-y-4">
             {!selected ? (
@@ -405,7 +416,9 @@ export function ContentMergePage() {
                     diff={diff.data}
                     mode={mode}
                     onModeChange={setMode}
-                    onSave={(text) => resolve.mutate({ path: selected.path, text })}
+                    onReady={(handle) => {
+                      mergeHandle.current = handle;
+                    }}
                   />
                 )}
                 <Separator />

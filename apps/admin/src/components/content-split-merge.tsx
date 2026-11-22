@@ -2,7 +2,8 @@ import { getChunks, MergeView } from "@codemirror/merge";
 import { search, searchKeymap } from "@codemirror/search";
 import { RangeSet, StateEffect } from "@codemirror/state";
 import { EditorView, GutterMarker, gutter, highlightActiveLine, keymap } from "@codemirror/view";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import type { ContentMergeHandle } from "~/components/content-merge-handle";
 import { Button } from "~/components/ui";
 import { contentLanguageExtension } from "~/editor/merge-editor-language";
 import { mergeEditorTheme } from "~/editor/merge-editor-theme";
@@ -87,11 +88,13 @@ class PushLocalAction extends GutterMarker {
 export function ContentSplitMerge({
   localText,
   remoteText,
-  onSave,
+  onReady,
+  trailing,
 }: {
   localText: string;
   remoteText: string;
-  onSave?: (text: string) => void;
+  onReady?: (handle: ContentMergeHandle) => void;
+  trailing?: ReactNode;
 }) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<MergeView | null>(null);
@@ -187,6 +190,7 @@ export function ContentSplitMerge({
       collapseUnchanged: { margin: 3 },
     });
     view.current = next;
+    onReady?.({ getText: () => next.b.state.doc.toString() });
     next.a.dispatch({ effects: StateEffect.appendConfig.of(mergeEditorTheme) });
     next.b.dispatch({ effects: StateEffect.appendConfig.of(mergeEditorTheme) });
     next.b.dispatch({ effects: StateEffect.appendConfig.of(localGutter) });
@@ -211,7 +215,7 @@ export function ContentSplitMerge({
       next.destroy();
       view.current = null;
     };
-  }, [localText, remoteText]);
+  }, [localText, remoteText, onReady]);
 
   function replaceLocal(text: string) {
     const editor = view.current?.b;
@@ -265,13 +269,8 @@ export function ContentSplitMerge({
         <Button size="sm" variant="outline" onClick={() => replaceLocal(remoteText)}>
           整篇采用远端
         </Button>
-        <Button
-          size="sm"
-          onClick={() => view.current && onSave?.(view.current.b.state.doc.toString())}
-          disabled={!onSave}
-        >
-          保存到内容库
-        </Button>
+        <span className="flex-1" />
+        {trailing}
       </div>
       <p className="text-xs text-muted-foreground">
         左为远端、右为本地；两侧都可直接编辑，右侧内容就是保存结果。本地沟槽 `←` 采用远端这一块、`✓`
