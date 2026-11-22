@@ -20,6 +20,8 @@ export interface ContentRepoBaselineMedia {
 export interface ContentRepoBaseline {
   contentHash: string;
   repoPath: string;
+  /** Canonical ancestors text used for three-way merges. */
+  document?: string | null;
   media: Record<string, ContentRepoBaselineMedia>;
   remoteBlobs: Record<string, string>;
 }

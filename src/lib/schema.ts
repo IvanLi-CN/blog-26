@@ -1185,6 +1185,7 @@ export const contentRepoBaselines = sqliteTable(
     contentId: text("content_id").notNull(),
     kind: text("kind").notNull(),
     contentHash: text("content_hash").notNull(),
+    document: text("document"),
     media: text("media").notNull(),
     remoteBlobs: text("remote_blobs").notNull(),
     commitSha: text("commit_sha").notNull(),

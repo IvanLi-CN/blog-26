@@ -169,6 +169,7 @@ export function loadContentRepoBaselines(): Map<string, ContentRepoBaseline> {
     baselines.set(row.path, {
       contentHash: row.contentHash,
       repoPath: row.path,
+      document: row.document ?? null,
       media,
       remoteBlobs,
     });
@@ -177,6 +178,7 @@ export function loadContentRepoBaselines(): Map<string, ContentRepoBaseline> {
 }
 
 export interface ContentRepoBaselineRow {
+  document: string;
   path: string;
   contentId: string;
   kind: "post" | "memo";
@@ -211,6 +213,7 @@ export function buildBaselineRow(
     contentId: entry.contentId,
     kind: entry.document.kind,
     contentHash: item.contentHash,
+    document: new TextDecoder().decode(entry.document.bytes),
     media: JSON.stringify(media),
     remoteBlobs: JSON.stringify(remoteBlobs),
     commitSha: commit,
@@ -268,6 +271,7 @@ export function persistBaselineRow(values: typeof contentRepoBaselines.$inferIns
         contentId: values.contentId,
         kind: values.kind,
         contentHash: values.contentHash,
+        document: values.document,
         media: values.media,
         remoteBlobs: values.remoteBlobs,
         commitSha: values.commitSha,
@@ -487,6 +491,7 @@ export function pullContentRepo(input: { ids?: string[] } = {}): Promise<Content
           contentId: row.id,
           kind: "post",
           contentHash: document.contentHash,
+          document: new TextDecoder().decode(document.bytes),
           media: JSON.stringify(baseline.media),
           remoteBlobs: JSON.stringify(remoteBlobs),
           commitSha: head.commit,
