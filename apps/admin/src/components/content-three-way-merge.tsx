@@ -10,7 +10,7 @@ import {
 } from "@codemirror/view";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { Badge, Button } from "~/components/ui";
+import { Badge, Button, Disclosure } from "~/components/ui";
 import { contentLanguageExtension } from "~/editor/merge-editor-language";
 import { mergeEditorTheme } from "~/editor/merge-editor-theme";
 
@@ -19,14 +19,15 @@ export type MergeRegion =
   | { kind: "conflict"; base: string; local: string; remote: string };
 
 type Side = "local" | "base" | "remote";
-type Pane = Side;
+type Pane = "local" | "result" | "remote";
 
-const PANE_LABEL: Record<Pane, string> = { local: "本地", base: "基线", remote: "远端" };
+const PANE_LABEL: Record<Pane, string> = { local: "本地", result: "合并结果", remote: "远端" };
 const PANE_HINT: Record<Pane, string> = {
-  local: "可编辑 · 保存的就是这一栏",
-  base: "只读 · 共同祖先，仅作参照",
-  remote: "只读 · 仓库版本，仅作参照",
+  local: "只读 · 你的版本",
+  result: "可编辑 · 保存这一栏",
+  remote: "只读 · 仓库版本",
 };
+const SIDE_LABEL: Record<Side, string> = { local: "本地", base: "基线", remote: "远端" };
 const DECISION_LABEL: Record<Side, string> = {
   local: "采用本地",
   base: "采用基线",
@@ -39,10 +40,16 @@ interface Span {
   to: number;
 }
 
+/** Expected visible text of each conflict in the given pane. */
+function paneText(region: Extract<MergeRegion, { kind: "conflict" }>, pane: Pane, decision?: Side) {
+  if (pane === "result") return decision ? region[decision] : region.local;
+  return region[pane];
+}
+
 function conflictSpans(
   text: string,
   regions: MergeRegion[],
-  side: Pane,
+  pane: Pane,
   decisions: Map<number, Side>
 ): Span[] {
   const spans: Span[] = [];
@@ -53,12 +60,7 @@ function conflictSpans(
       if (found !== -1) cursor = found + region.text.length;
       return;
     }
-    const value =
-      side === "local"
-        ? decisions.get(index)
-          ? region[decisions.get(index) as Side]
-          : region.local
-        : region[side];
+    const value = paneText(region, pane, decisions.get(index));
     if (!value) return;
     const from = text.indexOf(value, cursor);
     if (from === -1) return;
@@ -70,10 +72,12 @@ function conflictSpans(
 
 function ConflictActions({
   ordinal,
+  base,
   decision,
   onDecide,
 }: {
   ordinal: number;
+  base: string;
   decision: Side | null;
   onDecide: (side: Side) => void;
 }) {
@@ -89,9 +93,14 @@ function ConflictActions({
           variant={decision === side ? "default" : "outline"}
           onClick={() => onDecide(side)}
         >
-          {PANE_LABEL[side]}
+          {SIDE_LABEL[side]}
         </Button>
       ))}
+      <Disclosure summary="查看基线" summaryClassName="text-[10px] leading-4">
+        <pre className="max-h-32 w-full overflow-auto rounded-md bg-muted/50 p-2 text-[10px] whitespace-pre-wrap break-words">
+          {base || "（空）"}
+        </pre>
+      </Disclosure>
     </div>
   );
 }
@@ -102,6 +111,7 @@ class ConflictPanel extends WidgetType {
   constructor(
     private readonly index: number,
     private readonly ordinal: number,
+    private readonly base: string,
     private readonly decision: Side | null,
     private readonly onDecide: (index: number, side: Side) => void
   ) {
@@ -128,6 +138,7 @@ class ConflictPanel extends WidgetType {
     this.root.render(
       <ConflictActions
         ordinal={this.ordinal}
+        base={this.base}
         decision={this.decision}
         onDecide={(side) => this.onDecide(this.index, side)}
       />
@@ -141,7 +152,7 @@ class ConflictPanel extends WidgetType {
   }
 }
 
-function localPanels(
+function decisionPanels(
   regions: MergeRegion[],
   decisions: Map<number, Side>,
   onDecide: (index: number, side: Side) => void
@@ -154,29 +165,31 @@ function localPanels(
     ordinals.set(index, ordinal);
   });
   return EditorView.decorations.compute(["doc"], (state) => {
-    const spans = conflictSpans(state.doc.toString(), regions, "local", decisions);
+    const spans = conflictSpans(state.doc.toString(), regions, "result", decisions);
     return Decoration.set(
-      spans.map((span) =>
-        Decoration.widget({
+      spans.map((span) => {
+        const region = regions[span.index];
+        return Decoration.widget({
           widget: new ConflictPanel(
             span.index,
             ordinals.get(span.index) ?? span.index + 1,
+            region.kind === "conflict" ? region.base : "",
             decisions.get(span.index) ?? null,
             onDecide
           ),
           side: -1,
           block: true,
-        }).range(span.from)
-      ),
+        }).range(span.from);
+      }),
       true
     );
   });
 }
 
-const conflictMarks = (regions: MergeRegion[], side: Pane, decisions: Map<number, Side>) =>
+const conflictMarks = (regions: MergeRegion[], pane: Pane, decisions: Map<number, Side>) =>
   EditorView.decorations.compute(["doc"], (state) =>
     Decoration.set(
-      conflictSpans(state.doc.toString(), regions, side, decisions).map((span) =>
+      conflictSpans(state.doc.toString(), regions, pane, decisions).map((span) =>
         Decoration.mark({ class: "cm-merge-conflict" }).range(span.from, span.to)
       ),
       true
@@ -184,26 +197,24 @@ const conflictMarks = (regions: MergeRegion[], side: Pane, decisions: Map<number
   );
 
 /**
- * Three-pane conflict resolution in one frame: local, base and remote. The local
- * pane is the editable merge target; each conflict offers the three decisions
- * through the shared button primitives.
+ * Three-way conflict resolution: local and remote are references, the middle
+ * pane is the editable result that gets saved. The common ancestor is available
+ * inside each conflict panel.
  */
 export function ContentThreeWayMerge({
   regions,
   localText,
-  baseText,
   remoteText,
   onSave,
 }: {
   regions: MergeRegion[];
   localText: string;
-  baseText: string;
   remoteText: string;
   onSave?: (text: string) => void;
 }) {
   const hosts = useRef<Record<Pane, HTMLDivElement | null>>({
     local: null,
-    base: null,
+    result: null,
     remote: null,
   });
   const editors = useRef<Partial<Record<Pane, EditorView>>>({});
@@ -213,8 +224,8 @@ export function ContentThreeWayMerge({
   const [active, setActive] = useState<number | null>(null);
 
   const texts: Record<Pane, string> = useMemo(
-    () => ({ local: localText, base: baseText, remote: remoteText }),
-    [localText, baseText, remoteText]
+    () => ({ local: localText, result: localText, remote: remoteText }),
+    [localText, remoteText]
   );
   const conflictIndexes = useMemo(
     () => regions.flatMap((region, index) => (region.kind === "conflict" ? [index] : [])),
@@ -229,39 +240,40 @@ export function ContentThreeWayMerge({
     if (!origin) return;
     syncing.current = true;
     const ratio = origin.scrollTop / Math.max(1, origin.scrollHeight - origin.clientHeight);
-    for (const side of ["local", "base", "remote"] as const) {
-      const pane = editors.current[side]?.scrollDOM;
-      if (pane && pane !== origin)
-        pane.scrollTop = ratio * Math.max(0, pane.scrollHeight - pane.clientHeight);
+    for (const pane of ["local", "result", "remote"] as const) {
+      const other = editors.current[pane]?.scrollDOM;
+      if (other && other !== origin)
+        other.scrollTop = ratio * Math.max(0, other.scrollHeight - other.clientHeight);
     }
     syncing.current = false;
   }, []);
 
   const decide = useCallback(
     (index: number, side: Side) => {
-      const local = editors.current.local;
+      const result = editors.current.result;
       const region = regions[index];
-      if (!local || !region || region.kind !== "conflict") return;
+      if (!result || !region || region.kind !== "conflict") return;
       const span = conflictSpans(
-        local.state.doc.toString(),
+        result.state.doc.toString(),
         regions,
-        "local",
+        "result",
         decisions.current
       ).find((candidate) => candidate.index === index);
       decisions.current.set(index, side);
-      if (span) local.dispatch({ changes: { from: span.from, to: span.to, insert: region[side] } });
-      if (local.scrollDOM.scrollLeft !== 0) local.scrollDOM.scrollLeft = 0;
+      if (span)
+        result.dispatch({ changes: { from: span.from, to: span.to, insert: region[side] } });
       setActive(index);
       setRevision((value) => value + 1);
-      for (const pane of ["local", "base", "remote"] as const) editors.current[pane]?.dispatch({});
+      for (const pane of ["local", "result", "remote"] as const)
+        editors.current[pane]?.dispatch({});
     },
     [regions]
   );
 
   function decideAll(side: Side) {
-    const local = editors.current.local;
-    if (!local) return;
-    const spans = conflictSpans(local.state.doc.toString(), regions, "local", decisions.current);
+    const result = editors.current.result;
+    if (!result) return;
+    const spans = conflictSpans(result.state.doc.toString(), regions, "result", decisions.current);
     const changes = spans.flatMap((span) => {
       const region = regions[span.index];
       if (region.kind !== "conflict") return [];
@@ -269,9 +281,9 @@ export function ContentThreeWayMerge({
       return [{ from: span.from, to: span.to, insert: region[side] }];
     });
     if (changes.length)
-      local.dispatch({ changes: changes.sort((left, right) => left.from - right.from) });
+      result.dispatch({ changes: changes.sort((left, right) => left.from - right.from) });
     setRevision((value) => value + 1);
-    for (const pane of ["local", "base", "remote"] as const) editors.current[pane]?.dispatch({});
+    for (const pane of ["local", "result", "remote"] as const) editors.current[pane]?.dispatch({});
   }
 
   function jump(direction: 1 | -1) {
@@ -283,13 +295,13 @@ export function ContentThreeWayMerge({
         : (currentPosition - 1 + unresolved.length) % unresolved.length;
     const index = unresolved[next];
     setActive(index);
-    for (const side of ["local", "base", "remote"] as const) {
-      const editor = editors.current[side];
+    for (const pane of ["local", "result", "remote"] as const) {
+      const editor = editors.current[pane];
       if (!editor) continue;
       const span = conflictSpans(
         editor.state.doc.toString(),
         regions,
-        side,
+        pane,
         decisions.current
       ).find((candidate) => candidate.index === index);
       if (span) editor.dispatch({ effects: EditorView.scrollIntoView(span.from, { y: "center" }) });
@@ -300,14 +312,14 @@ export function ContentThreeWayMerge({
     decisions.current = new Map();
     setActive(null);
     const created: EditorView[] = [];
-    for (const side of ["local", "base", "remote"] as const) {
-      const parent = hosts.current[side];
+    for (const pane of ["local", "result", "remote"] as const) {
+      const parent = hosts.current[pane];
       if (!parent) continue;
-      const editable = side === "local";
+      const editable = pane === "result";
       const view = new EditorView({
         parent,
         state: EditorState.create({
-          doc: texts[side],
+          doc: texts[pane],
           extensions: [
             lineNumbers(),
             EditorView.lineWrapping,
@@ -316,15 +328,15 @@ export function ContentThreeWayMerge({
             search({ top: true }),
             contentLanguageExtension(),
             mergeEditorTheme,
-            ...(editable ? [localPanels(regions, decisions.current, decide)] : []),
-            conflictMarks(regions, side, decisions.current),
+            ...(editable ? [decisionPanels(regions, decisions.current, decide)] : []),
+            conflictMarks(regions, pane, decisions.current),
             ...(editable ? [] : [EditorState.readOnly.of(true), EditorView.editable.of(false)]),
           ],
         }),
       });
-      editors.current[side] = view;
+      editors.current[pane] = view;
       created.push(view);
-      view.scrollDOM.addEventListener("scroll", () => syncScroll(side));
+      view.scrollDOM.addEventListener("scroll", () => syncScroll(pane));
     }
     return () => {
       for (const view of created) view.destroy();
@@ -376,18 +388,18 @@ export function ContentThreeWayMerge({
         </Button>
         <Button
           size="sm"
-          onClick={() => onSave?.(editors.current.local?.state.doc.toString() ?? "")}
+          onClick={() => onSave?.(editors.current.result?.state.doc.toString() ?? "")}
           disabled={!onSave}
         >
           保存到内容库
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        左栏（本地）是可编辑的合并结果，保存写回它；中栏基线与右栏远端只作参照。
+        中栏（合并结果）可编辑，保存写回它；左栏本地与右栏远端只作参照，每处冲突面板内可展开查看基线。
       </p>
       {unresolved.length ? (
         <p className="text-xs text-warning">
-          仍有 {unresolved.length} 处未解决；现在保存会保留本地窗格的当前内容。
+          仍有 {unresolved.length} 处未解决；现在保存会保留合并结果窗格的当前内容。
         </p>
       ) : null}
 
@@ -396,20 +408,20 @@ export function ContentThreeWayMerge({
         data-testid="content-three-way-panes"
       >
         <div className="grid grid-cols-3 divide-x divide-border border-b border-border bg-muted/40">
-          {(["local", "base", "remote"] as const).map((side) => (
-            <div key={side} className="flex items-center gap-2 px-3 py-1.5">
-              <span className="text-[11px] font-semibold text-foreground">{PANE_LABEL[side]}</span>
-              {side === "local" ? <Badge tone="default">合并结果</Badge> : null}
-              <span className="ml-auto text-[10px] text-muted-foreground">{PANE_HINT[side]}</span>
+          {(["local", "result", "remote"] as const).map((pane) => (
+            <div key={pane} className="flex items-center gap-2 px-3 py-1.5">
+              <span className="text-[11px] font-semibold text-foreground">{PANE_LABEL[pane]}</span>
+              {pane === "result" ? <Badge tone="default">保存这一栏</Badge> : null}
+              <span className="ml-auto text-[10px] text-muted-foreground">{PANE_HINT[pane]}</span>
             </div>
           ))}
         </div>
         <div className="grid grid-cols-3 divide-x divide-border">
-          {(["local", "base", "remote"] as const).map((side) => (
+          {(["local", "result", "remote"] as const).map((pane) => (
             <div
-              key={side}
+              key={pane}
               ref={(element) => {
-                hosts.current[side] = element;
+                hosts.current[pane] = element;
               }}
               className="h-96 overflow-hidden text-xs"
             />

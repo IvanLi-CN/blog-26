@@ -160,7 +160,6 @@ export function ContentRepoDiffView({
         <ContentThreeWayMerge
           regions={diff.regions ?? []}
           localText={diff.localText ?? ""}
-          baseText={diff.baseText ?? ""}
           remoteText={diff.remoteText ?? ""}
           onSave={onSave}
         />
