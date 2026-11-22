@@ -37,6 +37,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Disclosure,
   EmptyState,
   Separator,
@@ -252,7 +258,7 @@ function FileCard({
   mode: "inline" | "split" | "three";
   onModeChange: (mode: "inline" | "split" | "three") => void;
   onCount: (path: string, count: number) => void;
-  onSave: (path: string, text: string) => void;
+  onSave: (path: string, text: string, unresolved: number) => void;
   onAdopt: (path: string, media: string) => void;
   onMerge: (path: string) => void;
   onPull: (path: string) => void;
@@ -302,7 +308,8 @@ function FileCard({
               size="lg"
               onClick={() => {
                 const text = handle.current?.getText();
-                if (text !== undefined) onSave(row.path, text);
+                const unresolved = handle.current?.pending().unresolved ?? 0;
+                if (text !== undefined) onSave(row.path, text, unresolved);
               }}
               disabled={!diff.data || diff.data.status !== "ready"}
             >
@@ -620,6 +627,12 @@ export function ContentMergePage() {
   const [saved, setSaved] = useState<Record<string, SavedMark>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [snapshot, setSnapshot] = useState<ContentRepoSyncItem[] | null>(null);
+  const [confirmSave, setConfirmSave] = useState<{
+    path: string;
+    text: string;
+    remoteSha: string | null;
+    unresolved: number;
+  } | null>(null);
 
   const status = useQuery({
     queryKey: ["content-repo", "status"],
@@ -806,6 +819,7 @@ export function ContentMergePage() {
                   if (node.type === "dir" && !node.row) {
                     return (
                       <DirRow
+                        key={node.path}
                         node={node}
                         depth={depth}
                         open={expanded.has(node.path)}
@@ -825,6 +839,7 @@ export function ContentMergePage() {
                   if (!row) return null;
                   return (
                     <FileTreeRow
+                      key={row.path}
                       row={row}
                       depth={depth}
                       conflicts={conflicts[row.path] ?? null}
@@ -891,10 +906,15 @@ export function ContentMergePage() {
               mode={mode}
               onModeChange={setMode}
               onCount={onCount}
-              onSave={(path, text) => resolve.mutate({ path, text, remoteSha: row.item.remoteSha })}
+              onSave={(path, text, unresolved) => {
+                if (unresolved > 0) {
+                  setConfirmSave({ path, text, remoteSha: row.item.remoteSha, unresolved });
+                  return;
+                }
+                resolve.mutate({ path, text, remoteSha: row.item.remoteSha });
+              }}
               onAdopt={(path, media) => adoptMedia.mutate({ path, media })}
               onMerge={(path) => merge.mutate({ ids: [path] })}
-              onPush={(path) => push.mutate({ ids: [path] })}
               onPull={(path) => pull.mutate({ ids: [path] })}
               onAccept={(path) => accept.mutate({ paths: [path] })}
               onRemove={(path) => remove.mutate({ paths: [path] })}
@@ -903,6 +923,35 @@ export function ContentMergePage() {
           ))
         )}
       </div>
+
+      <Dialog open={Boolean(confirmSave)} onOpenChange={(open) => !open && setConfirmSave(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>仍有 {confirmSave?.unresolved ?? 0} 处冲突未解决</DialogTitle>
+            <DialogDescription>
+              保存会把当前合并结果写入内容库并推送；未裁决的部分保持本地窗格的现有内容。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmSave(null)}>
+              取消
+            </Button>
+            <Button
+              onClick={() => {
+                if (!confirmSave) return;
+                resolve.mutate({
+                  path: confirmSave.path,
+                  text: confirmSave.text,
+                  remoteSha: confirmSave.remoteSha,
+                });
+                setConfirmSave(null);
+              }}
+            >
+              继续保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

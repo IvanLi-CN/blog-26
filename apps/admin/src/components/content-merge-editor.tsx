@@ -140,6 +140,8 @@ export function ContentMergeEditor({
 }: ContentMergeEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
   const [chunks, setChunks] = useState({ count: 0, index: 0 });
 
   useEffect(() => {
@@ -177,13 +179,19 @@ export function ContentMergeEditor({
     });
     next.dispatch({ effects: StateEffect.appendConfig.of(mergeEditorTheme) });
     view.current = next;
-    onReady?.({ getText: () => next.state.doc.toString() });
+    onReadyRef.current?.({
+      getText: () => next.state.doc.toString(),
+      pending: () => {
+        const count = getChunks(next.state)?.chunks.length ?? 0;
+        return { unresolved: count, total: count };
+      },
+    });
     track(next);
     return () => {
       next.destroy();
       view.current = null;
     };
-  }, [localText, remoteText, onReady]);
+  }, [localText, remoteText]);
 
   function replaceWholeDocument(text: string) {
     const editor = view.current;

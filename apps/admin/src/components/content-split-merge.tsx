@@ -98,6 +98,8 @@ export function ContentSplitMerge({
 }) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<MergeView | null>(null);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
   const trackRef = useRef<() => void>(() => undefined);
   const chosenLocal = useRef<Set<string>>(new Set());
   const [chunks, setChunks] = useState({ count: 0, index: 0 });
@@ -190,7 +192,13 @@ export function ContentSplitMerge({
       collapseUnchanged: { margin: 3 },
     });
     view.current = next;
-    onReady?.({ getText: () => next.b.state.doc.toString() });
+    onReadyRef.current?.({
+      getText: () => next.b.state.doc.toString(),
+      pending: () => {
+        const count = getChunks(next.b.state)?.chunks.length ?? 0;
+        return { unresolved: count, total: count };
+      },
+    });
     next.a.dispatch({ effects: StateEffect.appendConfig.of(mergeEditorTheme) });
     next.b.dispatch({ effects: StateEffect.appendConfig.of(mergeEditorTheme) });
     next.b.dispatch({ effects: StateEffect.appendConfig.of(localGutter) });
@@ -215,7 +223,7 @@ export function ContentSplitMerge({
       next.destroy();
       view.current = null;
     };
-  }, [localText, remoteText, onReady]);
+  }, [localText, remoteText]);
 
   function replaceLocal(text: string) {
     const editor = view.current?.b;

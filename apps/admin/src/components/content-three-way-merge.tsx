@@ -251,6 +251,8 @@ export function ContentThreeWayMerge({
   });
   const editors = useRef<Partial<Record<Pane, EditorView>>>({});
   const syncing = useRef(false);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
   const [status, setStatus] = useState({ solved: 0, total: 0 });
   const [active, setActive] = useState<number | null>(null);
 
@@ -389,13 +391,21 @@ export function ContentThreeWayMerge({
     const result = editors.current.result;
     if (result) {
       readStatus(result);
-      onReady?.({ getText: () => result.state.doc.toString() });
+      onReadyRef.current?.({
+        getText: () => result.state.doc.toString(),
+        pending: () => {
+          const decisions = result.state.field(decisionsField);
+          const total = conflictIndexes.length;
+          const solved = conflictIndexes.filter((index) => decisions.has(index)).length;
+          return { unresolved: total - solved, total };
+        },
+      });
     }
     return () => {
       for (const view of created) view.destroy();
       editors.current = {};
     };
-  }, [regions, texts, decide, syncScroll, readStatus, onReady]);
+  }, [conflictIndexes, regions, texts, decide, syncScroll, readStatus]);
 
   const unresolvedCount = Math.max(0, status.total - status.solved);
   const position = (() => {
