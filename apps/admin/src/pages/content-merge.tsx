@@ -1,6 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, FileText, GitMerge, Paperclip, RefreshCcw, Save, StickyNote } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Folder,
+  GitMerge,
+  Paperclip,
+  RefreshCcw,
+  Save,
+  StickyNote,
+} from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   adminApi,
   type ContentRepoActionPayload,
@@ -78,15 +89,6 @@ function buildFileRows(items: ContentRepoSyncItem[]): FileRow[] {
 function rowNeedsAttention(row: FileRow) {
   if (row.media) return true;
   return row.item.state !== "synced";
-}
-
-function treeCells(path: string) {
-  const segments = path.split("/");
-  return {
-    dir: segments.slice(0, -1).join("/"),
-    name: segments[segments.length - 1],
-    depth: segments.length - 1,
-  };
 }
 
 function useInView<T extends HTMLElement>(enabled: boolean) {
@@ -388,32 +390,140 @@ function actionSummary(result: ContentRepoActionPayload) {
   return parts.join(" · ");
 }
 
-function TreeRow({
+type TreeNode = {
+  type: "dir" | "file";
+  name: string;
+  path: string;
+  children: TreeNode[];
+  row?: FileRow;
+};
+
+/** Build the directory tree from file rows, in tree order. */
+function buildTree(rows: FileRow[]): TreeNode[] {
+  const roots: TreeNode[] = [];
+  const index = new Map<string, TreeNode>();
+  for (const row of rows) {
+    const segments = row.path.split("/");
+    let children = roots;
+    let prefix = "";
+    segments.forEach((segment, position) => {
+      prefix = prefix ? `${prefix}/${segment}` : segment;
+      const last = position === segments.length - 1;
+      let node = index.get(prefix);
+      if (!node) {
+        node = {
+          type: last ? "file" : "dir",
+          name: segment,
+          path: prefix,
+          children: [],
+          row: last ? row : undefined,
+        };
+        index.set(prefix, node);
+        children.push(node);
+      } else if (last) {
+        node.type = "file";
+        node.row = row;
+      }
+      children = node.children;
+    });
+  }
+  const sort = (nodes: TreeNode[]) => {
+    nodes.sort((left, right) =>
+      left.type === right.type
+        ? left.name.localeCompare(right.name, "en", { numeric: true })
+        : left.type === "dir"
+          ? -1
+          : 1
+    );
+    for (const node of nodes) sort(node.children);
+  };
+  sort(roots);
+  return roots;
+}
+
+function collectDirPaths(nodes: TreeNode[], out: string[] = []) {
+  for (const node of nodes) {
+    if (node.type === "dir") {
+      out.push(node.path);
+      collectDirPaths(node.children, out);
+    }
+  }
+  return out;
+}
+
+function countFiles(node: TreeNode): number {
+  if (node.type === "file") return 1;
+  return node.children.reduce((total, child) => total + countFiles(child), 0);
+}
+
+type FlatNode = { node: TreeNode; depth: number };
+
+function flattenTree(nodes: TreeNode[], expanded: Set<string>, depth = 0, out: FlatNode[] = []) {
+  for (const node of nodes) {
+    out.push({ node, depth });
+    if (node.type === "dir" && expanded.has(node.path))
+      flattenTree(node.children, expanded, depth + 1, out);
+  }
+  return out;
+}
+
+function DirRow({
+  node,
+  depth,
+  open,
+  onToggle,
+}: {
+  node: TreeNode;
+  depth: number;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Button
+      variant="row"
+      onClick={onToggle}
+      className="flex w-full items-center gap-1.5 rounded-none px-2 text-left text-xs font-medium hover:bg-muted/50"
+      style={{ height: 36, paddingLeft: 6 + depth * 12 }}
+      title={node.path}
+      aria-expanded={open}
+    >
+      {open ? (
+        <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+      ) : (
+        <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+      )}
+      <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="truncate">{node.name}</span>
+      <span className="ml-auto pr-2 text-[10px] text-muted-foreground">{countFiles(node)} 项</span>
+    </Button>
+  );
+}
+
+function FileTreeRow({
   row,
+  depth,
   conflicts,
   saved,
   onSelect,
 }: {
   row: FileRow;
+  depth: number;
   conflicts: number | null;
   saved: boolean;
   onSelect: () => void;
 }) {
-  const { dir, name, depth } = treeCells(row.path);
+  const name = row.path.split("/").pop() ?? row.path;
   const Icon = row.media ? Paperclip : row.item.kind === "memo" ? StickyNote : FileText;
   return (
     <Button
       variant="row"
       onClick={onSelect}
-      className="flex w-full items-center gap-2 rounded-none px-2 text-left text-xs hover:bg-muted/50"
-      style={{ height: 38, paddingLeft: 8 + depth * 12 }}
+      className="flex w-full items-center gap-1.5 rounded-none px-2 text-left text-xs hover:bg-muted/50"
+      style={{ height: 36, paddingLeft: 6 + depth * 12 + 18 }}
       title={row.path}
     >
       <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="truncate">
-        <span className="text-muted-foreground">{dir ? `${dir}/` : ""}</span>
-        <span className="text-foreground">{name}</span>
-      </span>
+      <span className="truncate text-foreground">{name}</span>
       <span className="ml-auto flex shrink-0 items-center gap-1 pr-2">
         {saved ? (
           <span title="已保存到内容库" className="text-success">
@@ -438,6 +548,8 @@ export function ContentMergePage() {
   const [mode, setMode] = useState<"inline" | "split" | "three">("inline");
   const [conflicts, setConflicts] = useState<Record<string, number>>({});
   const [saved, setSaved] = useState<Record<string, SavedMark>>({});
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [snapshot, setSnapshot] = useState<ContentRepoSyncItem[] | null>(null);
 
   const status = useQuery({
     queryKey: ["content-repo", "status"],
@@ -448,8 +560,35 @@ export function ContentMergePage() {
     queryFn: adminApi.checkContentRepo,
   });
 
-  const rows = useMemo(() => buildFileRows(check.data?.items ?? []), [check.data]);
+  useEffect(() => {
+    if (!snapshot && check.data?.items) setSnapshot(check.data.items);
+  }, [check.data, snapshot]);
+
+  const liveItems = useMemo(
+    () => new Map((check.data?.items ?? []).map((item) => [item.path, item])),
+    [check.data]
+  );
+  const rows = useMemo(() => {
+    const base = buildFileRows(snapshot ?? []);
+    return base.map((row) => {
+      const live = liveItems.get(row.item.path);
+      if (!live) return row;
+      return { ...row, item: { ...row.item, state: live.state } };
+    });
+  }, [snapshot, liveItems]);
   const actionable = rows.filter(rowNeedsAttention);
+  const tree = useMemo(() => buildTree(rows), [rows]);
+  const flatTree = useMemo(() => flattenTree(tree, expanded), [tree, expanded]);
+
+  useEffect(() => {
+    const dirs = collectDirPaths(tree);
+    if (!dirs.length) return;
+    setExpanded((current) => {
+      const next = new Set(current);
+      for (const dir of dirs) next.add(dir);
+      return next;
+    });
+  }, [tree]);
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["content-repo"] });
@@ -520,6 +659,28 @@ export function ContentMergePage() {
   const onCount = (path: string, count: number) =>
     setConflicts((current) => (current[path] === count ? current : { ...current, [path]: count }));
 
+  const resync = useCallback(async () => {
+    const result = await check.refetch();
+    const items = result.data?.items;
+    if (items) {
+      setSnapshot(items);
+      const byPath = new Map(items.map((item) => [item.path, item]));
+      setSaved((current) => {
+        const next: Record<string, SavedMark> = {};
+        for (const [path, mark] of Object.entries(current)) {
+          const item = byPath.get(path);
+          if (!item) continue;
+          if (item.remoteSha !== mark.remoteSha) continue;
+          if (item.localHash && item.localHash !== mark.contentHash) continue;
+          next[path] = mark;
+        }
+        return next;
+      });
+    }
+    await status.refetch();
+    await queryClient.invalidateQueries({ queryKey: ["content-repo", "diff"] });
+  }, [check, queryClient, status]);
+
   const sidebarPanel = useMemo(
     () => ({
       label: "内容仓库",
@@ -532,10 +693,7 @@ export function ContentMergePage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                void check.refetch();
-                void status.refetch();
-              }}
+              onClick={() => void resync()}
               disabled={check.isFetching}
             >
               {check.isFetching ? <Spinner /> : <RefreshCcw />}
@@ -549,24 +707,48 @@ export function ContentMergePage() {
               <EmptyState title="没有内容" description="内容库为空，或尚未建立基线。" />
             ) : (
               <VirtualList
-                items={rows}
-                height={Math.min(rows.length * 38 + 4, 620)}
-                render={(row) => (
-                  <TreeRow
-                    row={row}
-                    conflicts={conflicts[row.path] ?? null}
-                    saved={Boolean(
-                      saved[row.path] &&
-                        saved[row.path].contentHash === row.item.localHash &&
-                        saved[row.path].remoteSha === row.item.remoteSha
-                    )}
-                    onSelect={() =>
-                      document
-                        .querySelector(`[data-testid="file-card-${CSS.escape(row.path)}"]`)
-                        ?.scrollIntoView({ block: "start", behavior: "smooth" })
-                    }
-                  />
-                )}
+                items={flatTree}
+                height={Math.min(flatTree.length * 36 + 4, 620)}
+                rowHeight={36}
+                render={({ node, depth }) => {
+                  if (node.type === "dir" && !node.row) {
+                    return (
+                      <DirRow
+                        node={node}
+                        depth={depth}
+                        open={expanded.has(node.path)}
+                        onToggle={() =>
+                          setExpanded((current) => {
+                            const next = new Set(current);
+                            if (next.has(node.path)) next.delete(node.path);
+                            else next.add(node.path);
+                            return next;
+                          })
+                        }
+                      />
+                    );
+                  }
+                  const row = node.row;
+                  if (!row) return null;
+                  return (
+                    <FileTreeRow
+                      row={row}
+                      depth={depth}
+                      conflicts={conflicts[row.path] ?? null}
+                      saved={Boolean(
+                        saved[row.path] &&
+                          saved[row.path].contentHash ===
+                            (liveItems.get(row.item.path)?.localHash ?? row.item.localHash) &&
+                          saved[row.path].remoteSha === row.item.remoteSha
+                      )}
+                      onSelect={() =>
+                        document
+                          .querySelector(`[data-testid="file-card-${CSS.escape(row.path)}"]`)
+                          ?.scrollIntoView({ block: "start", behavior: "smooth" })
+                      }
+                    />
+                  );
+                }}
               />
             )}
           </div>
@@ -577,12 +759,14 @@ export function ContentMergePage() {
       actionable.length,
       check.isFetching,
       check.isLoading,
-      check.refetch,
       conflicts,
+      expanded,
+      flatTree,
+      liveItems,
+      resync,
       rows,
       saved,
       status.data,
-      status.refetch,
     ]
   );
   useAppShellSidebar(sidebarPanel);
