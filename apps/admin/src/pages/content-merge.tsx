@@ -156,12 +156,12 @@ const STATUS_ICON: Record<ContentRepoSyncItem["state"], typeof Check> = {
 };
 
 const STATUS_TONE: Record<ContentRepoSyncItem["state"], string> = {
-  synced: "bg-success/15 text-success",
-  "to-push": "bg-primary/15 text-primary",
-  "to-pull": "bg-accent text-accent-foreground",
-  "remote-new": "bg-warning/18 text-warning",
-  "remote-deleted": "bg-destructive/15 text-destructive",
-  "merge-conflict": "bg-destructive/15 text-destructive",
+  synced: "text-success",
+  "to-push": "text-primary",
+  "to-pull": "text-accent-foreground",
+  "remote-new": "text-warning",
+  "remote-deleted": "text-destructive",
+  "merge-conflict": "text-destructive",
 };
 
 const STATUS_ORDER: ContentRepoSyncItem["state"][] = [
@@ -185,7 +185,7 @@ function StatusChip({
   const Icon = STATUS_ICON[status];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${STATUS_TONE[status]}`}
+      className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${STATUS_TONE[status]}`}
       title={title ?? STATE_LABEL[status]}
     >
       <Icon className="size-3" />
