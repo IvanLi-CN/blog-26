@@ -15,11 +15,43 @@ class ChunkAction extends GutterMarker {
   }
 
   override toDOM() {
+    const wrap = document.createElement("span");
+    wrap.className = "inline-flex gap-0.5 pr-1";
+    const remote = document.createElement("button");
+    remote.type = "button";
+    remote.title = "采用远端的这一块";
+    remote.textContent = "←";
+    remote.className =
+      "cursor-pointer rounded border border-border bg-surface px-1 text-[10px] leading-4 hover:bg-muted";
+    remote.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.run();
+    });
+    wrap.appendChild(remote);
+    return wrap;
+  }
+
+  override eq() {
+    return false;
+  }
+}
+
+class PushLocalAction extends GutterMarker {
+  constructor(
+    private readonly chunk: Chunk,
+    private readonly run: () => void
+  ) {
+    super();
+  }
+
+  override toDOM() {
     const button = document.createElement("button");
     button.type = "button";
-    button.title = "本处采用远端";
-    button.textContent = "←";
-    button.className = "mr-1 cursor-pointer rounded px-1 text-[10px] leading-4 text-primary";
+    button.title = "把本地的这一块写回远端";
+    button.textContent = "→";
+    button.className =
+      "mr-1 cursor-pointer rounded border border-border bg-surface px-1 text-[10px] leading-4 hover:bg-muted";
     button.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -33,33 +65,63 @@ class ChunkAction extends GutterMarker {
   }
 }
 
-/** One accept control per change chunk, drawn inside the local pane gutter. */
-function chunkActions(getRemote: () => EditorView | null) {
+/** Two decisions per change chunk, inside the local pane's gutter. */
+function chunkActions(getLocal: () => EditorView | null, getRemote: () => EditorView | null) {
   return gutter({
     class: "cm-chunk-actions",
     markers: (view) => {
+      const local = getLocal();
+      const remote = getRemote();
+      if (!local || !remote) return RangeSet.empty;
       const chunks = getChunks(view.state)?.chunks ?? [];
       return RangeSet.of(
-        chunks.map((chunk) =>
-          new ChunkAction(chunk, () => {
-            const remote = getRemote();
-            if (!remote) return;
-            view.dispatch({
+        chunks.map((chunk) => {
+          const line = view.state.doc.lineAt(Math.min(chunk.fromB, view.state.doc.length)).from;
+          return new ChunkAction(chunk, () => {
+            local.dispatch({
               changes: {
                 from: chunk.fromB,
                 to: chunk.toB,
                 insert: remote.state.sliceDoc(chunk.fromA, chunk.toA),
               },
             });
-          }).range(view.state.doc.lineAt(chunk.fromB).from)
-        ),
+          }).range(line);
+        }),
         true
       );
     },
   });
 }
 
-/** Side-by-side comparison; chunk boundaries come from the CodeMirror merge view. */
+function pushLocalActions(getLocal: () => EditorView | null, getRemote: () => EditorView | null) {
+  return gutter({
+    class: "cm-chunk-push",
+    markers: (view) => {
+      const local = getLocal();
+      const remote = getRemote();
+      if (!local || !remote) return RangeSet.empty;
+      const chunks = getChunks(local.state)?.chunks ?? [];
+      return RangeSet.of(
+        chunks.map((chunk) => {
+          const line = view.state.doc.lineAt(Math.min(chunk.fromA, view.state.doc.length)).from;
+          return new PushLocalAction(chunk, () => {
+            remote.dispatch({
+              changes: {
+                from: chunk.fromA,
+                to: chunk.toA,
+                insert: local.state.sliceDoc(chunk.fromB, chunk.toB),
+              },
+            });
+            local.dispatch({});
+          }).range(line);
+        }),
+        true
+      );
+    },
+  });
+}
+
+/** Side-by-side comparison; both panes stay editable and the local pane is the result. */
 export function ContentSplitMerge({
   localText,
   remoteText,
@@ -76,19 +138,31 @@ export function ContentSplitMerge({
   useEffect(() => {
     const parent = host.current;
     if (!parent) return undefined;
-    const readOnly = EditorView.editable.of(false);
     const next = new MergeView({
       parent,
-      a: { doc: remoteText, extensions: [readOnly] },
+      a: { doc: remoteText },
       b: { doc: localText },
       highlightChanges: true,
       gutter: true,
       collapseUnchanged: { margin: 3 },
     });
-    next.b.dispatch({
-      effects: StateEffect.appendConfig.of(chunkActions(() => view.current?.a ?? null)),
-    });
     view.current = next;
+    next.b.dispatch({
+      effects: StateEffect.appendConfig.of(
+        chunkActions(
+          () => view.current?.b ?? null,
+          () => view.current?.a ?? null
+        )
+      ),
+    });
+    next.a.dispatch({
+      effects: StateEffect.appendConfig.of(
+        pushLocalActions(
+          () => view.current?.b ?? null,
+          () => view.current?.a ?? null
+        )
+      ),
+    });
     const track = () => {
       const list = getChunks(next.b.state)?.chunks ?? [];
       const head = next.b.state.selection.main.head;
@@ -96,15 +170,24 @@ export function ContentSplitMerge({
       setChunks({ count: list.length, index: found === -1 ? list.length - 1 : found });
     };
     track();
-    const cleanup = EditorView.updateListener.of((update) => {
-      if (update.docChanged || update.selectionSet) track();
+    next.b.dispatch({
+      effects: StateEffect.appendConfig.of(
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged || update.selectionSet) track();
+        })
+      ),
     });
-    next.b.dispatch({ effects: StateEffect.appendConfig.of(cleanup) });
     return () => {
       next.destroy();
       view.current = null;
     };
   }, [localText, remoteText]);
+
+  function replaceLocal(text: string) {
+    const editor = view.current?.b;
+    if (!editor) return;
+    editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: text } });
+  }
 
   return (
     <div className="space-y-2">
@@ -130,28 +213,10 @@ export function ContentSplitMerge({
         >
           ›
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() =>
-            view.current &&
-            view.current.b.dispatch({
-              changes: { from: 0, to: view.current.b.state.doc.length, insert: localText },
-            })
-          }
-        >
+        <Button size="sm" variant="outline" onClick={() => replaceLocal(localText)}>
           整篇回到本地
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() =>
-            view.current &&
-            view.current.b.dispatch({
-              changes: { from: 0, to: view.current.b.state.doc.length, insert: remoteText },
-            })
-          }
-        >
+        <Button size="sm" variant="outline" onClick={() => replaceLocal(remoteText)}>
           整篇采用远端
         </Button>
         <Button
@@ -162,10 +227,13 @@ export function ContentSplitMerge({
           保存到内容库
         </Button>
       </div>
+      <p className="text-xs text-muted-foreground">
+        左为远端、右为本地；两侧都可直接编辑，右侧内容就是保存结果。行内按钮把所在侧的这一块复制到另一侧。
+      </p>
       <div
         ref={host}
         data-testid="content-split-merge"
-        className="max-h-[28rem] overflow-auto rounded-2xl bg-muted/46 text-xs"
+        className="max-h-[32rem] overflow-auto rounded-2xl bg-muted/46 text-xs"
       />
     </div>
   );
