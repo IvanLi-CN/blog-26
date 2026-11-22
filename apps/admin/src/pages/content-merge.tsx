@@ -9,7 +9,6 @@ import {
 import { ContentMediaCompare } from "~/components/content-media-compare";
 import { ContentMergeEditor } from "~/components/content-merge-editor";
 import { ContentSplitMerge } from "~/components/content-split-merge";
-import { ContentThreeWayMerge } from "~/components/content-three-way-merge";
 import {
   Alert,
   Badge,
@@ -115,8 +114,8 @@ export function ContentRepoDiffView({
 }: {
   diff: ContentRepoDiffPayload | undefined;
   onSave?: (text: string) => void;
-  mode: "inline" | "split" | "three";
-  onModeChange: (mode: "inline" | "split" | "three") => void;
+  mode: "inline" | "split";
+  onModeChange: (mode: "inline" | "split") => void;
 }) {
   if (!diff) return null;
   if (diff.status !== "ready")
@@ -130,7 +129,6 @@ export function ContentRepoDiffView({
           [
             ["inline", "行内"],
             ["split", "双栏"],
-            ["three", "三路"],
           ] as const
         ).map(([value, label]) => (
           <Button
@@ -150,14 +148,12 @@ export function ContentRepoDiffView({
           remoteText={diff.remoteText ?? ""}
           onSave={onSave}
         />
-      ) : mode === "split" ? (
+      ) : (
         <ContentSplitMerge
           localText={diff.localText ?? ""}
           remoteText={diff.remoteText ?? ""}
           onSave={onSave}
         />
-      ) : (
-        <ContentThreeWayMerge regions={diff.regions ?? []} onSave={onSave} />
       )}
       <Disclosure summary="基线（共同祖先）">
         <div className="mt-2">
@@ -182,7 +178,7 @@ export function ContentMergePage() {
   const queryClient = useQueryClient();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [mode, setMode] = useState<"inline" | "split" | "three">("inline");
+  const [mode, setMode] = useState<"inline" | "split">("inline");
 
   const status = useQuery({
     queryKey: ["content-repo", "status"],

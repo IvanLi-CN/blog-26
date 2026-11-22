@@ -773,10 +773,6 @@ export interface ContentRepoDiffPayload {
   mergedText?: string | null;
   conflictingFields?: string[];
   bodyConflicts?: number;
-  regions?: (
-    | { kind: "stable"; text: string }
-    | { kind: "conflict"; base: string; local: string; remote: string }
-  )[];
   message?: string;
 }
 

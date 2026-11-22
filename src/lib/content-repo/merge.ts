@@ -33,28 +33,6 @@ export function mergeBody(base: string[], local: string[], remote: string[]): Bo
   return { clean: conflicts === 0, lines, conflicts };
 }
 
-export type MergeRegionView =
-  | { kind: "stable"; text: string }
-  | { kind: "conflict"; base: string; local: string; remote: string };
-
-/**
- * Three-way regions for the resolution surface. Stable regions carry the merged
- * text; unstable regions carry all three sides so a human can pick one.
- */
-export function mergeRegions(base: string[], local: string[], remote: string[]): MergeRegionView[] {
-  return diff3Merge(local, base, remote).map((region) => {
-    if (region.conflict) {
-      return {
-        kind: "conflict" as const,
-        base: region.conflict.o.join("\n"),
-        local: region.conflict.a.join("\n"),
-        remote: region.conflict.b.join("\n"),
-      };
-    }
-    return { kind: "stable" as const, text: region.ok.join("\n") };
-  });
-}
-
 function stable(value: unknown): string {
   return JSON.stringify(value ?? null);
 }

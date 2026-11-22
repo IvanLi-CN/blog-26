@@ -22,12 +22,7 @@ import {
   type ContentRepoTransport,
   createContentRepoTransport,
 } from "@/lib/content-repo/github";
-import {
-  type MergeRegionView,
-  mergeBody,
-  mergeFrontmatter,
-  mergeRegions,
-} from "@/lib/content-repo/merge";
+import { mergeBody, mergeFrontmatter } from "@/lib/content-repo/merge";
 import {
   buildCommitMessage,
   type ContentRepoBaseline,
@@ -733,7 +728,6 @@ export interface ContentRepoDiffOutcome {
   mergedText?: string | null;
   conflictingFields?: string[];
   bodyConflicts?: number;
-  regions?: MergeRegionView[];
   message?: string;
 }
 
@@ -794,7 +788,6 @@ export async function diffContentRepo(input: { path: string }): Promise<ContentR
       ),
       conflictingFields: frontmatter.conflicts,
       bodyConflicts: body.conflicts,
-      regions: mergeRegions(baseText.split("\n"), localText.split("\n"), remoteText.split("\n")),
     };
   } catch (caught) {
     return {

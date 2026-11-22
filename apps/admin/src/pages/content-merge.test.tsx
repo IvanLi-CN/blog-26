@@ -77,27 +77,20 @@ describe("ContentRepoDiffView", () => {
 });
 
 describe("ContentRepoDiffView modes", () => {
-  test("switches between inline, split and three-way comparison", () => {
+  test("switches between inline and split comparison", () => {
     const seen: string[] = [];
-    const regions = [
-      { kind: "stable" as const, text: "共同起点" },
-      { kind: "conflict" as const, base: "b", local: "local", remote: "remote" },
-    ];
     const { getByText, queryByTestId, rerender } = render(
       <ContentRepoDiffView
-        diff={diffPayload({ regions })}
+        diff={diffPayload()}
         mode="inline"
         onModeChange={(mode) => seen.push(mode)}
       />
     );
     expect(queryByTestId("content-merge-editor")).toBeTruthy();
     fireEvent.click(getByText("双栏"));
-    fireEvent.click(getByText("三路"));
-    expect(seen).toEqual(["split", "three"]);
-    rerender(
-      <ContentRepoDiffView diff={diffPayload({ regions })} mode="three" onModeChange={noop} />
-    );
-    expect(queryByTestId("content-three-way-merge")).toBeTruthy();
-    expect(getByText("0/1")).toBeTruthy();
+    expect(seen).toEqual(["split"]);
+    rerender(<ContentRepoDiffView diff={diffPayload()} mode="split" onModeChange={noop} />);
+    expect(queryByTestId("content-split-merge")).toBeTruthy();
+    expect(getByText("整篇采用远端")).toBeTruthy();
   });
 });
