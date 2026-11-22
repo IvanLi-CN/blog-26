@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { BookOpen, PauseCircle, PlayCircle, RefreshCcw, Sparkles } from "lucide-react";
 import { useState } from "react";
 import {
@@ -437,6 +438,21 @@ export function ContentSyncPage() {
   });
   const cancel = useMutation({ mutationFn: adminApi.cancelContentTask, onSuccess: refresh });
   const data = statusQuery.data;
+  const repoStatus = useQuery({
+    queryKey: ["content-repo", "status"],
+    queryFn: adminApi.getContentRepoStatus,
+  });
+  const repoCheck = useQuery({
+    queryKey: ["content-repo", "check"],
+    queryFn: adminApi.checkContentRepo,
+  });
+  const repoCounts = repoCheck.data?.counts ?? {};
+  const repoPending =
+    (repoCounts["merge-conflict"] ?? 0) +
+    (repoCounts["to-pull"] ?? 0) +
+    (repoCounts["to-push"] ?? 0) +
+    (repoCounts["remote-new"] ?? 0) +
+    (repoCounts["remote-deleted"] ?? 0);
   const active = data?.tasks.items.filter((task) => task.finishedAt === null) ?? [];
   const latestPlaybookSync = data?.tasks.items.find(
     (task) => task.kind === "sync" && task.source === "playbook"
@@ -480,6 +496,38 @@ export function ContentSyncPage() {
           </>
         }
       />
+      {repoStatus.data?.configured && repoPending > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>内容仓库待同步</CardTitle>
+            <CardDescription>
+              {repoStatus.data.repository ?? "-"} · {repoStatus.data.ref ?? "-"} · 共 {repoPending}{" "}
+              个文件需要处理
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-2">
+            {(
+              [
+                ["merge-conflict", "需要合并"],
+                ["to-pull", "待拉取"],
+                ["to-push", "待推送"],
+                ["remote-new", "远端新增"],
+                ["remote-deleted", "远端删除"],
+              ] as const
+            ).map(([state, label]) =>
+              (repoCounts[state] ?? 0) > 0 ? (
+                <Badge key={state} tone={state === "merge-conflict" ? "danger" : "warning"}>
+                  {label} {repoCounts[state]}
+                </Badge>
+              ) : null
+            )}
+            <span className="flex-1" />
+            <Button asChild variant="outline">
+              <Link to="/content-merge">打开差异与合并</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
       {statusQuery.isLoading ? (
         <Alert>
           <Spinner /> 读取内容与索引状态…

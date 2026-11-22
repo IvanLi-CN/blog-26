@@ -94,7 +94,6 @@ const navSections = [
       { to: "/posts", label: "文章", icon: Files },
       { to: "/comments", label: "评论", icon: MessageSquareMore },
       { to: "/content-sync", label: "内容同步", icon: RefreshCcw },
-      { to: "/content-merge", label: "差异与合并", icon: GitCompareArrows },
     ],
   },
   {
