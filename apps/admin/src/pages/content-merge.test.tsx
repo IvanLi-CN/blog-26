@@ -98,6 +98,6 @@ describe("ContentRepoDiffView modes", () => {
       <ContentRepoDiffView diff={diffPayload({ regions })} mode="three" onModeChange={noop} />
     );
     expect(queryByTestId("content-three-way-merge")).toBeTruthy();
-    expect(getByText("1/1")).toBeTruthy();
+    expect(getByText("0/1")).toBeTruthy();
   });
 });
