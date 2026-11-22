@@ -9,7 +9,7 @@
     "apps/admin/src/components/content-merge-editor.tsx": "dbd7f4a14f0cec0f744cba9715b222a457d2a055",
     "apps/admin/src/components/content-split-merge.tsx": "d3ecff8ab6451d71307094b2b083ffdc287627ca",
     "apps/admin/src/components/content-text-diff.tsx": "73195236e642b91806b09f5b97dc5ca347005653",
-    "apps/admin/src/components/content-three-way-merge.tsx": "ba760e167ec11f1b4e1e574878405d7deac8b57e",
+    "apps/admin/src/components/content-three-way-merge.tsx": "e088ed55099b4651f699dcc1e893723180f9c97f",
     "apps/admin/src/demo/mock-admin-api.ts": "e97749e119805c63162d5ab10e473dbba3cff07a",
     "apps/admin/src/editor/merge-editor-language.ts": "aab8b03d88515fd79e5652bd60d42dfbaa44dcac",
     "apps/admin/src/editor/merge-editor-theme.ts": "331e00fdc5a27078a759aac704848fe1cf824af2",
@@ -21,8 +21,8 @@
     "docs/adr/0043-database-content-authority-and-repository-sync.md": "ed536b4d68b7ad1fc98c5f08056a139f54d4d8c1",
     "docs/specs/README.md": "52cc61f4c0dd149e989deb4f9ab1a57fb3806ee7",
     "docs/specs/content-git-sync/HISTORY.md": "46da7ebe73b7de5f6337312ada6e007254ea0bdb",
-    "docs/specs/content-git-sync/IMPLEMENTATION.md": "ed23f0b4760698f10115479adfed036094ad296e",
-    "docs/specs/content-git-sync/SPEC.md": "bfbfd9343a29c9eba92f8fccf176e2edcf4881ff",
+    "docs/specs/content-git-sync/IMPLEMENTATION.md": "002082fa21180c95822378cdd3f0d8ee4793798c",
+    "docs/specs/content-git-sync/SPEC.md": "4e8c046f73672a493694265c294f93526f9810f5",
     "drizzle/0033_content_repo_baselines.sql": "e2f4ffa7430f2c5954ed4ea138d6fd2869ea1c4b",
     "drizzle/0034_content_media.sql": "2b2e1843636da9cb73dd45cb50ae15e6603f544c",
     "drizzle/0035_content_repo_baseline_document.sql": "7de677f23ebbfc3a97c282b4d4bfdaffac74858f",
@@ -68,7 +68,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "bfbfd9343a29c9eba92f8fccf176e2edcf4881ff",
+          "blob": "4e8c046f73672a493694265c294f93526f9810f5",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts"
         }
       ]
@@ -80,7 +80,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "bfbfd9343a29c9eba92f8fccf176e2edcf4881ff",
+          "blob": "4e8c046f73672a493694265c294f93526f9810f5",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts"
         }
       ],
@@ -174,7 +174,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "bfbfd9343a29c9eba92f8fccf176e2edcf4881ff",
+          "blob": "4e8c046f73672a493694265c294f93526f9810f5",
           "command": "Admin routes are administrator-only; public routes, payloads and search responses are untouched"
         }
       ]
