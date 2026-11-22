@@ -3,6 +3,7 @@ import { RangeSet, StateEffect } from "@codemirror/state";
 import { EditorView, GutterMarker, gutter } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui";
+import { mergeEditorTheme } from "~/editor/merge-editor-theme";
 
 type Chunk = { fromA: number; toA: number; fromB: number; toB: number };
 
@@ -22,7 +23,7 @@ class ChunkAction extends GutterMarker {
     remote.title = "采用远端的这一块";
     remote.textContent = "←";
     remote.className =
-      "cursor-pointer rounded border border-border bg-surface px-1 text-[10px] leading-4 hover:bg-muted";
+      "cursor-pointer rounded border border-border bg-card px-1 text-[10px] leading-4 text-foreground hover:bg-muted";
     remote.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -51,7 +52,7 @@ class PushLocalAction extends GutterMarker {
     button.title = "把本地的这一块写回远端";
     button.textContent = "→";
     button.className =
-      "mr-1 cursor-pointer rounded border border-border bg-surface px-1 text-[10px] leading-4 hover:bg-muted";
+      "mr-1 cursor-pointer rounded border border-border bg-card px-1 text-[10px] leading-4 text-foreground hover:bg-muted";
     button.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -147,6 +148,8 @@ export function ContentSplitMerge({
       collapseUnchanged: { margin: 3 },
     });
     view.current = next;
+    next.a.dispatch({ effects: StateEffect.appendConfig.of(mergeEditorTheme) });
+    next.b.dispatch({ effects: StateEffect.appendConfig.of(mergeEditorTheme) });
     next.b.dispatch({
       effects: StateEffect.appendConfig.of(
         chunkActions(
@@ -233,7 +236,7 @@ export function ContentSplitMerge({
       <div
         ref={host}
         data-testid="content-split-merge"
-        className="max-h-[32rem] overflow-auto rounded-2xl bg-muted/46 text-xs"
+        className="max-h-[32rem] overflow-auto rounded-2xl bg-code-surface text-xs"
       />
     </div>
   );

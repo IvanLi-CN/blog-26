@@ -4,6 +4,7 @@ import { EditorState, StateEffect, StateField, Text } from "@codemirror/state";
 import { Decoration, EditorView, keymap, lineNumbers, WidgetType } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui";
+import { mergeEditorTheme } from "~/editor/merge-editor-theme";
 
 type Chunk = { fromA: number; toA: number; fromB: number; toB: number };
 
@@ -159,6 +160,7 @@ export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMer
         ],
       }),
     });
+    next.dispatch({ effects: StateEffect.appendConfig.of(mergeEditorTheme) });
     view.current = next;
     track(next);
     return () => {
@@ -214,7 +216,7 @@ export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMer
       <div
         ref={host}
         data-testid="content-merge-editor"
-        className="max-h-[28rem] overflow-auto rounded-2xl bg-muted/46 text-xs"
+        className="max-h-[28rem] overflow-auto rounded-2xl bg-code-surface text-xs"
       />
     </div>
   );
