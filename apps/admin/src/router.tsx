@@ -2,6 +2,7 @@ import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/
 import { AppShell } from "~/components/app-shell";
 import { AiUsagePage } from "~/pages/ai-usage";
 import { CommentsPage } from "~/pages/comments";
+import { ContentMergePage } from "~/pages/content-merge";
 import { ContentSyncPage } from "~/pages/content-sync";
 import { DashboardPage } from "~/pages/dashboard";
 import { EditorPage } from "~/pages/editor";
@@ -67,6 +68,11 @@ const githubBindingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "github-binding",
   component: GithubBindingPage,
+});
+const contentMergeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "content-merge",
+  component: ContentMergePage,
 });
 const contentSyncRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -162,6 +168,7 @@ export const routeTree = rootRoute.addChildren([
   editorRoute,
   commentsRoute,
   githubBindingRoute,
+  contentMergeRoute,
   contentSyncRoute,
   schedulesRoute,
   projectStatusRoute,

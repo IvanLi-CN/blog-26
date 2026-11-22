@@ -1009,6 +1009,69 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       );
     }
 
+    if (pathname === "/content-repo/status") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(await caller.admin.contentRepo.status(), { status: 200 }, resHeaders);
+    }
+    if (pathname === "/content-repo/diff") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const path = url.searchParams.get("path");
+      if (!path) return json({ error: "path is required" }, { status: 400 }, resHeaders);
+      return json(await caller.admin.contentRepo.diff({ path }), { status: 200 }, resHeaders);
+    }
+    if (pathname === "/content-repo/check") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const ids = url.searchParams.getAll("id");
+      return json(
+        await caller.admin.contentRepo.check(ids.length ? { ids } : undefined),
+        { status: 200 },
+        resHeaders
+      );
+    }
+    const contentRepoAction = pathname.match(
+      /^\/content-repo\/(pull|push|merge|accept-remote|remove-remote-deleted)$/
+    );
+    if (contentRepoAction) {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      const body = (await parseJsonBody(request)) as {
+        ids?: string[];
+        paths?: string[];
+        all?: boolean;
+      };
+      switch (contentRepoAction[1]) {
+        case "pull":
+          return json(
+            await caller.admin.contentRepo.pull({ ids: body?.ids }),
+            { status: 200 },
+            resHeaders
+          );
+        case "push":
+          return json(
+            await caller.admin.contentRepo.push({ ids: body?.ids, all: body?.all }),
+            { status: 200 },
+            resHeaders
+          );
+        case "merge":
+          return json(
+            await caller.admin.contentRepo.merge({ ids: body?.ids }),
+            { status: 200 },
+            resHeaders
+          );
+        case "accept-remote":
+          return json(
+            await caller.admin.contentRepo.acceptRemote({ paths: body?.paths }),
+            { status: 200 },
+            resHeaders
+          );
+        default:
+          return json(
+            await caller.admin.contentRepo.removeRemoteDeleted({ paths: body?.paths }),
+            { status: 200 },
+            resHeaders
+          );
+      }
+    }
+
     if (pathname === "/content-sync/system-config") {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
       return json(await caller.admin.contentSync.getSystemConfig(), { status: 200 }, resHeaders);

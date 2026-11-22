@@ -530,6 +530,98 @@ export function pullContentRepo(input: { ids?: string[] } = {}): Promise<Content
   return pullFlight;
 }
 
+export interface ContentRepoDiffOutcome {
+  status: "ready" | "unavailable" | "unconfigured" | "failed";
+  path: string;
+  state?: string;
+  baseText?: string | null;
+  localText?: string | null;
+  remoteText?: string | null;
+  mergedText?: string | null;
+  fields?: { base: unknown; local: unknown; remote: unknown }[];
+  conflictingFields?: string[];
+  bodyConflicts?: number;
+  message?: string;
+}
+
+/** Read-only three-way view of one content for the administrator diff surface. */
+export async function diffContentRepo(input: { path: string }): Promise<ContentRepoDiffOutcome> {
+  const { config, error } = readContentRepoConfigOrFail();
+  if (!config) return { status: "failed", path: input.path, message: error ?? "" };
+  if (!config.token)
+    return {
+      status: "unconfigured",
+      path: input.path,
+      message: "Content repository is not configured",
+    };
+  try {
+    const context = await inspectContentRepo(config);
+    const item = context.items.find((candidate) => candidate.path === input.path);
+    if (!item) return { status: "unavailable", path: input.path, message: "Unknown path" };
+    const entry = context.entries.find((candidate) => candidate.document.path === input.path);
+    const baseline = context.baselines.get(input.path);
+    const decoder = new TextDecoder();
+    const baseText = baseline?.document ?? null;
+    const localText = entry ? decoder.decode(entry.document.bytes) : null;
+    const remoteText = item.remoteSha
+      ? decoder.decode(await context.transport.readBlob(item.remoteSha))
+      : null;
+    if (!baseText || !localText || !remoteText)
+      return {
+        status: "ready",
+        path: input.path,
+        state: item.state,
+        baseText,
+        localText,
+        remoteText,
+      };
+
+    const baseDoc = parseRemoteDocument(new TextEncoder().encode(baseText));
+    const localDoc = parseRemoteDocument(new TextEncoder().encode(localText));
+    const remoteDoc = parseRemoteDocument(new TextEncoder().encode(remoteText));
+    const frontmatter = mergeFrontmatter(
+      baseDoc.frontmatter,
+      localDoc.frontmatter,
+      remoteDoc.frontmatter
+    );
+    const body = mergeBody(
+      baseDoc.body.split("\n"),
+      localDoc.body.split("\n"),
+      remoteDoc.body.split("\n")
+    );
+    const keys = new Set([
+      ...Object.keys(baseDoc.frontmatter),
+      ...Object.keys(frontmatter.value),
+      ...frontmatter.conflicts,
+    ]);
+    const fields = [...keys].sort().map((key) => ({
+      base: baseDoc.frontmatter[key] ?? null,
+      local: localDoc.frontmatter[key] ?? null,
+      remote: remoteDoc.frontmatter[key] ?? null,
+    }));
+    return {
+      status: "ready",
+      path: input.path,
+      state: item.state,
+      baseText,
+      localText,
+      remoteText,
+      mergedText: new TextDecoder().decode(
+        serializeCanonicalDocument(frontmatter.value, body.lines.join("\n"))
+      ),
+      fields,
+      conflictingFields: frontmatter.conflicts,
+      bodyConflicts: body.conflicts,
+    };
+  } catch (caught) {
+    return {
+      status: "failed",
+      path: input.path,
+      message: caught instanceof Error ? caught.message : "Content repository diff failed",
+    };
+  }
+}
+
 export interface ContentRepoAdoptOutcome {
   status: "accepted" | "removed" | "nothing" | "unconfigured" | "failed";
   repository: string | null;

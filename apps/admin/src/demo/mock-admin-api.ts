@@ -1912,6 +1912,126 @@ async function handleAdminRequest(
     }
     return json({ success: true, message: "评论状态已更新" });
   }
+  if (path.startsWith("/api/admin/content-repo/")) {
+    const demoRepo = {
+      repository: "IvanLi-CN/blog-contents",
+      ref: "main",
+      commit: "0f1e2d3c4b5a69788796a5b4c3d2e1f001122334",
+    };
+    const demoItems = [
+      {
+        path: "blog/content-repo-sync.md",
+        kind: "post",
+        state: "to-push",
+        localHash: "hash-local-1",
+        baselineHash: "hash-base-1",
+        remoteSha: "remote-sha-1",
+        baselineSha: "remote-sha-1",
+        changedMedia: [],
+        missingMedia: [],
+      },
+      {
+        path: "blog/merge-demo.md",
+        kind: "post",
+        state: "merge-conflict",
+        localHash: "hash-local-2",
+        baselineHash: "hash-base-2",
+        remoteSha: "remote-sha-2",
+        baselineSha: "remote-sha-2",
+        changedMedia: [],
+        missingMedia: [],
+      },
+      {
+        path: "Memos/2026_demo.md",
+        kind: "memo",
+        state: "synced",
+        localHash: "hash-local-3",
+        baselineHash: "hash-base-3",
+        remoteSha: "remote-sha-3",
+        baselineSha: "remote-sha-3",
+        changedMedia: [],
+        missingMedia: [],
+      },
+      {
+        path: "blog/remote-only.md",
+        kind: "post",
+        state: "remote-new",
+        localHash: null,
+        baselineHash: null,
+        remoteSha: "remote-sha-4",
+        baselineSha: null,
+        changedMedia: [],
+        missingMedia: [],
+      },
+    ] as const;
+    if (path === "/api/admin/content-repo/status")
+      return json({ configured: true, ...demoRepo, baselines: 3 });
+    if (path === "/api/admin/content-repo/check")
+      return json({
+        status: "checked",
+        ...demoRepo,
+        items: demoItems,
+        counts: {
+          synced: 1,
+          "to-push": 1,
+          "to-pull": 0,
+          "remote-new": 1,
+          "remote-deleted": 0,
+          "merge-conflict": 1,
+        },
+      });
+    if (path === "/api/admin/content-repo/diff") {
+      const target = url.searchParams.get("path") ?? demoItems[1].path;
+      return json({
+        status: "ready",
+        path: target,
+        state: "merge-conflict",
+        baseText:
+          "---\ntitle: 发布流程\nslug: merge-demo\ndate: 2026-01-02\ndraft: false\npublic: true\n---\n共同的起点\n",
+        localText:
+          "---\ntitle: 发布流程（本地）\nslug: merge-demo\ndate: 2026-01-02\ndraft: false\npublic: true\n---\n共同的起点\n本地补充\n",
+        remoteText:
+          "---\ntitle: 发布流程（远端）\nslug: merge-demo\ndate: 2026-01-02\ndraft: false\npublic: true\n---\n共同的起点\n远端补充\n",
+        mergedText: null,
+        fields: [{ base: "发布流程", local: "发布流程（本地）", remote: "发布流程（远端）" }],
+        conflictingFields: ["title"],
+        bodyConflicts: 1,
+      });
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/merge") {
+      recordWebDemoMutation("尝试自动合并", "冲突未裁决（模拟）");
+      return json(
+        {
+          status: "conflicts",
+          ...demoRepo,
+          merged: [],
+          conflicts: [{ path: demoItems[1].path, fields: ["title"], bodyConflicts: 1 }],
+          skipped: [],
+        },
+        200
+      );
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/push") {
+      recordWebDemoMutation("推送内容", "写入仓库（模拟）");
+      return json({ status: "pushed", ...demoRepo, merged: [demoItems[0].path], skipped: [] }, 200);
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/pull") {
+      recordWebDemoMutation("拉取内容", "写入内容库（模拟）");
+      return json({ status: "pulled", ...demoRepo, pulled: [], skipped: [] }, 200);
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/accept-remote") {
+      recordWebDemoMutation("接受远端新增", "建立内容（模拟）");
+      return json(
+        { status: "accepted", ...demoRepo, paths: [demoItems[3].path], skipped: [] },
+        200
+      );
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/remove-remote-deleted") {
+      recordWebDemoMutation("确认远端删除", "删除内容（模拟）");
+      return json({ status: "removed", ...demoRepo, paths: [], skipped: [] }, 200);
+    }
+    return json({ error: "not found" }, 404);
+  }
   if (path === "/api/admin/content-sync/status") return json(unifiedSyncStatus(url));
   if (
     (path === "/api/admin/content-sync/trigger" &&

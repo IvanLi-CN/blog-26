@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   acceptRemoteNew,
   checkContentRepo,
+  diffContentRepo,
   mergeContentRepo,
   pullContentRepo,
   pushContentRepo,
@@ -13,6 +14,10 @@ import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 export const adminContentRepoRouter = createTRPCRouter({
   status: adminProcedure.query(() => readContentRepoStatus()),
+
+  diff: adminProcedure
+    .input(z.object({ path: z.string().min(1) }))
+    .query(({ input }) => diffContentRepo(input)),
 
   check: adminProcedure
     .input(z.object({ ids: z.array(z.string().min(1)).max(200).optional() }).optional())
