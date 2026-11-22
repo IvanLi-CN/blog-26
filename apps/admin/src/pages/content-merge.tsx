@@ -185,11 +185,13 @@ function StatusChip({
   const Icon = STATUS_ICON[status];
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${STATUS_TONE[status]}`}
+      className={`inline-flex items-center gap-1 text-[10px] leading-none font-medium ${STATUS_TONE[status]}`}
       title={title ?? STATE_LABEL[status]}
     >
-      <Icon className="size-3" />
-      {typeof count === "number" && count > 0 ? <span>{count}</span> : null}
+      <Icon className="shrink-0" style={{ width: 12, height: 12 }} />
+      {typeof count === "number" && count > 0 ? (
+        <span className="tabular-nums">{count}</span>
+      ) : null}
     </span>
   );
 }
@@ -553,7 +555,7 @@ function DirRow({
       )}
       <Folder className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="truncate">{node.name}</span>
-      <span className="ml-auto flex shrink-0 items-center gap-1 pr-2">
+      <span className="ml-auto flex shrink-0 items-center gap-2 pr-2">
         {STATUS_ORDER.map((status) =>
           (statuses.get(status) ?? 0) > 0 ? (
             <StatusChip key={status} status={status} count={statuses.get(status)} />
@@ -589,7 +591,7 @@ function FileTreeRow({
     >
       <Icon className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="truncate text-foreground">{name}</span>
-      <span className="ml-auto flex shrink-0 items-center gap-1 pr-2">
+      <span className="ml-auto flex shrink-0 items-center gap-2 pr-2">
         {saved ? (
           <span title="已保存到内容库" className="text-success">
             <Check className="size-4" />
