@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save } from "lucide-react";
-import { useRef, useState } from "react";
+import { Check, FileText, GitMerge, Paperclip, RefreshCcw, Save, StickyNote } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   adminApi,
   type ContentRepoActionPayload,
   type ContentRepoDiffPayload,
   type ContentRepoSyncItem,
 } from "@/lib/admin-api-client";
+import { useAppShellSidebar } from "~/components/app-shell";
 import { ContentMediaCompare } from "~/components/content-media-compare";
 import { ContentMergeEditor } from "~/components/content-merge-editor";
 import type { ContentMergeHandle } from "~/components/content-merge-handle";
@@ -25,12 +26,6 @@ import {
   EmptyState,
   Separator,
   Spinner,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from "~/components/ui";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
 
@@ -43,18 +38,6 @@ const STATE_LABEL: Record<ContentRepoSyncItem["state"], string> = {
   "merge-conflict": "需要合并",
 };
 
-const STATE_TONE: Record<
-  ContentRepoSyncItem["state"],
-  "default" | "muted" | "success" | "warning" | "danger" | "outline"
-> = {
-  synced: "success",
-  "to-push": "default",
-  "to-pull": "outline",
-  "remote-new": "warning",
-  "remote-deleted": "warning",
-  "merge-conflict": "danger",
-};
-
 type FileRow = {
   key: string;
   path: string;
@@ -63,7 +46,7 @@ type FileRow = {
   media?: { path: string; missing: boolean };
 };
 
-/** One row per file: documents and attachments never share a merge surface. */
+/** One row per file, flattened in directory-tree order. */
 function buildFileRows(items: ContentRepoSyncItem[]): FileRow[] {
   const rows = new Map<string, FileRow>();
   for (const item of items) {
@@ -87,7 +70,232 @@ function buildFileRows(items: ContentRepoSyncItem[]): FileRow[] {
       });
     }
   }
-  return [...rows.values()].sort((left, right) => left.path.localeCompare(right.path));
+  return [...rows.values()].sort((left, right) =>
+    left.path.localeCompare(right.path, "en", { numeric: true })
+  );
+}
+
+function rowNeedsAttention(row: FileRow) {
+  if (row.media) return true;
+  return row.item.state !== "synced";
+}
+
+function treeCells(path: string) {
+  const segments = path.split("/");
+  return {
+    dir: segments.slice(0, -1).join("/"),
+    name: segments[segments.length - 1],
+    depth: segments.length - 1,
+  };
+}
+
+function useInView<T extends HTMLElement>(enabled: boolean) {
+  const ref = useRef<T | null>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    if (seen || !enabled || !ref.current) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setSeen(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "300px" }
+    );
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [enabled, seen]);
+  return { ref, seen };
+}
+
+function VirtualList<T>({
+  items,
+  height,
+  rowHeight = 38,
+  render,
+}: {
+  items: T[];
+  height: number;
+  rowHeight?: number;
+  render: (item: T, index: number) => ReactNode;
+}) {
+  const [scrollTop, setScrollTop] = useState(0);
+  const overscan = 6;
+  const start = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
+  const visible = Math.ceil(height / rowHeight) + overscan * 2;
+  const slice = items.slice(start, start + visible);
+  return (
+    <div
+      className="overflow-auto"
+      style={{ height }}
+      onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+    >
+      <div style={{ height: items.length * rowHeight, position: "relative" }}>
+        <div style={{ transform: `translateY(${start * rowHeight}px)` }}>
+          {slice.map((item, index) => render(item, start + index))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FileStatusMarker({ row, conflicts }: { row: FileRow; conflicts: number | null }) {
+  if (row.media) {
+    return (
+      <span title="二进制文件存在冲突" className="text-destructive">
+        <GitMerge className="size-4" />
+      </span>
+    );
+  }
+  if (row.item.state === "merge-conflict") {
+    return (
+      <Badge tone="danger" className="whitespace-nowrap">
+        冲突 {conflicts ?? "?"}
+      </Badge>
+    );
+  }
+  if (row.item.state !== "synced") {
+    return (
+      <Badge tone="warning" className="whitespace-nowrap">
+        {STATE_LABEL[row.item.state]}
+      </Badge>
+    );
+  }
+  return (
+    <span title="无冲突" className="text-success">
+      <Check className="size-4" />
+    </span>
+  );
+}
+
+function FileCard({
+  row,
+  mode,
+  onModeChange,
+  onCount,
+  onSave,
+  onAdopt,
+  onMerge,
+  onPush,
+  onPull,
+  onAccept,
+  onRemove,
+  busy,
+}: {
+  row: FileRow;
+  mode: "inline" | "split" | "three";
+  onModeChange: (mode: "inline" | "split" | "three") => void;
+  onCount: (path: string, count: number) => void;
+  onSave: (path: string, text: string) => void;
+  onAdopt: (path: string, media: string) => void;
+  onMerge: (path: string) => void;
+  onPush: (path: string) => void;
+  onPull: (path: string) => void;
+  onAccept: (path: string) => void;
+  onRemove: (path: string) => void;
+  busy: boolean;
+}) {
+  const { ref, seen } = useInView<HTMLDivElement>(true);
+  const handle = useRef<ContentMergeHandle | null>(null);
+
+  const diff = useQuery({
+    queryKey: ["content-repo", "diff", row.path],
+    queryFn: () => adminApi.getContentRepoDiff(row.path),
+    enabled: seen && !row.media,
+  });
+  const media = useQuery({
+    queryKey: ["content-repo", "media", row.item.path, row.media?.path],
+    queryFn: () => adminApi.getContentRepoMedia(row.item.path),
+    enabled: seen && Boolean(row.media),
+  });
+
+  useEffect(() => {
+    if (!diff.data || diff.data.status !== "ready") return;
+    const conflicts = (diff.data.conflictingFields?.length ?? 0) + (diff.data.bodyConflicts ?? 0);
+    onCount(row.path, conflicts);
+  }, [diff.data, onCount, row.path]);
+
+  const mediaItems = (media.data?.items ?? []).filter((item) => item.path === row.media?.path);
+
+  return (
+    <div ref={ref}>
+      <Card data-testid={`file-card-${row.path}`}>
+        <CardHeader className="flex-row items-start justify-between gap-4">
+          <div className="space-y-1.5">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="size-4 text-muted-foreground" />
+              {row.path}
+            </CardTitle>
+            <CardDescription>
+              {row.media
+                ? `附件文件 · 所属 ${row.item.path} · ${row.media.missing ? "本地缺失" : "两侧不同"}`
+                : `${STATE_LABEL[row.item.state]} · 基线 ${row.item.baselineHash?.slice(0, 8) ?? "-"} · 远端 ${row.item.remoteSha?.slice(0, 8) ?? "-"}`}
+            </CardDescription>
+          </div>
+          {!row.media ? (
+            <Button
+              size="lg"
+              onClick={() => {
+                const text = handle.current?.getText();
+                if (text !== undefined) onSave(row.path, text);
+              }}
+              disabled={!diff.data || diff.data.status !== "ready"}
+            >
+              <Save />
+              保存到内容库
+            </Button>
+          ) : null}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {row.media ? (
+            media.isLoading ? (
+              <Spinner />
+            ) : mediaItems.length ? (
+              <ContentMediaCompare
+                items={mediaItems}
+                busy={busy}
+                onAdopt={(mediaPath) => onAdopt(row.item.path, mediaPath)}
+              />
+            ) : (
+              <EmptyState title="附件暂不可预览" description="远端没有提供这个文件的可读版本。" />
+            )
+          ) : diff.isLoading ? (
+            <Spinner />
+          ) : (
+            <ContentRepoDiffView
+              diff={diff.data}
+              mode={mode}
+              onModeChange={onModeChange}
+              onReady={(next) => {
+                handle.current = next;
+              }}
+            />
+          )}
+          <Separator />
+          <div className="flex flex-wrap gap-2">
+            {!row.media && row.item.state === "merge-conflict" ? (
+              <Button onClick={() => onMerge(row.path)}>尝试自动合并</Button>
+            ) : null}
+            {!row.media && row.item.state === "to-pull" ? (
+              <Button onClick={() => onPull(row.path)}>拉取到内容库</Button>
+            ) : null}
+            {!row.media && row.item.state === "to-push" ? (
+              <Button onClick={() => onPush(row.path)}>推送到仓库</Button>
+            ) : null}
+            {!row.media && row.item.state === "remote-new" ? (
+              <Button onClick={() => onAccept(row.path)}>接受远端新增</Button>
+            ) : null}
+            {!row.media && row.item.state === "remote-deleted" ? (
+              <Button variant="destructive" onClick={() => onRemove(row.path)}>
+                确认远端删除
+              </Button>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function TextPane({ title, text }: { title: string; text: string | null | undefined }) {
@@ -180,12 +388,56 @@ function actionSummary(result: ContentRepoActionPayload) {
   return parts.join(" · ");
 }
 
+function TreeRow({
+  row,
+  conflicts,
+  saved,
+  onSelect,
+}: {
+  row: FileRow;
+  conflicts: number | null;
+  saved: boolean;
+  onSelect: () => void;
+}) {
+  const { dir, name, depth } = treeCells(row.path);
+  const Icon = row.media ? Paperclip : row.item.kind === "memo" ? StickyNote : FileText;
+  return (
+    <Button
+      variant="row"
+      onClick={onSelect}
+      className="flex w-full items-center gap-2 rounded-none px-2 text-left text-xs hover:bg-muted/50"
+      style={{ height: 38, paddingLeft: 8 + depth * 12 }}
+      title={row.path}
+    >
+      <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="truncate">
+        <span className="text-muted-foreground">{dir ? `${dir}/` : ""}</span>
+        <span className="text-foreground">{name}</span>
+      </span>
+      <span className="ml-auto flex shrink-0 items-center gap-1 pr-2">
+        {saved ? (
+          <span title="已保存到内容库" className="text-success">
+            <Check className="size-4" />
+          </span>
+        ) : (
+          <FileStatusMarker row={row} conflicts={conflicts} />
+        )}
+      </span>
+    </Button>
+  );
+}
+
+interface SavedMark {
+  contentHash: string;
+  remoteSha: string | null;
+}
+
 export function ContentMergePage() {
   const queryClient = useQueryClient();
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [mode, setMode] = useState<"inline" | "split" | "three">("inline");
-  const mergeHandle = useRef<ContentMergeHandle | null>(null);
+  const [conflicts, setConflicts] = useState<Record<string, number>>({});
+  const [saved, setSaved] = useState<Record<string, SavedMark>>({});
 
   const status = useQuery({
     queryKey: ["content-repo", "status"],
@@ -195,30 +447,9 @@ export function ContentMergePage() {
     queryKey: ["content-repo", "check"],
     queryFn: adminApi.checkContentRepo,
   });
-  const rows = buildFileRows(check.data?.items ?? []);
-  const selected = rows.find((row) => row.key === selectedKey) ?? null;
-  const media = useQuery({
-    queryKey: ["content-repo", "media", selected?.item.path],
-    queryFn: () => adminApi.getContentRepoMedia(selected?.item.path ?? ""),
-    enabled: Boolean(selected?.media),
-  });
-  const adoptMedia = useMutation({
-    mutationFn: (input: { path: string; media: string }) => adminApi.adoptRemoteMedia(input),
-    onSuccess: async (result) => {
-      setNotice(
-        result.status === "saved"
-          ? `已采用远端附件：${result.mediaPath ?? ""}`
-          : (result.message ?? result.status)
-      );
-      await refresh();
-    },
-    onError: (error) => setNotice(getErrorMessage(error)),
-  });
-  const diff = useQuery({
-    queryKey: ["content-repo", "diff", selected?.path],
-    queryFn: () => adminApi.getContentRepoDiff(selected?.path ?? ""),
-    enabled: Boolean(selected && !selected.media),
-  });
+
+  const rows = useMemo(() => buildFileRows(check.data?.items ?? []), [check.data]);
+  const actionable = rows.filter(rowNeedsAttention);
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["content-repo"] });
@@ -229,6 +460,37 @@ export function ContentMergePage() {
   };
   const onError = (error: unknown) => setNotice(getErrorMessage(error));
 
+  const adoptMedia = useMutation({
+    mutationFn: (input: { path: string; media: string }) => adminApi.adoptRemoteMedia(input),
+    onSuccess: async (result) => {
+      setNotice(
+        result.status === "saved"
+          ? `已采用远端附件：${result.mediaPath ?? ""}`
+          : (result.message ?? result.status)
+      );
+      await refresh();
+    },
+    onError,
+  });
+  const resolve = useMutation({
+    mutationFn: (input: { path: string; text: string; remoteSha: string | null }) =>
+      adminApi.resolveContentRepo({ path: input.path, text: input.text }),
+    onSuccess: async (result, input) => {
+      setNotice(
+        result.status === "saved"
+          ? `已保存到内容库：${result.path}`
+          : (result.message ?? result.status)
+      );
+      if (result.status === "saved" && result.contentHash) {
+        setSaved((current) => ({
+          ...current,
+          [input.path]: { contentHash: result.contentHash as string, remoteSha: input.remoteSha },
+        }));
+      }
+      await refresh();
+    },
+    onError,
+  });
   const merge = useMutation({
     mutationFn: (input: { ids?: string[] }) => adminApi.mergeContentRepo(input),
     onSuccess,
@@ -249,35 +511,87 @@ export function ContentMergePage() {
     onSuccess,
     onError,
   });
-  const resolve = useMutation({
-    mutationFn: (input: { path: string; text: string }) => adminApi.resolveContentRepo(input),
-    onSuccess: async (result) => {
-      setNotice(
-        result.status === "saved"
-          ? `已保存到内容库：${result.path}`
-          : (result.message ?? result.status)
-      );
-      await refresh();
-    },
-    onError: (error) => setNotice(getErrorMessage(error)),
-  });
   const remove = useMutation({
     mutationFn: (input: { paths?: string[] }) => adminApi.removeRemoteDeletedContent(input),
     onSuccess,
     onError,
   });
 
+  const onCount = (path: string, count: number) =>
+    setConflicts((current) => (current[path] === count ? current : { ...current, [path]: count }));
+
+  const sidebarPanel = useMemo(
+    () => ({
+      label: "内容仓库",
+      description: `${status.data?.repository ?? "-"} · ${status.data?.ref ?? "-"}`,
+      preferredMode: "route" as const,
+      content: (
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between gap-2 px-1 pb-2">
+            <span className="text-xs text-muted-foreground">待处理 {actionable.length}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void check.refetch();
+                void status.refetch();
+              }}
+              disabled={check.isFetching}
+            >
+              {check.isFetching ? <Spinner /> : <RefreshCcw />}
+              重新同步
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {check.isLoading ? (
+              <Spinner />
+            ) : rows.length === 0 ? (
+              <EmptyState title="没有内容" description="内容库为空，或尚未建立基线。" />
+            ) : (
+              <VirtualList
+                items={rows}
+                height={Math.min(rows.length * 38 + 4, 620)}
+                render={(row) => (
+                  <TreeRow
+                    row={row}
+                    conflicts={conflicts[row.path] ?? null}
+                    saved={Boolean(
+                      saved[row.path] &&
+                        saved[row.path].contentHash === row.item.localHash &&
+                        saved[row.path].remoteSha === row.item.remoteSha
+                    )}
+                    onSelect={() =>
+                      document
+                        .querySelector(`[data-testid="file-card-${CSS.escape(row.path)}"]`)
+                        ?.scrollIntoView({ block: "start", behavior: "smooth" })
+                    }
+                  />
+                )}
+              />
+            )}
+          </div>
+        </div>
+      ),
+    }),
+    [
+      actionable.length,
+      check.isFetching,
+      check.isLoading,
+      check.refetch,
+      conflicts,
+      rows,
+      saved,
+      status.data,
+      status.refetch,
+    ]
+  );
+  useAppShellSidebar(sidebarPanel);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="内容差异与合并"
-        description="比较本地内容库与内容仓库；冲突需要人工裁决，合并不会自动推送。"
-        actions={
-          <Button variant="outline" onClick={() => void refresh()} disabled={check.isFetching}>
-            {check.isFetching ? <Spinner /> : null}
-            重新检查
-          </Button>
-        }
+        description="按文件处理本地内容库与内容仓库的差异；保存到内容库后才算解决冲突。"
       />
 
       {notice ? <Alert tone="default">{notice}</Alert> : null}
@@ -288,179 +602,28 @@ export function ContentMergePage() {
         <Alert tone="danger">{check.data.message ?? "检查内容仓库失败"}</Alert>
       ) : null}
 
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>内容仓库</CardTitle>
-            <CardDescription>
-              {status.data?.repository ?? "-"} · {status.data?.ref ?? "-"} · 基线{" "}
-              {status.data?.baselines ?? 0}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(check.data?.counts ?? {}).map(([state, count]) => (
-                <Badge
-                  key={state}
-                  tone={STATE_TONE[state as ContentRepoSyncItem["state"]] ?? "muted"}
-                >
-                  {STATE_LABEL[state as ContentRepoSyncItem["state"]] ?? state} {count}
-                </Badge>
-              ))}
-            </div>
-            <Separator />
-            {check.isLoading ? (
-              <Spinner />
-            ) : rows.length === 0 ? (
-              <EmptyState title="没有内容" description="内容库为空，或尚未与内容仓库建立基线。" />
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>文件</TableHead>
-                      <TableHead>类型</TableHead>
-                      <TableHead>状态</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow
-                        key={row.key}
-                        data-selected={row.key === selectedKey ? "true" : undefined}
-                        className={row.key === selectedKey ? "bg-muted/46" : undefined}
-                      >
-                        <TableCell className="max-w-[18rem] truncate">
-                          <Button variant="ghost" size="sm" onClick={() => setSelectedKey(row.key)}>
-                            {row.path}
-                          </Button>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                          {row.label}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {row.media ? (
-                            <Badge tone={row.media.missing ? "danger" : "warning"}>
-                              {row.media.missing ? "附件缺失" : "附件变更"}
-                            </Badge>
-                          ) : (
-                            <Badge tone={STATE_TONE[row.item.state]}>
-                              {STATE_LABEL[row.item.state]}
-                            </Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-start justify-between gap-4">
-            <div className="space-y-1.5">
-              <CardTitle>{selected ? selected.path : "选择一个文件"}</CardTitle>
-              <CardDescription>
-                {!selected
-                  ? "左侧列表选择一个文件后查看三方差异。"
-                  : selected.media
-                    ? `附件文件 · 所属 ${selected.item.path} · ${selected.media.missing ? "本地缺失" : "两侧不同"}`
-                    : `${STATE_LABEL[selected.item.state]} · 基线 ${selected.item.baselineHash?.slice(0, 8) ?? "-"} · 远端 ${selected.item.remoteSha?.slice(0, 8) ?? "-"}`}
-              </CardDescription>
-            </div>
-            {selected && !selected.media ? (
-              <Button
-                size="lg"
-                onClick={() => {
-                  const text = mergeHandle.current?.getText();
-                  if (text !== undefined) resolve.mutate({ path: selected.path, text });
-                }}
-                disabled={!diff.data || diff.data.status !== "ready"}
-              >
-                <Save />
-                保存到内容库
-              </Button>
-            ) : null}
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!selected ? (
-              <EmptyState title="未选择文件" description="选择一条文件查看基线、本地与远端差异。" />
-            ) : selected.media ? (
-              <>
-                {selected.media.missing ? (
-                  <Alert tone="danger">本地缺少这个附件文件。</Alert>
-                ) : null}
-                {media.isLoading ? (
-                  <Spinner />
-                ) : media.data?.items?.length ? (
-                  <ContentMediaCompare
-                    items={media.data.items.filter((entry) => entry.path === selected.media?.path)}
-                    busy={adoptMedia.isPending}
-                    onAdopt={(mediaPath) =>
-                      adoptMedia.mutate({ path: selected.item.path, media: mediaPath })
-                    }
-                  />
-                ) : (
-                  <EmptyState
-                    title="附件暂不可预览"
-                    description="远端没有提供这个文件的可读版本。"
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                {diff.isLoading ? (
-                  <Spinner />
-                ) : (
-                  <ContentRepoDiffView
-                    diff={diff.data}
-                    mode={mode}
-                    onModeChange={setMode}
-                    onReady={(handle) => {
-                      mergeHandle.current = handle;
-                    }}
-                  />
-                )}
-                <Separator />
-                <div className="flex flex-wrap gap-2">
-                  {selected.item.state === "merge-conflict" ? (
-                    <Button onClick={() => merge.mutate({ ids: [selected.path] })}>
-                      尝试自动合并
-                    </Button>
-                  ) : null}
-                  {selected.item.state === "to-pull" ? (
-                    <Button onClick={() => pull.mutate({ ids: [selected.path] })}>
-                      拉取到内容库
-                    </Button>
-                  ) : null}
-                  {selected.item.state === "to-push" ? (
-                    <Button onClick={() => push.mutate({ ids: [selected.path] })}>
-                      推送到仓库
-                    </Button>
-                  ) : null}
-                  {selected.item.state === "remote-new" ? (
-                    <Button onClick={() => accept.mutate({ paths: [selected.path] })}>
-                      接受远端新增
-                    </Button>
-                  ) : null}
-                  {selected.item.state === "remote-deleted" ? (
-                    <Button
-                      variant="destructive"
-                      onClick={() => remove.mutate({ paths: [selected.path] })}
-                    >
-                      确认远端删除
-                    </Button>
-                  ) : null}
-                  {selected.item.state === "synced" ? (
-                    <p className="text-sm text-muted-foreground">两侧一致，无需操作。</p>
-                  ) : null}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+      <div className="space-y-4">
+        {actionable.length === 0 ? (
+          <EmptyState title="没有待处理文件" description="本地内容库与内容仓库一致。" />
+        ) : (
+          actionable.map((row) => (
+            <FileCard
+              key={`${row.path}|${row.item.remoteSha ?? "-"}|${row.item.localHash ?? "-"}`}
+              row={row}
+              mode={mode}
+              onModeChange={setMode}
+              onCount={onCount}
+              onSave={(path, text) => resolve.mutate({ path, text, remoteSha: row.item.remoteSha })}
+              onAdopt={(path, media) => adoptMedia.mutate({ path, media })}
+              onMerge={(path) => merge.mutate({ ids: [path] })}
+              onPush={(path) => push.mutate({ ids: [path] })}
+              onPull={(path) => pull.mutate({ ids: [path] })}
+              onAccept={(path) => accept.mutate({ paths: [path] })}
+              onRemove={(path) => remove.mutate({ paths: [path] })}
+              busy={adoptMedia.isPending}
+            />
+          ))
+        )}
       </div>
     </div>
   );

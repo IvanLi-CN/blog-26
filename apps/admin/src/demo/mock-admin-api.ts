@@ -61,6 +61,7 @@ import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 
 const now = Date.now();
+const demoResolvedHashes = new Map<string, string>();
 const consoleWebDemoPreviewStore = createConsoleWebDemoStore();
 
 const postBodies = {
@@ -2113,7 +2114,11 @@ async function handleAdminRequest(
       return json({
         status: "checked",
         ...demoRepo,
-        items: demoItems,
+        items: demoItems.map((item) =>
+          demoResolvedHashes.has(item.path)
+            ? { ...item, state: "to-push" as const, localHash: demoResolvedHashes.get(item.path) }
+            : item
+        ),
         counts: {
           synced: 1,
           "to-push": 1,
@@ -2154,6 +2159,16 @@ async function handleAdminRequest(
         conflictingFields: ["title", "tags"],
         bodyConflicts: demoMergeRegions.filter((region) => region.kind === "conflict").length - 2,
       });
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/resolve") {
+      const targetPath = typeof body.path === "string" ? body.path : null;
+      const text = typeof body.text === "string" ? body.text : null;
+      if (!targetPath || text === null)
+        return json({ error: "path and text are required" }, { status: 400 });
+      const contentHash = `hash-${text.length}`;
+      demoResolvedHashes.set(targetPath, contentHash);
+      recordWebDemoMutation("保存到内容库", "写入本地数据库（模拟）");
+      return json({ status: "saved", path: targetPath, contentHash }, 200);
     }
     if (method === "POST" && path === "/api/admin/content-repo/merge") {
       recordWebDemoMutation("尝试自动合并", "冲突未裁决（模拟）");
