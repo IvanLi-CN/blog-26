@@ -1,12 +1,5 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import {
-  acceptChunk,
-  getChunks,
-  goToNextChunk,
-  goToPreviousChunk,
-  rejectChunk,
-  unifiedMergeView,
-} from "@codemirror/merge";
+import { getChunks, goToNextChunk, goToPreviousChunk, unifiedMergeView } from "@codemirror/merge";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
@@ -22,16 +15,23 @@ export interface ContentMergeEditorProps {
 
 /**
  * Unified merge view: the editable buffer is the local document, the reference
- * document is the repository version. Chunk accept/reject belong to CodeMirror.
+ * document is the repository version. Chunk accept/reject controls live inside
+ * the document; the toolbar only navigates and takes a whole-file version.
  */
 export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMergeEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
-  const [chunkCount, setChunkCount] = useState(0);
+  const [chunks, setChunks] = useState({ count: 0, index: 0 });
 
   useEffect(() => {
     const parent = host.current;
     if (!parent) return undefined;
+    const track = (editor: EditorView) => {
+      const list = getChunks(editor.state)?.chunks ?? [];
+      const head = editor.state.selection.main.head;
+      const found = list.findIndex((chunk) => head <= chunk.toB);
+      setChunks({ count: list.length, index: found === -1 ? list.length - 1 : found });
+    };
     const next = new EditorView({
       parent,
       state: EditorState.create({
@@ -42,8 +42,7 @@ export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMer
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
-            if (update.docChanged || update.selectionSet)
-              setChunkCount(getChunks(update.state)?.chunks.length ?? 0);
+            if (update.docChanged || update.selectionSet) track(update.view);
           }),
           unifiedMergeView({
             original: remoteText,
@@ -62,12 +61,18 @@ export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMer
       }),
     });
     view.current = next;
-    setChunkCount(getChunks(next.state)?.chunks.length ?? 0);
+    track(next);
     return () => {
       next.destroy();
       view.current = null;
     };
   }, [localText, remoteText]);
+
+  function replaceWholeDocument(text: string) {
+    const editor = view.current;
+    if (!editor) return;
+    editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: text } });
+  }
 
   return (
     <div className="space-y-2">
@@ -75,44 +80,33 @@ export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMer
         <Button
           size="sm"
           variant="outline"
-          onClick={() => {
-            if (view.current) goToPreviousChunk(view.current);
-          }}
+          aria-label="上一处冲突"
+          title="上一处冲突"
+          onClick={() => view.current && goToPreviousChunk(view.current)}
         >
-          上一处差异
+          ‹
         </Button>
+        <span className="min-w-10 text-center text-xs text-muted-foreground" aria-live="polite">
+          {chunks.count ? chunks.index + 1 : 0}/{chunks.count}
+        </span>
         <Button
           size="sm"
           variant="outline"
-          onClick={() => {
-            if (view.current) goToNextChunk(view.current);
-          }}
+          aria-label="下一处冲突"
+          title="下一处冲突"
+          onClick={() => view.current && goToNextChunk(view.current)}
         >
-          下一处差异
+          ›
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => replaceWholeDocument(localText)}>
+          整篇回到本地
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => replaceWholeDocument(remoteText)}>
+          整篇采用远端
         </Button>
         <Button
           size="sm"
-          onClick={() => {
-            if (view.current) rejectChunk(view.current);
-          }}
-        >
-          采用远端本处
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            if (view.current) acceptChunk(view.current);
-          }}
-        >
-          保留本地本处
-        </Button>
-        <span className="text-xs text-muted-foreground">{chunkCount} 处差异</span>
-        <Button
-          size="sm"
-          onClick={() => {
-            if (view.current) onSave?.(view.current.state.doc.toString());
-          }}
+          onClick={() => onSave?.(view.current?.state.doc.toString() ?? "")}
           disabled={!onSave}
         >
           保存到内容库

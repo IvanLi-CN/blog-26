@@ -1,7 +1,7 @@
 import { getChunks, goToNextChunk, goToPreviousChunk, MergeView } from "@codemirror/merge";
 import { RangeSet, StateEffect } from "@codemirror/state";
 import { EditorView, GutterMarker, gutter } from "@codemirror/view";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui";
 
 type Chunk = { fromA: number; toA: number; fromB: number; toB: number };
@@ -71,6 +71,7 @@ export function ContentSplitMerge({
 }) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<MergeView | null>(null);
+  const [chunks, setChunks] = useState({ count: 0, index: 0 });
 
   useEffect(() => {
     const parent = host.current;
@@ -88,29 +89,22 @@ export function ContentSplitMerge({
       effects: StateEffect.appendConfig.of(chunkActions(() => view.current?.a ?? null)),
     });
     view.current = next;
+    const track = () => {
+      const list = getChunks(next.b.state)?.chunks ?? [];
+      const head = next.b.state.selection.main.head;
+      const found = list.findIndex((chunk) => head <= chunk.toB);
+      setChunks({ count: list.length, index: found === -1 ? list.length - 1 : found });
+    };
+    track();
+    const cleanup = EditorView.updateListener.of((update) => {
+      if (update.docChanged || update.selectionSet) track();
+    });
+    next.b.dispatch({ effects: StateEffect.appendConfig.of(cleanup) });
     return () => {
       next.destroy();
       view.current = null;
     };
   }, [localText, remoteText]);
-
-  function takeRemoteChunk() {
-    const merge = view.current;
-    if (!merge) return;
-    const chunks = getChunks(merge.b.state)?.chunks ?? [];
-    if (!chunks.length) return;
-    const position = merge.b.state.selection.main.head;
-    const chunk =
-      chunks.find((candidate) => position >= candidate.fromB && position <= candidate.toB) ??
-      chunks[0];
-    merge.b.dispatch({
-      changes: {
-        from: chunk.fromB,
-        to: chunk.toB,
-        insert: merge.a.state.sliceDoc(chunk.fromA, chunk.toA),
-      },
-    });
-  }
 
   return (
     <div className="space-y-2">
@@ -118,19 +112,47 @@ export function ContentSplitMerge({
         <Button
           size="sm"
           variant="outline"
+          aria-label="上一处冲突"
+          title="上一处冲突"
           onClick={() => view.current && goToPreviousChunk(view.current.b)}
         >
-          上一处差异
+          ‹
+        </Button>
+        <span className="min-w-10 text-center text-xs text-muted-foreground" aria-live="polite">
+          {chunks.count ? chunks.index + 1 : 0}/{chunks.count}
+        </span>
+        <Button
+          size="sm"
+          variant="outline"
+          aria-label="下一处冲突"
+          title="下一处冲突"
+          onClick={() => view.current && goToNextChunk(view.current.b)}
+        >
+          ›
         </Button>
         <Button
           size="sm"
           variant="outline"
-          onClick={() => view.current && goToNextChunk(view.current.b)}
+          onClick={() =>
+            view.current &&
+            view.current.b.dispatch({
+              changes: { from: 0, to: view.current.b.state.doc.length, insert: localText },
+            })
+          }
         >
-          下一处差异
+          整篇回到本地
         </Button>
-        <Button size="sm" onClick={takeRemoteChunk}>
-          本处采用远端
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            view.current &&
+            view.current.b.dispatch({
+              changes: { from: 0, to: view.current.b.state.doc.length, insert: remoteText },
+            })
+          }
+        >
+          整篇采用远端
         </Button>
         <Button
           size="sm"

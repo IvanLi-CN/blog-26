@@ -35,7 +35,7 @@ describe("ContentRepoDiffView", () => {
     );
     expect(getByTestId("content-repo-diff")).toBeTruthy();
     expect(getByTestId("content-merge-editor")).toBeTruthy();
-    expect(getByText("采用远端本处")).toBeTruthy();
+    expect(getByText("整篇采用远端")).toBeTruthy();
     expect(getByText("保存到内容库")).toBeTruthy();
     expect(getByText("base line")).toBeTruthy();
   });
@@ -98,6 +98,6 @@ describe("ContentRepoDiffView modes", () => {
       <ContentRepoDiffView diff={diffPayload({ regions })} mode="three" onModeChange={noop} />
     );
     expect(queryByTestId("content-three-way-merge")).toBeTruthy();
-    expect(getByText(/待决 1/u)).toBeTruthy();
+    expect(getByText("1/1")).toBeTruthy();
   });
 });
