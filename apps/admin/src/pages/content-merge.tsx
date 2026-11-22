@@ -243,7 +243,6 @@ function FileCard({
   onSave,
   onAdopt,
   onMerge,
-  onPush,
   onPull,
   onAccept,
   onRemove,
@@ -256,7 +255,6 @@ function FileCard({
   onSave: (path: string, text: string) => void;
   onAdopt: (path: string, media: string) => void;
   onMerge: (path: string) => void;
-  onPush: (path: string) => void;
   onPull: (path: string) => void;
   onAccept: (path: string) => void;
   onRemove: (path: string) => void;
@@ -309,7 +307,7 @@ function FileCard({
               disabled={!diff.data || diff.data.status !== "ready"}
             >
               <Save />
-              保存到内容库
+              保存
             </Button>
           ) : null}
         </CardHeader>
@@ -338,26 +336,31 @@ function FileCard({
               }}
             />
           )}
-          <Separator />
-          <div className="flex flex-wrap gap-2">
-            {!row.media && row.item.state === "merge-conflict" ? (
-              <Button onClick={() => onMerge(row.path)}>尝试自动合并</Button>
-            ) : null}
-            {!row.media && row.item.state === "to-pull" ? (
-              <Button onClick={() => onPull(row.path)}>拉取到内容库</Button>
-            ) : null}
-            {!row.media && row.item.state === "to-push" ? (
-              <Button onClick={() => onPush(row.path)}>推送到仓库</Button>
-            ) : null}
-            {!row.media && row.item.state === "remote-new" ? (
-              <Button onClick={() => onAccept(row.path)}>接受远端新增</Button>
-            ) : null}
-            {!row.media && row.item.state === "remote-deleted" ? (
-              <Button variant="destructive" onClick={() => onRemove(row.path)}>
-                确认远端删除
-              </Button>
-            ) : null}
-          </div>
+          {!row.media &&
+          (row.item.state === "merge-conflict" ||
+            row.item.state === "to-pull" ||
+            row.item.state === "remote-new" ||
+            row.item.state === "remote-deleted") ? (
+            <>
+              <Separator />
+              <div className="flex flex-wrap gap-2">
+                {!row.media && row.item.state === "merge-conflict" ? (
+                  <Button onClick={() => onMerge(row.path)}>尝试自动合并</Button>
+                ) : null}
+                {!row.media && row.item.state === "to-pull" ? (
+                  <Button onClick={() => onPull(row.path)}>拉取到内容库</Button>
+                ) : null}
+                {!row.media && row.item.state === "remote-new" ? (
+                  <Button onClick={() => onAccept(row.path)}>接受远端新增</Button>
+                ) : null}
+                {!row.media && row.item.state === "remote-deleted" ? (
+                  <Button variant="destructive" onClick={() => onRemove(row.path)}>
+                    确认远端删除
+                  </Button>
+                ) : null}
+              </div>
+            </>
+          ) : null}
         </CardContent>
       </Card>
     </div>
@@ -682,18 +685,23 @@ export function ContentMergePage() {
     mutationFn: (input: { path: string; text: string; remoteSha: string | null }) =>
       adminApi.resolveContentRepo({ path: input.path, text: input.text }),
     onSuccess: async (result, input) => {
-      setNotice(
-        result.status === "saved"
-          ? `已保存到内容库：${result.path}`
-          : (result.message ?? result.status)
-      );
-      if (result.status === "saved" && result.contentHash) {
+      if (result.status !== "saved") {
+        setNotice(result.message ?? result.status);
+        return;
+      }
+      if (result.contentHash) {
         setSaved((current) => ({
           ...current,
           [input.path]: { contentHash: result.contentHash as string, remoteSha: input.remoteSha },
         }));
       }
       await refresh();
+      if (status.data?.configured) {
+        setNotice(`已保存到内容库，正在推送到仓库：${result.path}`);
+        push.mutate({ ids: [input.path] });
+        return;
+      }
+      setNotice(`已保存到内容库（内容仓库未配置，未推送）：${result.path}`);
     },
     onError,
   });
@@ -704,8 +712,14 @@ export function ContentMergePage() {
   });
   const push = useMutation({
     mutationFn: (input: { ids?: string[] }) => adminApi.pushContentRepo(input),
-    onSuccess,
-    onError,
+    onSuccess: async (result, input) => {
+      const path = input.ids?.[0] ?? "";
+      if (result.status === "pushed") setNotice(`已保存并推送到仓库：${path}`);
+      else if (result.status === "unchanged") setNotice(`已保存到内容库，仓库内容已一致：${path}`);
+      else setNotice(`已保存到内容库，推送未完成：${result.message ?? result.status}`);
+      await refresh();
+    },
+    onError: (error) => setNotice(`已保存到内容库，推送失败：${getErrorMessage(error)}`),
   });
   const pull = useMutation({
     mutationFn: (input: { ids?: string[] }) => adminApi.pullContentRepo(input),
