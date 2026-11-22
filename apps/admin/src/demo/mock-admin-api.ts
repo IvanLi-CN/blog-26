@@ -1938,7 +1938,7 @@ async function handleAdminRequest(
         baselineHash: "hash-base-2",
         remoteSha: "remote-sha-2",
         baselineSha: "remote-sha-2",
-        changedMedia: [],
+        changedMedia: ["blog/assets/cover.png"],
         missingMedia: [],
       },
       {
@@ -1980,6 +1980,23 @@ async function handleAdminRequest(
           "merge-conflict": 1,
         },
       });
+    if (path === "/api/admin/content-repo/media") {
+      const target = url.searchParams.get("path") ?? demoItems[1].path;
+      return json({
+        status: "ready",
+        path: target,
+        items: [
+          {
+            path: "blog/assets/cover.png",
+            mime: "image/png",
+            localSha: "local-media-sha",
+            remoteSha: "remote-media-sha",
+            changed: true,
+            missing: false,
+          },
+        ],
+      });
+    }
     if (path === "/api/admin/content-repo/diff") {
       const target = url.searchParams.get("path") ?? demoItems[1].path;
       return json({
@@ -1993,7 +2010,10 @@ async function handleAdminRequest(
         remoteText:
           "---\ntitle: 发布流程（远端）\nslug: merge-demo\ndate: 2026-01-02\ndraft: false\npublic: true\n---\n共同的起点\n远端补充\n",
         mergedText: null,
-        fields: [{ base: "发布流程", local: "发布流程（本地）", remote: "发布流程（远端）" }],
+        fields: [
+          { key: "title", base: "发布流程", local: "发布流程（本地）", remote: "发布流程（远端）" },
+          { key: "tags", base: ["release"], local: ["release"], remote: ["release", "ops"] },
+        ],
         conflictingFields: ["title"],
         bodyConflicts: 1,
       });

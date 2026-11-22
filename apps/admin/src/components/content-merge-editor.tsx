@@ -14,6 +14,7 @@ import { Button } from "~/components/ui";
 
 export interface ContentMergeEditorHandle {
   getText(): string;
+  setText(text: string): void;
 }
 
 export interface ContentMergeEditorProps {
@@ -61,7 +62,12 @@ export function ContentMergeEditor({
     });
     view.current = next;
     setChunkCount(getChunks(next.state)?.chunks.length ?? 0);
-    onReady?.({ getText: () => next.state.doc.toString() });
+    onReady?.({
+      getText: () => next.state.doc.toString(),
+      setText: (text: string) => {
+        next.dispatch({ changes: { from: 0, to: next.state.doc.length, insert: text } });
+      },
+    });
     return () => {
       next.destroy();
       view.current = null;

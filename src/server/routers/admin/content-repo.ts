@@ -2,12 +2,15 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
   acceptRemoteNew,
+  adoptRemoteMedia,
   checkContentRepo,
   diffContentRepo,
+  inspectContentMedia,
   mergeContentRepo,
   pullContentRepo,
   pushContentRepo,
   readContentRepoStatus,
+  readRemoteMedia,
   removeRemoteDeleted,
   saveResolvedContent,
 } from "../../services/content-repo-sync";
@@ -15,6 +18,18 @@ import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 export const adminContentRepoRouter = createTRPCRouter({
   status: adminProcedure.query(() => readContentRepoStatus()),
+
+  media: adminProcedure
+    .input(z.object({ path: z.string().min(1) }))
+    .query(({ input }) => inspectContentMedia(input)),
+
+  remoteMedia: adminProcedure
+    .input(z.object({ sha: z.string().min(1), path: z.string().min(1) }))
+    .query(({ input }) => readRemoteMedia(input)),
+
+  adoptMedia: adminProcedure
+    .input(z.object({ path: z.string().min(1), mediaPath: z.string().min(1) }))
+    .mutation(({ input }) => adoptRemoteMedia(input)),
 
   resolve: adminProcedure
     .input(z.object({ path: z.string().min(1), text: z.string().min(1) }))

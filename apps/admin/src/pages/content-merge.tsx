@@ -6,7 +6,11 @@ import {
   type ContentRepoDiffPayload,
   type ContentRepoSyncItem,
 } from "@/lib/admin-api-client";
-import { ContentMergeEditor } from "~/components/content-merge-editor";
+import { ContentMediaCompare } from "~/components/content-media-compare";
+import {
+  ContentMergeEditor,
+  type ContentMergeEditorHandle,
+} from "~/components/content-merge-editor";
 import {
   Alert,
   Badge,
@@ -28,6 +32,7 @@ import {
   TableRow,
 } from "~/components/ui";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
+import { applyFrontmatterChoice, pickFrontmatterValue } from "./content-merge-fields";
 
 const STATE_LABEL: Record<ContentRepoSyncItem["state"], string> = {
   synced: "已同步",
@@ -64,10 +69,15 @@ function TextPane({ title, text }: { title: string; text: string | null | undefi
 export function ContentRepoDiffView({
   diff,
   onSave,
+  onReady,
+  onChooseField,
 }: {
   diff: ContentRepoDiffPayload | undefined;
   onSave?: (text: string) => void;
+  onReady?: (handle: ContentMergeEditorHandle) => void;
+  onChooseField?: (key: string, value: unknown) => void;
 }) {
+  const conflictKeys = new Set(diff?.conflictingFields ?? []);
   if (!diff) return null;
   if (diff.status !== "ready")
     return <Alert tone="warning">{diff.message ?? "差异暂不可用"}</Alert>;
@@ -81,7 +91,64 @@ export function ContentRepoDiffView({
         localText={diff.localText ?? ""}
         remoteText={diff.remoteText ?? ""}
         onSave={onSave}
+        onReady={onReady}
       />
+      {diff.fields?.length ? (
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            frontmatter 字段
+          </p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>字段</TableHead>
+                <TableHead>基线</TableHead>
+                <TableHead>本地</TableHead>
+                <TableHead>远端</TableHead>
+                <TableHead>采用</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {diff.fields.map((field) => (
+                <TableRow
+                  key={field.key}
+                  data-conflict={conflictKeys.has(field.key) ? "true" : undefined}
+                >
+                  <TableCell className="whitespace-nowrap text-xs">
+                    {field.key}
+                    {conflictKeys.has(field.key) ? " ⚠" : ""}
+                  </TableCell>
+                  <TableCell className="max-w-[10rem] truncate text-xs">
+                    {formatFieldValue(field.base)}
+                  </TableCell>
+                  <TableCell className="max-w-[10rem] truncate text-xs">
+                    {formatFieldValue(field.local)}
+                  </TableCell>
+                  <TableCell className="max-w-[10rem] truncate text-xs">
+                    {formatFieldValue(field.remote)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {(["base", "local", "remote"] as const).map((side) => (
+                        <Button
+                          key={side}
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            onReady && onChooseField?.(field.key, pickFrontmatterValue(field, side))
+                          }
+                        >
+                          {side === "base" ? "基线" : side === "local" ? "本地" : "远端"}
+                        </Button>
+                      ))}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : null}
       <Disclosure summary="基线（共同祖先）">
         <div className="mt-2">
           <TextPane title="基线" text={diff.baseText} />
@@ -90,6 +157,13 @@ export function ContentRepoDiffView({
       {diff.mergedText ? <TextPane title="合并预览" text={diff.mergedText} /> : null}
     </div>
   );
+}
+
+function formatFieldValue(value: unknown) {
+  if (value === null || value === undefined) return "（空）";
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "（空）";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
 
 function actionSummary(result: ContentRepoActionPayload) {
@@ -105,6 +179,7 @@ export function ContentMergePage() {
   const queryClient = useQueryClient();
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [mergeHandle, setMergeHandle] = useState<ContentMergeEditorHandle | null>(null);
 
   const status = useQuery({
     queryKey: ["content-repo", "status"],
@@ -113,6 +188,23 @@ export function ContentMergePage() {
   const check = useQuery({
     queryKey: ["content-repo", "check"],
     queryFn: adminApi.checkContentRepo,
+  });
+  const media = useQuery({
+    queryKey: ["content-repo", "media", selectedPath],
+    queryFn: () => adminApi.getContentRepoMedia(selectedPath ?? ""),
+    enabled: Boolean(selectedPath),
+  });
+  const adoptMedia = useMutation({
+    mutationFn: (input: { path: string; media: string }) => adminApi.adoptRemoteMedia(input),
+    onSuccess: async (result) => {
+      setNotice(
+        result.status === "saved"
+          ? `已采用远端附件：${result.mediaPath ?? ""}`
+          : (result.message ?? result.status)
+      );
+      await refresh();
+    },
+    onError: (error) => setNotice(getErrorMessage(error)),
   });
   const diff = useQuery({
     queryKey: ["content-repo", "diff", selectedPath],
@@ -284,9 +376,25 @@ export function ContentMergePage() {
                 ) : (
                   <ContentRepoDiffView
                     diff={diff.data}
+                    onReady={setMergeHandle}
                     onSave={(text) => selected && resolve.mutate({ path: selected.path, text })}
+                    onChooseField={(key, value) => {
+                      if (!mergeHandle) return;
+                      mergeHandle.setText(
+                        applyFrontmatterChoice(mergeHandle.getText(), key, value)
+                      );
+                    }}
                   />
                 )}
+                {media.data?.items?.length ? (
+                  <ContentMediaCompare
+                    items={media.data.items}
+                    busy={adoptMedia.isPending}
+                    onAdopt={(mediaPath) =>
+                      selected && adoptMedia.mutate({ path: selected.path, media: mediaPath })
+                    }
+                  />
+                ) : null}
                 <Separator />
                 <div className="flex flex-wrap gap-2">
                   {selected.state === "merge-conflict" ? (

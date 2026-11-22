@@ -771,7 +771,7 @@ export interface ContentRepoDiffPayload {
   localText?: string | null;
   remoteText?: string | null;
   mergedText?: string | null;
-  fields?: { base: unknown; local: unknown; remote: unknown }[];
+  fields?: { key: string; base: unknown; local: unknown; remote: unknown }[];
   conflictingFields?: string[];
   bodyConflicts?: number;
   message?: string;
@@ -793,6 +793,25 @@ export const adminApi = {
   getContentRepoStatus: () =>
     adminRequest<ContentRepoStatusPayload>("/api/admin/content-repo/status"),
   checkContentRepo: () => adminRequest<ContentRepoCheckPayload>("/api/admin/content-repo/check"),
+  getContentRepoMedia: (path: string) =>
+    adminRequest<{
+      status: "ready" | "unconfigured" | "failed";
+      path: string;
+      items?: {
+        path: string;
+        mime: string;
+        localSha: string | null;
+        remoteSha: string | null;
+        changed: boolean;
+        missing: boolean;
+      }[];
+      message?: string;
+    }>(`/api/admin/content-repo/media?path=${encodeURIComponent(path)}`),
+  adoptRemoteMedia: (input: { path: string; media: string }) =>
+    adminRequest<{ status: string; path: string; mediaPath?: string; message?: string }>(
+      "/api/admin/content-repo/media/adopt",
+      { method: "POST", body: JSON.stringify(input) }
+    ),
   resolveContentRepo: (input: { path: string; text: string }) =>
     adminRequest<{ status: string; path: string; contentHash?: string; message?: string }>(
       "/api/admin/content-repo/resolve",

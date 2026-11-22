@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { eq, inArray } from "drizzle-orm";
 import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
 import { clearSearchCache } from "@/lib/ai/search-cache";
@@ -42,6 +43,7 @@ import {
   summarizeSyncStates,
 } from "@/lib/content-repo/state";
 import { db } from "@/lib/db";
+import { inferPublicMediaMimeType } from "@/lib/public-media";
 import { contentRepoBaselines, memoClippings, posts } from "@/lib/schema";
 import { beginContentTask, finishContentTask, updateContentTask } from "./content-tasks";
 import { recordMediaIdentity, verifyMediaIdentity } from "./media-identity";
@@ -530,6 +532,130 @@ export function pullContentRepo(input: { ids?: string[] } = {}): Promise<Content
   return pullFlight;
 }
 
+export interface ContentRepoMediaItem {
+  path: string;
+  mime: string;
+  localSha: string | null;
+  remoteSha: string | null;
+  changed: boolean;
+  missing: boolean;
+}
+
+export interface ContentRepoMediaOutcome {
+  status: "ready" | "unconfigured" | "failed" | "saved";
+  path: string;
+  items?: ContentRepoMediaItem[];
+  mediaPath?: string;
+  message?: string;
+}
+
+/** Compare the attachments a content references on both sides without writing anything. */
+export async function inspectContentMedia(input: {
+  path: string;
+}): Promise<ContentRepoMediaOutcome> {
+  const { config, error } = readContentRepoConfigOrFail();
+  if (!config) return { status: "failed", path: input.path, message: error ?? "" };
+  if (!config.token)
+    return {
+      status: "unconfigured",
+      path: input.path,
+      message: "Content repository is not configured",
+    };
+  try {
+    const context = await inspectContentRepo(config);
+    const entry = context.entries.find((candidate) => candidate.document.path === input.path);
+    const baseline = context.baselines.get(input.path);
+    const mediaPaths = new Set<string>([
+      ...(entry?.media.map((file) => file.path) ?? []),
+      ...Object.keys(baseline?.media ?? {}),
+    ]);
+    const items = [...mediaPaths].sort().map((mediaPath) => {
+      const local = entry?.media.find((file) => file.path === mediaPath) ?? null;
+      const remoteSha = context.remote.get(mediaPath) ?? null;
+      const recorded = baseline?.media[mediaPath]?.remoteSha ?? null;
+      return {
+        path: mediaPath,
+        mime: inferPublicMediaMimeType(mediaPath),
+        localSha: local?.sha256 ?? null,
+        remoteSha,
+        changed: remoteSha !== recorded,
+        missing: !local,
+      };
+    });
+    return { status: "ready", path: input.path, items };
+  } catch (caught) {
+    return {
+      status: "failed",
+      path: input.path,
+      message: caught instanceof Error ? caught.message : "Content media inspection failed",
+    };
+  }
+}
+
+export interface ContentRepoRemoteMedia {
+  status: "ready" | "unconfigured" | "failed";
+  bytes?: Uint8Array;
+  mime?: string;
+  message?: string;
+}
+
+/** Read one repository attachment for in-page comparison or download. */
+export async function readRemoteMedia(input: {
+  sha: string;
+  path: string;
+}): Promise<ContentRepoRemoteMedia> {
+  const { config, error } = readContentRepoConfigOrFail();
+  if (!config) return { status: "failed", message: error ?? "" };
+  if (!config.token)
+    return { status: "unconfigured", message: "Content repository is not configured" };
+  try {
+    const bytes = await createContentRepoTransport(config).readBlob(input.sha);
+    return { status: "ready", bytes, mime: inferPublicMediaMimeType(input.path) };
+  } catch (caught) {
+    return {
+      status: "failed",
+      message: caught instanceof Error ? caught.message : "Remote attachment read failed",
+    };
+  }
+}
+
+/** Replace a local attachment with its repository version and refresh its recorded identity. */
+export async function adoptRemoteMedia(input: {
+  path: string;
+  mediaPath: string;
+}): Promise<ContentRepoMediaOutcome> {
+  const { config, error } = readContentRepoConfigOrFail();
+  if (!config) return { status: "failed", path: input.path, message: error ?? "" };
+  if (!config.token)
+    return {
+      status: "unconfigured",
+      path: input.path,
+      message: "Content repository is not configured",
+    };
+  try {
+    const context = await inspectContentRepo(config);
+    const remoteSha = context.remote.get(input.mediaPath);
+    if (!remoteSha)
+      return { status: "failed", path: input.path, message: "Remote attachment is unavailable" };
+    if (!isLocalContentEnabled())
+      return { status: "failed", path: input.path, message: "Media storage is not configured" };
+    const bytes = await context.transport.readBlob(remoteSha);
+    const target = getLocalPath(input.mediaPath);
+    await mkdir(dirname(target), { recursive: true });
+    const temporary = `${target}.tmp-${process.pid}-${Date.now()}`;
+    await writeFile(temporary, bytes);
+    await rename(temporary, target);
+    recordMediaIdentity(input.mediaPath, bytes, inferPublicMediaMimeType(input.mediaPath));
+    return { status: "saved", path: input.path, mediaPath: input.mediaPath };
+  } catch (caught) {
+    return {
+      status: "failed",
+      path: input.path,
+      message: caught instanceof Error ? caught.message : "Remote attachment adoption failed",
+    };
+  }
+}
+
 export interface ContentRepoResolveOutcome {
   status: "saved" | "unavailable" | "failed";
   path: string;
@@ -604,7 +730,7 @@ export interface ContentRepoDiffOutcome {
   localText?: string | null;
   remoteText?: string | null;
   mergedText?: string | null;
-  fields?: { base: unknown; local: unknown; remote: unknown }[];
+  fields?: { key: string; base: unknown; local: unknown; remote: unknown }[];
   conflictingFields?: string[];
   bodyConflicts?: number;
   message?: string;
@@ -661,6 +787,7 @@ export async function diffContentRepo(input: { path: string }): Promise<ContentR
       ...frontmatter.conflicts,
     ]);
     const fields = [...keys].sort().map((key) => ({
+      key,
       base: baseDoc.frontmatter[key] ?? null,
       local: localDoc.frontmatter[key] ?? null,
       remote: remoteDoc.frontmatter[key] ?? null,
