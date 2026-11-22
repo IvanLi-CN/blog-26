@@ -774,6 +774,10 @@ export interface ContentRepoDiffPayload {
   fields?: { key: string; base: unknown; local: unknown; remote: unknown }[];
   conflictingFields?: string[];
   bodyConflicts?: number;
+  regions?: (
+    | { kind: "stable"; text: string }
+    | { kind: "conflict"; base: string; local: string; remote: string }
+  )[];
   message?: string;
 }
 

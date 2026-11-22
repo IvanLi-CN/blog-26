@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
+
+const noop = () => undefined;
+
 import type { ContentRepoDiffPayload } from "@/lib/admin-api-client";
 import { ContentRepoDiffView } from "./content-merge";
 
@@ -28,7 +31,9 @@ function diffPayload(overrides: Partial<ContentRepoDiffPayload> = {}): ContentRe
 
 describe("ContentRepoDiffView", () => {
   test("renders the side-by-side diff and the shared ancestor", () => {
-    const { getByTestId, getByText } = render(<ContentRepoDiffView diff={diffPayload()} />);
+    const { getByTestId, getByText } = render(
+      <ContentRepoDiffView diff={diffPayload()} mode="inline" onModeChange={noop} />
+    );
     expect(getByTestId("content-repo-diff")).toBeTruthy();
     expect(getByTestId("content-merge-editor")).toBeTruthy();
     expect(getByText("采用远端本处")).toBeTruthy();
@@ -40,6 +45,8 @@ describe("ContentRepoDiffView", () => {
     const { getByText } = render(
       <ContentRepoDiffView
         diff={diffPayload({ conflictingFields: ["title", "tags"], bodyConflicts: 2 })}
+        mode="inline"
+        onModeChange={noop}
       />
     );
     expect(getByText(/title、tags/u)).toBeTruthy();
@@ -48,7 +55,11 @@ describe("ContentRepoDiffView", () => {
 
   test("shows the merge preview when the sides merged cleanly", () => {
     const { getByText } = render(
-      <ContentRepoDiffView diff={diffPayload({ mergedText: "merged result" })} />
+      <ContentRepoDiffView
+        diff={diffPayload({ mergedText: "merged result" })}
+        mode="inline"
+        onModeChange={noop}
+      />
     );
     expect(getByText("合并预览")).toBeTruthy();
     expect(getByText("merged result")).toBeTruthy();
@@ -58,8 +69,36 @@ describe("ContentRepoDiffView", () => {
     const { getByText } = render(
       <ContentRepoDiffView
         diff={{ status: "failed", path: "blog/x.md", message: "Attachment is unavailable" }}
+        mode="inline"
+        onModeChange={noop}
       />
     );
     expect(getByText("Attachment is unavailable")).toBeTruthy();
+  });
+});
+
+describe("ContentRepoDiffView modes", () => {
+  test("switches between inline, split and three-way comparison", () => {
+    const seen: string[] = [];
+    const regions = [
+      { kind: "stable" as const, text: "共同起点" },
+      { kind: "conflict" as const, base: "b", local: "local", remote: "remote" },
+    ];
+    const { getByText, queryByTestId, rerender } = render(
+      <ContentRepoDiffView
+        diff={diffPayload({ regions })}
+        mode="inline"
+        onModeChange={(mode) => seen.push(mode)}
+      />
+    );
+    expect(queryByTestId("content-merge-editor")).toBeTruthy();
+    fireEvent.click(getByText("双栏"));
+    fireEvent.click(getByText("三路"));
+    expect(seen).toEqual(["split", "three"]);
+    rerender(
+      <ContentRepoDiffView diff={diffPayload({ regions })} mode="three" onModeChange={noop} />
+    );
+    expect(queryByTestId("content-three-way-merge")).toBeTruthy();
+    expect(getByText(/待决 1/u)).toBeTruthy();
   });
 });

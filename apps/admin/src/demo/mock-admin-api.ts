@@ -2010,6 +2010,10 @@ async function handleAdminRequest(
         remoteText:
           "---\ntitle: 发布流程（远端）\nslug: merge-demo\ndate: 2026-01-02\ndraft: false\npublic: true\n---\n共同的起点\n远端补充\n",
         mergedText: null,
+        regions: [
+          { kind: "stable", text: "共同的起点" },
+          { kind: "conflict", base: "共同的起点", local: "本地补充", remote: "远端补充" },
+        ],
         fields: [
           { key: "title", base: "发布流程", local: "发布流程（本地）", remote: "发布流程（远端）" },
           { key: "tags", base: ["release"], local: ["release"], remote: ["release", "ops"] },

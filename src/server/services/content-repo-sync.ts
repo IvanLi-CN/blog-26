@@ -3,11 +3,7 @@ import { dirname } from "node:path";
 import { eq, inArray } from "drizzle-orm";
 import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
 import { clearSearchCache } from "@/lib/ai/search-cache";
-import {
-  buildCanonicalDocument,
-  type ContentRecord,
-  sha256Hex,
-} from "@/lib/content-repo/canonical";
+import { buildCanonicalDocument, type ContentRecord } from "@/lib/content-repo/canonical";
 import {
   CONTENT_REPO_MAX_BATCH_CONTENTS,
   CONTENT_REPO_MAX_MEMO_FILE_BYTES,
@@ -26,7 +22,12 @@ import {
   type ContentRepoTransport,
   createContentRepoTransport,
 } from "@/lib/content-repo/github";
-import { mergeBody, mergeFrontmatter } from "@/lib/content-repo/merge";
+import {
+  type MergeRegionView,
+  mergeBody,
+  mergeFrontmatter,
+  mergeRegions,
+} from "@/lib/content-repo/merge";
 import {
   buildCommitMessage,
   type ContentRepoBaseline,
@@ -733,6 +734,7 @@ export interface ContentRepoDiffOutcome {
   fields?: { key: string; base: unknown; local: unknown; remote: unknown }[];
   conflictingFields?: string[];
   bodyConflicts?: number;
+  regions?: MergeRegionView[];
   message?: string;
 }
 
@@ -805,6 +807,11 @@ export async function diffContentRepo(input: { path: string }): Promise<ContentR
       fields,
       conflictingFields: frontmatter.conflicts,
       bodyConflicts: body.conflicts,
+      regions: mergeRegions(
+        baseDoc.body.split("\n"),
+        localDoc.body.split("\n"),
+        remoteDoc.body.split("\n")
+      ),
     };
   } catch (caught) {
     return {

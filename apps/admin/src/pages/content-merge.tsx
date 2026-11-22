@@ -11,6 +11,8 @@ import {
   ContentMergeEditor,
   type ContentMergeEditorHandle,
 } from "~/components/content-merge-editor";
+import { ContentSplitMerge } from "~/components/content-split-merge";
+import { ContentThreeWayMerge } from "~/components/content-three-way-merge";
 import {
   Alert,
   Badge,
@@ -71,11 +73,15 @@ export function ContentRepoDiffView({
   onSave,
   onReady,
   onChooseField,
+  mode,
+  onModeChange,
 }: {
   diff: ContentRepoDiffPayload | undefined;
   onSave?: (text: string) => void;
   onReady?: (handle: ContentMergeEditorHandle) => void;
   onChooseField?: (key: string, value: unknown) => void;
+  mode: "inline" | "split" | "three";
+  onModeChange: (mode: "inline" | "split" | "three") => void;
 }) {
   const conflictKeys = new Set(diff?.conflictingFields ?? []);
   if (!diff) return null;
@@ -87,12 +93,41 @@ export function ContentRepoDiffView({
         <Alert tone="warning">冲突字段：{diff.conflictingFields.join("、")}</Alert>
       ) : null}
       {diff.bodyConflicts ? <Alert tone="warning">正文冲突 {diff.bodyConflicts} 处</Alert> : null}
-      <ContentMergeEditor
-        localText={diff.localText ?? ""}
-        remoteText={diff.remoteText ?? ""}
-        onSave={onSave}
-        onReady={onReady}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        {(
+          [
+            ["inline", "行内"],
+            ["split", "双栏"],
+            ["three", "三路"],
+          ] as const
+        ).map(([value, label]) => (
+          <Button
+            key={value}
+            size="sm"
+            variant={mode === value ? "default" : "outline"}
+            aria-pressed={mode === value}
+            onClick={() => onModeChange(value)}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
+      {mode === "inline" ? (
+        <ContentMergeEditor
+          localText={diff.localText ?? ""}
+          remoteText={diff.remoteText ?? ""}
+          onSave={onSave}
+          onReady={onReady}
+        />
+      ) : mode === "split" ? (
+        <ContentSplitMerge
+          localText={diff.localText ?? ""}
+          remoteText={diff.remoteText ?? ""}
+          onReady={onReady}
+        />
+      ) : (
+        <ContentThreeWayMerge regions={diff.regions ?? []} onReady={onReady} />
+      )}
       {diff.fields?.length ? (
         <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -180,6 +215,7 @@ export function ContentMergePage() {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [mergeHandle, setMergeHandle] = useState<ContentMergeEditorHandle | null>(null);
+  const [mode, setMode] = useState<"inline" | "split" | "three">("inline");
 
   const status = useQuery({
     queryKey: ["content-repo", "status"],
@@ -376,6 +412,8 @@ export function ContentMergePage() {
                 ) : (
                   <ContentRepoDiffView
                     diff={diff.data}
+                    mode={mode}
+                    onModeChange={setMode}
                     onReady={setMergeHandle}
                     onSave={(text) => selected && resolve.mutate({ path: selected.path, text })}
                     onChooseField={(key, value) => {
