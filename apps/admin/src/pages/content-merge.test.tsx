@@ -27,15 +27,12 @@ function diffPayload(overrides: Partial<ContentRepoDiffPayload> = {}): ContentRe
 }
 
 describe("ContentRepoDiffView", () => {
-  test("renders the three sides of an unresolved content", () => {
+  test("renders the side-by-side diff and the shared ancestor", () => {
     const { getByTestId, getByText } = render(<ContentRepoDiffView diff={diffPayload()} />);
     expect(getByTestId("content-repo-diff")).toBeTruthy();
-    expect(getByText("基线")).toBeTruthy();
-    expect(getByText("本地")).toBeTruthy();
-    expect(getByText("远端")).toBeTruthy();
+    expect(getByTestId("content-text-diff")).toBeTruthy();
+    expect(getByText("远端 ↔ 本地")).toBeTruthy();
     expect(getByText("base line")).toBeTruthy();
-    expect(getByText("local line")).toBeTruthy();
-    expect(getByText("remote line")).toBeTruthy();
   });
 
   test("names the conflicting frontmatter fields and body conflicts", () => {

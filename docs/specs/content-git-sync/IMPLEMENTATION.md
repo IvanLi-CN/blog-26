@@ -20,8 +20,8 @@
 - `REQ-CGS-016`：认证与权限失败不重试；前置条件冲突在 ref 更新处有界重试一次；重复推送无新提交；差异不是失败。
 
 - `REQ-CGS-001`、`REQ-CGS-015`（媒体身份）：`drizzle/0034_content_media.sql` 与 `contentMedia` 记录每个附件的路径、sha、字节数与 MIME；上传写入身份，推送时对未记录附件做一次采纳、对 sha 不符的附件受控失败并指出路径。
-- `REQ-CGS-008`：`src/lib/content-repo/merge.ts` 以基线正文为祖先做行级三方合并，frontmatter 按字段合并并报出冲突键；`mergeContentRepo` 在无冲突时写库并推进基线，有冲突时原样返回字段与正文冲突数且不写库。闪念在权威切换前不合并。
-- `REQ-CGS-015`（界面部分）：`/admin/content-merge` 以状态表列出内容与附件情况，详情区并列显示基线、本地、远端文本与合并预览，冲突字段与正文冲突处数单独提示，并按状态提供合并、推送、拉取、接受远端新增与确认远端删除。仍未实现逐块采纳、逐字段选择与二进制选边。
+- `REQ-CGS-008`：`src/lib/content-repo/merge.ts` 用 `node-diff3` 以基线正文为祖先做行级三方合并，frontmatter 按字段合并并报出冲突键；`mergeContentRepo` 在无冲突时写库并推进基线，有冲突时原样返回字段与正文冲突数且不写库。闪念在权威切换前不合并。
+- `REQ-CGS-015`（界面部分）：`/admin/content-merge` 以状态表列出内容与附件情况，详情区用 `@codemirror/merge` 的分栏 diff 对比远端与本地，基线放在可折叠的祖先栏中，并显示合并预览，冲突字段与正文冲突处数单独提示，并按状态提供合并、推送、拉取、接受远端新增与确认远端删除。仍未实现逐块采纳、逐字段选择与二进制选边。
 - `REQ-CGS-009`：`acceptRemoteNew` 仅接受 `remote-new` 的路径并建立内容与基线；`removeRemoteDeleted` 仅删除 `remote-deleted` 的内容与基线，两种动作都按路径白名单执行并跳过闪念。
 - `REQ-CGS-005`：`src/lib/content-repo/state.ts` 按同步基线与远端 blob sha 得出已同步、待推送、待拉取、远端新增、远端删除与合并冲突，并单独列出缺失附件。
 - `REQ-CGS-007`：`checkContentRepo` 只解析 ref 与读取树清单，列出差异状态，不写库。`pullContentRepo` 只处理 `to-pull` 的文章：读取目标 blob、解析 frontmatter、写库并推进基线，随后清理搜索缓存；闪念在权威切换前不拉取，附件有变化的条目跳过并给出原因。

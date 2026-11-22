@@ -1,29 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { diffRegions, mergeBody, mergeFrontmatter } from "./merge";
-
-describe("diff regions", () => {
-  test("returns no region for identical input", () => {
-    expect(diffRegions(["a", "b"], ["a", "b"])).toEqual([]);
-  });
-
-  test("locates a single replaced line", () => {
-    expect(diffRegions(["a", "b", "c"], ["a", "B", "c"])).toEqual([
-      { start: 1, end: 2, replacement: ["B"] },
-    ]);
-  });
-
-  test("locates an insertion", () => {
-    expect(diffRegions(["a", "c"], ["a", "b", "c"])).toEqual([
-      { start: 1, end: 1, replacement: ["b"] },
-    ]);
-  });
-
-  test("locates a deletion", () => {
-    expect(diffRegions(["a", "b", "c"], ["a", "c"])).toEqual([
-      { start: 1, end: 2, replacement: [] },
-    ]);
-  });
-});
+import { mergeBody, mergeFrontmatter } from "./merge";
 
 describe("body merge", () => {
   test("takes independent changes from both sides", () => {

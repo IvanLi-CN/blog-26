@@ -6,6 +6,7 @@ import {
   type ContentRepoDiffPayload,
   type ContentRepoSyncItem,
 } from "@/lib/admin-api-client";
+import { ContentTextDiff } from "~/components/content-text-diff";
 import {
   Alert,
   Badge,
@@ -15,6 +16,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Disclosure,
   EmptyState,
   Separator,
   Spinner,
@@ -69,11 +71,17 @@ export function ContentRepoDiffView({ diff }: { diff: ContentRepoDiffPayload | u
         <Alert tone="warning">冲突字段：{diff.conflictingFields.join("、")}</Alert>
       ) : null}
       {diff.bodyConflicts ? <Alert tone="warning">正文冲突 {diff.bodyConflicts} 处</Alert> : null}
-      <div className="grid gap-3 md:grid-cols-3">
-        <TextPane title="基线" text={diff.baseText} />
-        <TextPane title="本地" text={diff.localText} />
-        <TextPane title="远端" text={diff.remoteText} />
-      </div>
+      <ContentTextDiff
+        left={diff.remoteText ?? ""}
+        right={diff.localText ?? ""}
+        leftLabel="远端"
+        rightLabel="本地"
+      />
+      <Disclosure summary="基线（共同祖先）">
+        <div className="mt-2">
+          <TextPane title="基线" text={diff.baseText} />
+        </div>
+      </Disclosure>
       {diff.mergedText ? <TextPane title="合并预览" text={diff.mergedText} /> : null}
     </div>
   );
