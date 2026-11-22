@@ -27,6 +27,7 @@ export interface ContentRepoTreeEntry {
 export interface ContentRepoTransport {
   resolveHead(): Promise<{ commit: string; tree: string }>;
   listTree(tree: string): Promise<Map<string, string>>;
+  readBlob(sha: string): Promise<Uint8Array>;
   createBlob(bytes: Uint8Array): Promise<string>;
   createTree(baseTree: string, entries: ContentRepoTreeEntry[]): Promise<string>;
   createCommit(input: { message: string; tree: string; parents: string[] }): Promise<string>;
@@ -136,6 +137,16 @@ export function createContentRepoTransport(
         blobs.set(record.path, readSha(record.sha, "blob"));
       }
       return blobs;
+    },
+
+    async readBlob(sha) {
+      const response = await request(`${repoUrl}/git/blobs/${readSha(sha, "blob")}`, {
+        headers: { Accept: "application/vnd.github.raw+json" },
+      });
+      const buffer = new Uint8Array(await response.arrayBuffer());
+      if (buffer.byteLength > maxResponseBytes)
+        throw new ContentRepoError("invalid", "GitHub blob exceeds the size limit");
+      return buffer;
     },
 
     async createBlob(bytes) {

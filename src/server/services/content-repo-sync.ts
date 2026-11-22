@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { eq, inArray } from "drizzle-orm";
 import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
+import { clearSearchCache } from "@/lib/ai/search-cache";
 import {
   buildCanonicalDocument,
   type ContentRecord,
@@ -14,6 +15,7 @@ import {
   ContentRepoConfigError,
   readContentRepoConfig,
 } from "@/lib/content-repo/config";
+import { parseRemoteDocument, toDocumentUpdate } from "@/lib/content-repo/document";
 import {
   ContentRepoError,
   type ContentRepoTransport,
@@ -257,6 +259,24 @@ function persistBaselines(
   });
 }
 
+export function persistBaselineRow(values: typeof contentRepoBaselines.$inferInsert) {
+  db.insert(contentRepoBaselines)
+    .values(values)
+    .onConflictDoUpdate({
+      target: contentRepoBaselines.path,
+      set: {
+        contentId: values.contentId,
+        kind: values.kind,
+        contentHash: values.contentHash,
+        media: values.media,
+        remoteBlobs: values.remoteBlobs,
+        commitSha: values.commitSha,
+        updatedAt: values.updatedAt,
+      },
+    })
+    .run();
+}
+
 export async function pushEntriesToRepo(
   transport: ContentRepoTransport,
   entries: ContentRepoEntry[],
@@ -369,6 +389,135 @@ export function pushContentRepo(input: ContentRepoPushInput = {}): Promise<Conte
     flight = undefined;
   });
   return flight;
+}
+
+export interface ContentRepoPullOutcome {
+  status: "pulled" | "nothing" | "unconfigured" | "failed";
+  repository: string | null;
+  ref: string | null;
+  commit?: string;
+  pulled?: string[];
+  skipped?: { path: string; reason: string }[];
+  message?: string;
+}
+
+let pullFlight: Promise<ContentRepoPullOutcome> | undefined;
+
+export function pullContentRepo(input: { ids?: string[] } = {}): Promise<ContentRepoPullOutcome> {
+  if (pullFlight) return Promise.reject(new Error("Content repository pull already running"));
+  pullFlight = (async () => {
+    let config: ContentRepoConfig;
+    try {
+      config = readContentRepoConfig();
+    } catch (error) {
+      return {
+        status: "failed" as const,
+        repository: null,
+        ref: null,
+        message: error instanceof Error ? error.message : "Invalid configuration",
+      };
+    }
+    if (!config.token)
+      return { status: "unconfigured" as const, repository: config.repository, ref: config.ref };
+
+    const pulled: string[] = [];
+    const skipped: { path: string; reason: string }[] = [];
+    try {
+      const { entries, missingMedia } = await loadContentRepoEntries(undefined, {
+        tolerateMissingMedia: true,
+      });
+      const baselines = loadContentRepoBaselines();
+      const transport = createContentRepoTransport(config);
+      const head = await transport.resolveHead();
+      const remote = await transport.listTree(head.tree);
+      const items = computeSyncStates({ entries, baselines, remote, missingMedia });
+      const wanted = input.ids?.length ? new Set(input.ids) : null;
+
+      for (const item of items) {
+        if (item.state !== "to-pull") continue;
+        if (wanted && !wanted.has(item.path)) continue;
+        if (item.kind !== "post") {
+          skipped.push({ path: item.path, reason: "memo-pull-requires-authority-cutover" });
+          continue;
+        }
+        const baseline = baselines.get(item.path);
+        if (!baseline || !item.remoteSha) continue;
+        const mediaChanged = Object.entries(baseline.media).some(
+          ([mediaPath, recorded]) => remote.get(mediaPath) !== recorded.remoteSha
+        );
+        if (mediaChanged) {
+          skipped.push({ path: item.path, reason: "attachment-changed" });
+          continue;
+        }
+        const row = db.select().from(posts).where(eq(posts.filePath, item.path)).get();
+        if (!row) {
+          skipped.push({ path: item.path, reason: "missing-local-content" });
+          continue;
+        }
+        const bytes = await transport.readBlob(item.remoteSha);
+        const update = toDocumentUpdate(parseRemoteDocument(bytes));
+        const nextBody = update.body;
+        const updated = {
+          slug: update.slug,
+          title: update.title,
+          body: nextBody,
+          draft: update.draft,
+          public: update.public,
+          category: update.category,
+          tags: JSON.stringify(update.tags),
+          author: update.author,
+          image: update.image,
+          publishDate: update.publishDate,
+          updateDate: update.updateDate ?? row.updateDate,
+          lastModified: Date.now(),
+        };
+        const document = buildCanonicalDocument({
+          ...toContentRecord(row),
+          ...updated,
+        });
+        db.update(posts)
+          .set({ ...updated, contentHash: document.contentHash })
+          .where(eq(posts.id, row.id))
+          .run();
+        const remoteBlobs: Record<string, string> = { [item.path]: item.remoteSha };
+        for (const [mediaPath, recorded] of Object.entries(baseline.media))
+          remoteBlobs[mediaPath] = recorded.remoteSha;
+        persistBaselineRow({
+          path: item.path,
+          contentId: row.id,
+          kind: "post",
+          contentHash: document.contentHash,
+          media: JSON.stringify(baseline.media),
+          remoteBlobs: JSON.stringify(remoteBlobs),
+          commitSha: head.commit,
+          updatedAt: Date.now(),
+        });
+        pulled.push(item.path);
+      }
+
+      if (pulled.length) clearSearchCache();
+      return {
+        status: pulled.length ? ("pulled" as const) : ("nothing" as const),
+        repository: config.repository,
+        ref: config.ref,
+        commit: head.commit,
+        pulled,
+        skipped,
+      };
+    } catch (error) {
+      return {
+        status: "failed" as const,
+        repository: config.repository,
+        ref: config.ref,
+        pulled,
+        skipped,
+        message: error instanceof Error ? error.message : "Content repository pull failed",
+      };
+    }
+  })().finally(() => {
+    pullFlight = undefined;
+  });
+  return pullFlight;
 }
 
 export interface ContentRepoCheckOutcome {

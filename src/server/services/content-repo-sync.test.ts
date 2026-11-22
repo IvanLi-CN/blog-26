@@ -30,6 +30,9 @@ function transportWith(options: { remote?: Map<string, string>; failFirstRef?: b
       calls.push(`tree-read:${tree}`);
       return options.remote ?? new Map();
     },
+    async readBlob(_sha) {
+      return encoder.encode("remote");
+    },
     async createBlob(bytes) {
       blobs += 1;
       calls.push(`blob:${bytes.byteLength}`);
