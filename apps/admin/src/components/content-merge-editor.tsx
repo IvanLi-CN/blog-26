@@ -8,36 +8,16 @@ import { mergeEditorTheme } from "~/editor/merge-editor-theme";
 
 type Chunk = { fromA: number; toA: number; fromB: number; toB: number };
 
-const markResolved = StateEffect.define<string>();
-
-const resolvedField = StateField.define<Set<string>>({
-  create: () => new Set(),
-  update(value, transaction) {
-    let next = value;
-    for (const effect of transaction.effects) {
-      if (!effect.is(markResolved)) continue;
-      next = new Set(next);
-      next.add(effect.value);
-    }
-    return next;
-  },
-});
-
-function chunkKey(chunk: Chunk) {
-  return `${chunk.fromA}:${chunk.toA}`;
-}
-
 class ChunkControls extends WidgetType {
   constructor(
     private readonly chunk: Chunk,
-    private readonly remoteSlice: string,
-    private readonly resolvedKey: string
+    private readonly remoteSlice: string
   ) {
     super();
   }
 
   override eq(other: WidgetType) {
-    return other instanceof ChunkControls && other.resolvedKey === this.resolvedKey;
+    return other instanceof ChunkControls && other.chunk.fromB === this.chunk.fromB;
   }
 
   override ignoreEvent() {
@@ -70,39 +50,21 @@ class ChunkControls extends WidgetType {
       });
     });
     row.appendChild(takeRemote);
-    const keepLocal = document.createElement("button");
-    keepLocal.type = "button";
-    keepLocal.textContent = "保留本地";
-    keepLocal.className =
-      "cursor-pointer rounded-md border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-muted/70";
-    keepLocal.addEventListener("mousedown", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const view = (event.currentTarget as HTMLElement).closest(".cm-editor") as HTMLElement | null;
-      const target = EditorView.findFromDOM(view);
-      target?.dispatch({ effects: markResolved.of(this.resolvedKey) });
-    });
-    row.appendChild(keepLocal);
     return row;
   }
 }
 
 function controlsLayer(remote: Text) {
-  return EditorView.decorations.compute(["doc", resolvedField], (state) => {
-    const resolved = state.field(resolvedField);
+  return EditorView.decorations.compute(["doc"], (state) => {
     const chunks = getChunks(state)?.chunks ?? [];
     return Decoration.set(
-      chunks.flatMap((chunk) => {
-        const key = chunkKey(chunk);
-        if (resolved.has(key)) return [];
-        return [
-          Decoration.widget({
-            widget: new ChunkControls(chunk, remote.sliceString(chunk.fromA, chunk.toA), key),
-            side: -1,
-            block: true,
-          }).range(chunk.fromB),
-        ];
-      }),
+      chunks.map((chunk) =>
+        Decoration.widget({
+          widget: new ChunkControls(chunk, remote.sliceString(chunk.fromA, chunk.toA)),
+          side: -1,
+          block: true,
+        }).range(chunk.fromB)
+      ),
       true
     );
   });
@@ -132,10 +94,7 @@ export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMer
     if (!parent) return undefined;
     const remote = Text.of(remoteText.split("\n"));
     const track = (editor: EditorView) => {
-      const resolved = editor.state.field(resolvedField);
-      const list = (getChunks(editor.state)?.chunks ?? []).filter(
-        (chunk) => !resolved.has(chunkKey(chunk))
-      );
+      const list = getChunks(editor.state)?.chunks ?? [];
       const head = editor.state.selection.main.head;
       const found = list.findIndex((chunk) => head <= chunk.toB);
       setChunks({ count: list.length, index: found === -1 ? list.length - 1 : found });
@@ -149,7 +108,6 @@ export function ContentMergeEditor({ localText, remoteText, onSave }: ContentMer
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,
-          resolvedField,
           controlsLayer(remote),
           EditorView.updateListener.of((update) => {
             if (update.docChanged || update.selectionSet || update.transactions.length)
