@@ -1,6 +1,20 @@
 import matter from "gray-matter";
 import { normalizeContentBody } from "./canonical";
 
+const FRONTMATTER_ORDER = [
+  "title",
+  "slug",
+  "date",
+  "updateDate",
+  "draft",
+  "public",
+  "category",
+  "tags",
+  "author",
+  "image",
+  "clipping",
+] as const;
+
 export interface ParsedRemoteDocument {
   frontmatter: Record<string, unknown>;
   body: string;
@@ -18,6 +32,20 @@ export interface RemoteDocumentUpdate {
   image: string | null;
   publishDate: number;
   updateDate: number | null;
+}
+
+/** Serialize a merged document back into the canonical form, in canonical key order. */
+export function serializeCanonicalDocument(
+  frontmatter: Record<string, unknown>,
+  body: string
+): Uint8Array {
+  const ordered: Record<string, unknown> = {};
+  for (const key of FRONTMATTER_ORDER)
+    if (frontmatter[key] !== undefined) ordered[key] = frontmatter[key];
+  for (const [key, value] of Object.entries(frontmatter))
+    if (!(key in ordered) && value !== undefined) ordered[key] = value;
+  const text = matter.stringify(`${normalizeContentBody(body)}\n`, ordered).replace(/\n*$/u, "\n");
+  return new TextEncoder().encode(text);
 }
 
 export class RemoteDocumentInvalidError extends Error {
@@ -57,6 +85,8 @@ function readTags(frontmatter: Record<string, unknown>): string[] {
 
 export function parseRemoteDocument(bytes: Uint8Array): ParsedRemoteDocument {
   const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  if (!/^\uFEFF?---\r?\n/u.test(text))
+    throw new RemoteDocumentInvalidError("remote document has no frontmatter");
   let parsed: matter.GrayMatterFile<string>;
   try {
     parsed = matter(text);
@@ -65,8 +95,6 @@ export function parseRemoteDocument(bytes: Uint8Array): ParsedRemoteDocument {
       `remote document frontmatter is malformed: ${error instanceof Error ? error.message : ""}`
     );
   }
-  if (!parsed.matter?.trim())
-    throw new RemoteDocumentInvalidError("remote document has no frontmatter");
   if (!parsed.data || typeof parsed.data !== "object")
     throw new RemoteDocumentInvalidError("remote document frontmatter is not a mapping");
   return {

@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { buildCanonicalDocument } from "./canonical";
-import { parseRemoteDocument, RemoteDocumentInvalidError, toDocumentUpdate } from "./document";
+import {
+  parseRemoteDocument,
+  RemoteDocumentInvalidError,
+  serializeCanonicalDocument,
+  toDocumentUpdate,
+} from "./document";
 
 const encoder = new TextEncoder();
 
@@ -41,6 +46,13 @@ describe("remote document parsing", () => {
       body: "第一段\n\n第二段",
     });
     expect(new Date(update.publishDate).toISOString()).toBe("2026-01-02T00:00:00.000Z");
+  });
+
+  test("serializes a parsed document back to identical canonical bytes", () => {
+    const original = canonicalBody();
+    const parsed = parseRemoteDocument(encoder.encode(original));
+    const rebuilt = serializeCanonicalDocument(parsed.frontmatter, parsed.body);
+    expect(new TextDecoder().decode(rebuilt)).toBe(original);
   });
 
   test("rejects a document without frontmatter", () => {

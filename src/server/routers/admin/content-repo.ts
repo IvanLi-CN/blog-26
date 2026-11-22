@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
   checkContentRepo,
+  mergeContentRepo,
   pullContentRepo,
   pushContentRepo,
   readContentRepoStatus,
@@ -14,6 +15,10 @@ export const adminContentRepoRouter = createTRPCRouter({
   check: adminProcedure
     .input(z.object({ ids: z.array(z.string().min(1)).max(200).optional() }).optional())
     .query(({ input }) => checkContentRepo(input ?? {})),
+
+  merge: adminProcedure
+    .input(z.object({ ids: z.array(z.string().min(1)).max(200).optional() }).optional())
+    .mutation(({ input }) => mergeContentRepo(input ?? {})),
 
   pull: adminProcedure
     .input(z.object({ ids: z.array(z.string().min(1)).max(200).optional() }).optional())

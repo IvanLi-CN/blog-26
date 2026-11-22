@@ -15,12 +15,17 @@ import {
   ContentRepoConfigError,
   readContentRepoConfig,
 } from "@/lib/content-repo/config";
-import { parseRemoteDocument, toDocumentUpdate } from "@/lib/content-repo/document";
+import {
+  parseRemoteDocument,
+  serializeCanonicalDocument,
+  toDocumentUpdate,
+} from "@/lib/content-repo/document";
 import {
   ContentRepoError,
   type ContentRepoTransport,
   createContentRepoTransport,
 } from "@/lib/content-repo/github";
+import { mergeBody, mergeFrontmatter } from "@/lib/content-repo/merge";
 import {
   buildCommitMessage,
   type ContentRepoBaseline,
@@ -523,6 +528,183 @@ export function pullContentRepo(input: { ids?: string[] } = {}): Promise<Content
     pullFlight = undefined;
   });
   return pullFlight;
+}
+
+export interface ContentRepoMergeConflict {
+  path: string;
+  fields: string[];
+  bodyConflicts: number;
+}
+
+export interface ContentRepoMergeOutcome {
+  status: "merged" | "conflicts" | "nothing" | "unconfigured" | "failed";
+  repository: string | null;
+  ref: string | null;
+  commit?: string;
+  merged?: string[];
+  conflicts?: ContentRepoMergeConflict[];
+  skipped?: { path: string; reason: string }[];
+  message?: string;
+}
+
+let mergeFlight: Promise<ContentRepoMergeOutcome> | undefined;
+
+export function mergeContentRepo(input: { ids?: string[] } = {}): Promise<ContentRepoMergeOutcome> {
+  if (mergeFlight) return Promise.reject(new Error("Content repository merge already running"));
+  mergeFlight = (async () => {
+    let config: ContentRepoConfig;
+    try {
+      config = readContentRepoConfig();
+    } catch (error) {
+      return {
+        status: "failed" as const,
+        repository: null,
+        ref: null,
+        message: error instanceof Error ? error.message : "Invalid configuration",
+      };
+    }
+    if (!config.token)
+      return { status: "unconfigured" as const, repository: config.repository, ref: config.ref };
+
+    const merged: string[] = [];
+    const conflicts: ContentRepoMergeConflict[] = [];
+    const skipped: { path: string; reason: string }[] = [];
+    try {
+      const { entries, missingMedia } = await loadContentRepoEntries(undefined, {
+        tolerateMissingMedia: true,
+      });
+      const baselines = loadContentRepoBaselines();
+      const transport = createContentRepoTransport(config);
+      const head = await transport.resolveHead();
+      const remote = await transport.listTree(head.tree);
+      const items = computeSyncStates({ entries, baselines, remote, missingMedia });
+      const wanted = input.ids?.length ? new Set(input.ids) : null;
+      const decoder = new TextDecoder();
+
+      for (const item of items) {
+        if (item.state !== "merge-conflict") continue;
+        if (wanted && !wanted.has(item.path)) continue;
+        const entry = entries.find((candidate) => candidate.document.path === item.path);
+        if (!entry) {
+          skipped.push({ path: item.path, reason: "missing-local-content" });
+          continue;
+        }
+        if (item.kind !== "post") {
+          skipped.push({ path: item.path, reason: "memo-merge-requires-authority-cutover" });
+          continue;
+        }
+        const baseline = baselines.get(item.path);
+        if (!baseline?.document) {
+          skipped.push({ path: item.path, reason: "baseline-document-unavailable" });
+          continue;
+        }
+        const mediaChanged = Object.entries(baseline.media).some(
+          ([mediaPath, recorded]) => remote.get(mediaPath) !== recorded.remoteSha
+        );
+        if (mediaChanged) {
+          skipped.push({ path: item.path, reason: "attachment-changed" });
+          continue;
+        }
+        if (!item.remoteSha) {
+          skipped.push({ path: item.path, reason: "remote-deleted" });
+          continue;
+        }
+
+        const baseDoc = parseRemoteDocument(new TextEncoder().encode(baseline.document));
+        const localDoc = parseRemoteDocument(entry.document.bytes);
+        const remoteDoc = parseRemoteDocument(await transport.readBlob(item.remoteSha));
+        const frontmatter = mergeFrontmatter(
+          baseDoc.frontmatter,
+          localDoc.frontmatter,
+          remoteDoc.frontmatter
+        );
+        const body = mergeBody(
+          baseDoc.body.split("\n"),
+          localDoc.body.split("\n"),
+          remoteDoc.body.split("\n")
+        );
+        if (frontmatter.conflicts.length || !body.clean) {
+          conflicts.push({
+            path: item.path,
+            fields: frontmatter.conflicts,
+            bodyConflicts: body.conflicts,
+          });
+          continue;
+        }
+
+        const bytes = serializeCanonicalDocument(frontmatter.value, body.lines.join("\n"));
+        const update = toDocumentUpdate(parseRemoteDocument(bytes));
+        const row = db.select().from(posts).where(eq(posts.filePath, item.path)).get();
+        if (!row) {
+          skipped.push({ path: item.path, reason: "missing-local-content" });
+          continue;
+        }
+        const updated = {
+          slug: update.slug,
+          title: update.title,
+          body: update.body,
+          draft: update.draft,
+          public: update.public,
+          category: update.category,
+          tags: JSON.stringify(update.tags),
+          author: update.author,
+          image: update.image,
+          publishDate: update.publishDate,
+          updateDate: update.updateDate ?? row.updateDate,
+          lastModified: Date.now(),
+        };
+        const document = buildCanonicalDocument({ ...toContentRecord(row), ...updated });
+        db.update(posts)
+          .set({ ...updated, contentHash: document.contentHash })
+          .where(eq(posts.id, row.id))
+          .run();
+        const remoteBlobs: Record<string, string> = { [item.path]: item.remoteSha };
+        for (const [mediaPath, recorded] of Object.entries(baseline.media))
+          remoteBlobs[mediaPath] = recorded.remoteSha;
+        persistBaselineRow({
+          path: item.path,
+          contentId: row.id,
+          kind: "post",
+          contentHash: document.contentHash,
+          document: decoder.decode(document.bytes),
+          media: JSON.stringify(baseline.media),
+          remoteBlobs: JSON.stringify(remoteBlobs),
+          commitSha: head.commit,
+          updatedAt: Date.now(),
+        });
+        merged.push(item.path);
+      }
+
+      if (merged.length) clearSearchCache();
+      const status = conflicts.length
+        ? ("conflicts" as const)
+        : merged.length
+          ? ("merged" as const)
+          : ("nothing" as const);
+      return {
+        status,
+        repository: config.repository,
+        ref: config.ref,
+        commit: head.commit,
+        merged,
+        conflicts,
+        skipped,
+      };
+    } catch (error) {
+      return {
+        status: "failed" as const,
+        repository: config.repository,
+        ref: config.ref,
+        merged,
+        conflicts,
+        skipped,
+        message: error instanceof Error ? error.message : "Content repository merge failed",
+      };
+    }
+  })().finally(() => {
+    mergeFlight = undefined;
+  });
+  return mergeFlight;
 }
 
 export interface ContentRepoCheckOutcome {
