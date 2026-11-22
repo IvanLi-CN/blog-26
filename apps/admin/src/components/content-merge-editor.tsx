@@ -47,7 +47,10 @@ class ChunkControls extends WidgetType {
   override toDOM() {
     const row = document.createElement("div");
     row.className =
-      "cm-merge-actions mb-1 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-2 py-1 shadow-sm";
+      "cm-merge-actions mb-1 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-2 py-1 shadow-sm";
+    row.style.display = "inline-flex";
+    row.style.width = "fit-content";
+    row.style.maxWidth = "100%";
     const label = document.createElement("span");
     label.textContent = "这一处差异";
     label.className = "text-[11px] font-medium text-foreground";
