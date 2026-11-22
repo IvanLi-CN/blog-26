@@ -1,8 +1,17 @@
+import { search, searchKeymap } from "@codemirror/search";
 import { EditorState } from "@codemirror/state";
-import { Decoration, EditorView, lineNumbers, WidgetType } from "@codemirror/view";
+import {
+  Decoration,
+  EditorView,
+  highlightActiveLine,
+  keymap,
+  lineNumbers,
+  WidgetType,
+} from "@codemirror/view";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Badge, Button } from "~/components/ui";
+import { contentLanguageExtension } from "~/editor/merge-editor-language";
 import { mergeEditorTheme } from "~/editor/merge-editor-theme";
 
 export type MergeRegion =
@@ -302,6 +311,10 @@ export function ContentThreeWayMerge({
           extensions: [
             lineNumbers(),
             EditorView.lineWrapping,
+            highlightActiveLine(),
+            keymap.of(searchKeymap),
+            search({ top: true }),
+            contentLanguageExtension(),
             mergeEditorTheme,
             ...(editable ? [localPanels(regions, decisions.current, decide)] : []),
             conflictMarks(regions, side, decisions.current),

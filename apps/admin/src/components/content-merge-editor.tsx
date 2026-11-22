@@ -4,6 +4,7 @@ import { EditorState, StateEffect, StateField, Text } from "@codemirror/state";
 import { Decoration, EditorView, keymap, lineNumbers, WidgetType } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui";
+import { contentLanguageExtension } from "~/editor/merge-editor-language";
 import { mergeEditorTheme } from "~/editor/merge-editor-theme";
 
 type Chunk = { fromA: number; toA: number; fromB: number; toB: number };

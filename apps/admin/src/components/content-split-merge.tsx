@@ -1,8 +1,10 @@
 import { getChunks, MergeView } from "@codemirror/merge";
+import { search, searchKeymap } from "@codemirror/search";
 import { RangeSet, StateEffect } from "@codemirror/state";
-import { EditorView, GutterMarker, gutter } from "@codemirror/view";
+import { EditorView, GutterMarker, gutter, highlightActiveLine, keymap } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui";
+import { contentLanguageExtension } from "~/editor/merge-editor-language";
 import { mergeEditorTheme } from "~/editor/merge-editor-theme";
 
 type Chunk = { fromA: number; toA: number; fromB: number; toB: number };
@@ -162,8 +164,24 @@ export function ContentSplitMerge({
 
     const next = new MergeView({
       parent,
-      a: { doc: remoteText },
-      b: { doc: localText },
+      a: {
+        doc: remoteText,
+        extensions: [
+          highlightActiveLine(),
+          keymap.of(searchKeymap),
+          search({ top: true }),
+          contentLanguageExtension(),
+        ],
+      },
+      b: {
+        doc: localText,
+        extensions: [
+          highlightActiveLine(),
+          keymap.of(searchKeymap),
+          search({ top: true }),
+          contentLanguageExtension(),
+        ],
+      },
       highlightChanges: true,
       gutter: true,
       collapseUnchanged: { margin: 3 },
