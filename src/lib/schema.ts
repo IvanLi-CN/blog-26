@@ -1238,3 +1238,5 @@ export const ragIndexConfigs = sqliteTable("rag_index_configs", {
   updatedAt: integer("updated_at").notNull(),
 });
 export type NewPersonalAccessToken = typeof personalAccessTokens.$inferInsert;
+
+export * from "./schema-content-authority";

@@ -13,6 +13,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { eq } from "drizzle-orm";
 import matter from "gray-matter";
 import { z } from "zod";
 import { getActiveLocalBasePath } from "@/config/paths";
@@ -20,11 +21,14 @@ import {
   CLIPPING_RESOURCE_MAX_BYTES,
   stripUncapturedClippingMedia,
 } from "@/lib/clipping-resources";
+import { isDatabaseContentAuthority } from "@/lib/content-authority";
+import { db } from "@/lib/db";
 import {
   type ClippingReading,
   composeClippingMemo,
   recognizeMemoClipping,
 } from "@/lib/memo-clipping";
+import { posts } from "@/lib/schema";
 
 const identitySchema = z
   .string()
@@ -98,7 +102,35 @@ function inside(root: string, path: string) {
   return part === "" || (!part.startsWith("..") && !isAbsolute(part));
 }
 
+/**
+ * Database authority stores the authored document in the row projection:
+ * `metadata.content` is the authored body and every other metadata key is the
+ * authored frontmatter. Reading never touches the media root.
+ */
+function databaseAuthoredMemo(memoId: string) {
+  const row = db.select().from(posts).where(eq(posts.id, memoId)).get();
+  if (!row) {
+    throw Object.assign(new Error(`ENOENT: no such file or directory, open '${memoId}'`), {
+      code: "ENOENT",
+      path: memoId,
+    });
+  }
+  let metadata: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = row.metadata ? JSON.parse(row.metadata) : {};
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+      metadata = parsed as Record<string, unknown>;
+  } catch {
+    metadata = {};
+  }
+  const { content, ...frontmatter } = metadata;
+  const body = typeof content === "string" ? content : row.body;
+  const raw = matter.stringify(body.endsWith("\n") ? body : `${body}\n`, frontmatter);
+  return { path: row.filePath || row.id, raw, body, frontmatter };
+}
+
 export async function readAuthoredMemo(memoId: string) {
+  if (isDatabaseContentAuthority()) return databaseAuthoredMemo(memoId);
   const base = getActiveLocalBasePath();
   if (!base) throw new Error("未配置本地内容目录。");
   const root = await realpath(base);
@@ -118,6 +150,7 @@ export async function readAuthoredMemo(memoId: string) {
 
 /** Synchronous counterpart used at SQLite operation boundaries. */
 export function readAuthoredMemoSync(memoId: string) {
+  if (isDatabaseContentAuthority()) return databaseAuthoredMemo(memoId);
   const base = getActiveLocalBasePath();
   if (!base) throw new Error("未配置本地内容目录。");
   const root = realpathSync(base);

@@ -4,7 +4,7 @@
 
 ## Current Status
 
-- Implementation: 推送、拉取、三方合并、远端新增/删除、差异对比界面均已实现并有定向测试；文章与 Memo 在仓库同步中同等对待。权威切换尚未执行。
+- Implementation: 推送、拉取、三方合并、远端新增/删除、差异对比界面均已实现并有定向测试；文章与 Memo 在仓库同步中同等对待。一次性导入、权威开关与仓库初始化脚本已实现，权威切换尚未在线上执行。
 - Lifecycle: active
 - Catalog note: 取代 [本地内容源真实目录布局](../local-real-content-layout/SPEC.md) 的内容来源部分。
 
@@ -28,8 +28,10 @@
 - `REQ-CGS-005`：`src/lib/content-repo/state.ts` 按同步基线与远端 blob sha 得出已同步、待推送、待拉取、远端新增、远端删除与合并冲突，并单独列出缺失附件。
 - `REQ-CGS-007`：`checkContentRepo` 只解析 ref 与读取树清单，列出差异状态，不写库。`pullContentRepo` 处理 `to-pull` 的文章与 Memo：读取目标 blob、解析 frontmatter、写库并推进基线，随后清理搜索缓存；附件有变化的条目跳过并给出原因。
 - `REQ-CGS-007`、`REQ-CGS-008`、`REQ-CGS-009`、`REQ-CGS-015`（拉取/合并/远端新增删除/界面）覆盖 Memo 与文章：仓库路径 `Memos/<file>.md` 与 `blog/<slug>.md` 使用同一条拉取、合并与采纳路径，同步基线按内容类型记录 `kind`；仓库中存在而内容库没有的路径（含 Memo）由 `computeSyncStates` 列为 `remote-new`。
-- 未实现：`REQ-CGS-001`（Memo 入库仍由本地文件内容源扫描；剪藏与 MCP 写路径尚未记录媒体身份）、`REQ-CGS-011`（合并保存的乐观并发校验）、`REQ-CGS-013`（权威切换）、`REQ-CGS-015`（文件树退役与剪藏/MCP 写路径的附件身份）。
-- Verification commands: `bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts src/server/services/content-repo-memo-sync.test.ts`（51 pass）；`bun run db:migrations:validate`；`DB_PATH=<tmp> bun run migrate`。
+- `REQ-CGS-013`：`scripts/content-cutover.ts`（`src/server/services/content-cutover.ts`）在服务停止时按扫描范围枚举文件，把文章规范化为 `blog/<slug>.md`、Memo 保留 `Memos/<file>.md`，将引用附件复制到 `<kind>/assets/` 并登记身份，写入 `content_authority` 标记；重复执行返回 `completed`。`CONTENT_AUTHORITY=database` 关闭本地源注册、增量/全量同步与判废，并保留 `LOCAL_CONTENT_BASE_PATH` 作为媒体根。`scripts/content-repo-seed.ts` 按单批上限分批推送，生成仓库初始提交。
+- `REQ-CGS-001`：MCP 与剪藏在数据库权威下直接写库并记录媒体身份，不再写 Markdown 内容文件或触发扫描。
+- 未实现：`REQ-CGS-011`（合并保存的乐观并发校验）、`REQ-CGS-015`（内容文件读写接口的最终退役清单）、真实仓库与生产切换的现场验收。
+- Verification commands: `bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts src/server/services/content-repo-memo-sync.test.ts src/server/services/content-cutover.test.ts src/lib/content-sources/authority-gate.test.ts`（60 pass）；`bun test --isolate src/server/mcp src/server/clipping`（138 pass）；`bun run db:migrations:validate`；`DB_PATH=<tmp> bun run migrate`。
 - Rollout facts: 推送入口当前只有管理员 tRPC `contentRepo.status` 与 `contentRepo.push`，没有界面入口，也没有定时任务；权威切换与本地源退役不在本次范围内。
 
 ## Coverage / rollout summary
@@ -38,10 +40,10 @@
 
 ## Remaining Gaps
 
-- 媒体身份已在上传与推送采纳时记录；剪藏资源与 MCP 附件的写入路径仍不记录，读取时也不核对（`REQ-CGS-001`、`REQ-CGS-015`）。
-- 内容入库路径仍有两个写入者：Memo 与文章行由本地文件源扫描产生，管理端编辑直接写库；在权威切换前，扫描仍可能把库内改动回填为文件旧字节（`REQ-CGS-001`、`REQ-CGS-013`）。
+- 媒体身份在附件上传、推送采纳与导入搬迁时记录；MCP 正文内嵌的外链媒体仍不登记，读取时也不核对（`REQ-CGS-001`、`REQ-CGS-015`）。
+- 切换前内容仍有本地扫描与库编辑两个写入者；切换后写入者只有数据库（管理端、MCP、剪藏），扫描任务与判废路径不再运行（`REQ-CGS-001`、`REQ-CGS-013`）。
 - 与真实仓库的 smoke 验证尚未执行；当前只有注入式 transport 与纯函数测试。
-- 权威切换（导入 + 停止注册本地源 + 移除判废路径）仍是未排期的一次性发布。
+- 权威切换已具备代码与 runbook，等待维护窗口执行；执行前需要一个私有空仓库与可读写该单一仓库的 token。
 
 ## Related Changes
 

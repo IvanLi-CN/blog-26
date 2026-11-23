@@ -1,4 +1,5 @@
 import { SYSTEM_CONFIG } from "@/config/paths";
+import { isDatabaseContentAuthority } from "@/lib/content-authority";
 import { LocalContentSource } from "./local";
 import type { getContentSourceManager } from "./manager";
 
@@ -8,6 +9,7 @@ import type { getContentSourceManager } from "./manager";
 export async function ensureContentSourcesRegistered(
   manager: ReturnType<typeof getContentSourceManager>
 ) {
+  if (isDatabaseContentAuthority()) return manager;
   const sources = manager.getSources();
 
   // 如果没有注册的内容源，自动注册默认的内容源

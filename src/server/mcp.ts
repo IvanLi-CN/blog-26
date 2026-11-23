@@ -8,7 +8,9 @@ import { z } from "zod";
 import { getActiveLocalBasePath, isLocalContentEnabled, LOCAL_PATHS } from "@/config/paths";
 import { enhanced as enhancedSearch, semantic as semanticSearch } from "@/lib/ai/search";
 import { clearSearchCache } from "@/lib/ai/search-cache";
+import { isDatabaseContentAuthority } from "@/lib/content-authority";
 import { getContentSourceManager, LocalContentSource } from "@/lib/content-sources";
+import { extractMemoTitle } from "@/lib/content-sources/utils";
 import { db, initializeDB } from "@/lib/db";
 import { formatMarkdownBody } from "@/lib/markdown-format";
 import { buildMemoRelativePath } from "@/lib/memo-paths";
@@ -21,8 +23,13 @@ import {
   withClippingVisibilityLock,
 } from "@/server/clipping/projection";
 import { notifyClippingChange } from "@/server/clipping/runtime";
-import { attachClippingReference } from "@/server/clipping/store";
+import { attachClippingReference, readAuthoredMemo } from "@/server/clipping/store";
 import { buildPublicMediaCollection, rewritePublicMemoAttachments } from "@/server/public-media";
+import {
+  authoredExcerpt,
+  deleteAuthoredContent,
+  saveAuthoredContent,
+} from "@/server/services/content-authority-writer";
 import {
   contentSearchInputObjectSchema,
   executeContentModes,
@@ -188,6 +195,20 @@ function buildToolResult(result: FrontmatterWriteResult) {
 }
 
 async function getFrontmatterDiagnostics(row: PostRow, kind: ContentKind) {
+  if (isDatabaseContentAuthority()) {
+    try {
+      const authored = await readAuthoredMemo(row.id);
+      return {
+        hasFrontmatter: Object.keys(authored.frontmatter).length > 0,
+        missingRecommendedMetadata: getMissingRecommendedMetadata(authored.frontmatter, kind),
+      };
+    } catch {
+      return {
+        hasFrontmatter: false,
+        missingRecommendedMetadata: [],
+      };
+    }
+  }
   if (!row.filePath) {
     return {
       hasFrontmatter: false,
@@ -354,6 +375,42 @@ async function updateFrontmatterInStorage(
   newBody?: string,
   kind: ContentKind = row.type === "memo" ? "memo" : "post"
 ): Promise<FrontmatterWriteResult> {
+  if (isDatabaseContentAuthority()) {
+    const authored = await readAuthoredMemo(row.id);
+    const data: Record<string, unknown> = { ...authored.frontmatter };
+    const frontmatterAdded = Object.keys(data).length === 0;
+    const nowIso = new Date().toISOString();
+    await mut(data);
+    ensureMcpUpdateFrontmatter(data, row, nowIso);
+    const missingRecommendedMetadata = getMissingRecommendedMetadata(data, kind);
+    const warnings = [
+      ...(frontmatterAdded
+        ? ["Original Markdown had no YAML frontmatter; minimal MCP update metadata was added."]
+        : []),
+      ...(missingRecommendedMetadata.length > 0
+        ? [
+            `Recommended frontmatter fields are still missing: ${missingRecommendedMetadata.join(
+              ", "
+            )}.`,
+          ]
+        : []),
+    ];
+    await saveAuthoredContent({
+      kind,
+      id: row.id,
+      slug: row.slug,
+      filePath: row.filePath || row.id,
+      frontmatter: data,
+      body: newBody === undefined ? authored.body : formatMarkdownBody(newBody),
+      row,
+    });
+    return {
+      ok: true,
+      frontmatterAdded,
+      warnings,
+      recommendedMetadata: buildRecommendedMetadata(row, missingRecommendedMetadata),
+    };
+  }
   if (!row.filePath) throw new Error("Content not found or missing filePath");
   const source = resolveStorageSource(row);
   const raw = await readStorageFile(source, row.filePath);
@@ -407,6 +464,90 @@ function buildDatedMarkdownPath(basePath: string, title: string): string {
   const d = new Date();
   const datePrefix = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
   return `${base}/${datePrefix}_${limax(title)}.md`;
+}
+
+function toTimestamp(value: string | number | undefined): number | null {
+  if (value === undefined) return null;
+  const parsed = typeof value === "number" ? value : Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function uniqueSlug(kind: ContentKind, base: string): Promise<string> {
+  const taken = new Set(
+    (
+      await db.select({ slug: postsTable.slug }).from(postsTable).where(eq(postsTable.type, kind))
+    ).map((row) => row.slug)
+  );
+  if (!taken.has(base)) return base;
+  let suffix = 2;
+  while (taken.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
+}
+
+async function createDatabasePost(input: z.infer<typeof createPostInput>) {
+  const body = formatMarkdownBody(input.content);
+  const slug = await uniqueSlug("post", limax(input.title) || "untitled");
+  const id = `blog/${slug}.md`;
+  const publishDate = toTimestamp(input.publishDate) ?? Date.now();
+  const tags = input.tags ?? [];
+  await saveAuthoredContent({
+    kind: "post",
+    id,
+    slug,
+    filePath: id,
+    frontmatter: {
+      title: input.title,
+      public: input.isPublic,
+      tags,
+      ...(input.category ? { category: input.category } : {}),
+      publishDate: iso(publishDate),
+      createdVia: MCP_CREATED_VIA,
+    },
+    body,
+    title: input.title,
+    excerpt: authoredExcerpt(body),
+    publishDate,
+    public: input.isPublic,
+    tags,
+    category: input.category ?? null,
+    createdVia: MCP_CREATED_VIA,
+    dataSource: "database",
+    source: "database",
+  });
+}
+
+async function createDatabaseMemo(input: z.infer<typeof createMemoInput>) {
+  const body = formatMarkdownBody(input.content);
+  const stamp = Date.now();
+  const fileName = `${stamp}_${limax(input.title || "memo") || "memo"}.md`;
+  const id = `Memos/${fileName}`;
+  const slug = await uniqueSlug("memo", limax(fileName.replace(/\.md$/u, "")) || String(stamp));
+  const authoredMetadata: Record<string, unknown> = { title: input.title, tags: input.tags };
+  await attachClippingReference(body, authoredMetadata, getMcpAuthContext().userId ?? null, id);
+  const title = input.title?.trim() || extractMemoTitle({}, body) || slug;
+  await withClippingVisibilityLock(() =>
+    saveAuthoredContent({
+      kind: "memo",
+      id,
+      slug,
+      filePath: id,
+      frontmatter: {
+        ...authoredMetadata,
+        public: input.isPublic,
+        tags: input.tags,
+        publishDate: iso(stamp),
+        createdVia: MCP_CREATED_VIA,
+      },
+      body,
+      title,
+      publishDate: stamp,
+      public: input.isPublic,
+      tags: input.tags,
+      dataSource: "database",
+      source: "database",
+    })
+  );
+  return id;
 }
 
 const listPostsInput = z.object({
@@ -589,6 +730,10 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       // 管理员专属
       requireAdmin();
       const input = args as z.infer<typeof createPostInput>;
+      if (isDatabaseContentAuthority()) {
+        await createDatabasePost(input);
+        return { content: [{ type: "text", text: "ok" }] };
+      }
       const fm = buildFrontmatter({
         title: input.title,
         public: input.isPublic,
@@ -622,7 +767,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "post")))
         .limit(1)
         .then((r) => r[0]);
-      if (!row?.filePath) throw new Error("Post not found or missing filePath");
+      if (!row) throw new Error("Post not found");
       const result = await updateFrontmatterInStorage(
         row,
         (fm) => {
@@ -635,7 +780,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         input.content,
         "post"
       );
-      await triggerIncrementalSync();
+      if (!isDatabaseContentAuthority()) await triggerIncrementalSync();
       return buildToolResult(result);
     }
   );
@@ -654,7 +799,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "post")))
         .limit(1)
         .then((r) => r[0]);
-      if (!row?.filePath) throw new Error("Post not found or missing filePath");
+      if (!row) throw new Error("Post not found");
       const result = await updateFrontmatterInStorage(
         row,
         (fm) => {
@@ -664,7 +809,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         undefined,
         "post"
       );
-      await triggerIncrementalSync();
+      if (!isDatabaseContentAuthority()) await triggerIncrementalSync();
       return buildToolResult(result);
     }
   );
@@ -683,7 +828,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "post")))
         .limit(1)
         .then((r) => r[0]);
-      if (!row?.filePath) throw new Error("Post not found or missing filePath");
+      if (!row) throw new Error("Post not found");
       const result = await updateFrontmatterInStorage(
         row,
         (fm) => {
@@ -693,7 +838,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         undefined,
         "post"
       );
-      await triggerIncrementalSync();
+      if (!isDatabaseContentAuthority()) await triggerIncrementalSync();
       return buildToolResult(result);
     }
   );
@@ -712,7 +857,12 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "post")))
         .limit(1)
         .then((r) => r[0]);
-      if (!row?.filePath) throw new Error("Post not found or missing filePath");
+      if (!row) throw new Error("Post not found");
+      if (isDatabaseContentAuthority()) {
+        await deleteAuthoredContent(row.id);
+        return { content: [{ type: "text", text: "ok" }] };
+      }
+      if (!row.filePath) throw new Error("Post not found or missing filePath");
       await deleteStorageFile(resolveStorageSource(row), row.filePath);
       await deleteIndexedContentRow(row.id);
       await triggerIncrementalSync();
@@ -863,6 +1013,11 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
     // 管理员专属
     requireAdmin();
     const input = args as z.infer<typeof createMemoInput>;
+    if (isDatabaseContentAuthority()) {
+      const memoId = await createDatabaseMemo(input);
+      notifyClippingChange(memoId);
+      return { content: [{ type: "text", text: "ok" }] };
+    }
     const authoredMetadata: Record<string, unknown> = { title: input.title, tags: input.tags };
     const rel = buildMemoRelativePath(
       `${Date.now()}_${limax(input.title || "memo")}.md`,
@@ -919,30 +1074,37 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
           .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "memo")))
           .limit(1)
           .then((r) => r[0]);
-        if (!row?.filePath) throw new Error("Memo not found or missing filePath");
-        const previousRaw = await readStorageFile(resolveStorageSource(row), row.filePath);
+        if (!row) throw new Error("Memo not found");
+        if (!isDatabaseContentAuthority() && !row.filePath)
+          throw new Error("Memo not found or missing filePath");
+        const mutateFrontmatter = async (fm: Record<string, unknown>) => {
+          if (input.title !== undefined) fm.title = input.title;
+          fm.public = input.isPublic;
+          if (input.tags !== undefined) fm.tags = input.tags;
+          fm.updateDate = new Date().toISOString();
+          await attachClippingReference(
+            input.content,
+            fm,
+            getMcpAuthContext().userId ?? null,
+            row.id
+          );
+        };
+        const previousRaw = isDatabaseContentAuthority()
+          ? null
+          : await readStorageFile(resolveStorageSource(row), row.filePath);
         const result = await updateFrontmatterInStorage(
           row,
-          async (fm) => {
-            if (input.title !== undefined) fm.title = input.title;
-            fm.public = input.isPublic;
-            if (input.tags !== undefined) fm.tags = input.tags;
-            fm.updateDate = new Date().toISOString();
-            await attachClippingReference(
-              input.content,
-              fm,
-              getMcpAuthContext().userId ?? null,
-              row.id
-            );
-          },
+          mutateFrontmatter,
           input.content,
           "memo"
         );
+        if (isDatabaseContentAuthority()) return { rowId: row.id, result };
         try {
           await triggerIncrementalSync({ throwOnError: true });
         } catch (error) {
           try {
-            await writeStorageFile(resolveStorageSource(row), row.filePath, previousRaw);
+            if (previousRaw !== null)
+              await writeStorageFile(resolveStorageSource(row), row.filePath, previousRaw);
             await restoreIndexedContentRow(row);
             await triggerIncrementalSync({ throwOnError: true });
           } catch (rollbackError) {
@@ -971,7 +1133,12 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .where(and(eq(postsTable.slug, input.slug), eq(postsTable.type, "memo")))
         .limit(1)
         .then((r) => r[0]);
-      if (!row?.filePath) throw new Error("Memo not found or missing filePath");
+      if (!row) throw new Error("Memo not found");
+      if (isDatabaseContentAuthority()) {
+        await deleteAuthoredContent(row.id);
+        return row.id;
+      }
+      if (!row.filePath) throw new Error("Memo not found or missing filePath");
       const previousRaw = await readStorageFile(resolveStorageSource(row), row.filePath);
       let deletedIndexed = false;
       try {
