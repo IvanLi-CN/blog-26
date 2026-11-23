@@ -280,10 +280,6 @@ export function ContentSplitMerge({
         <span className="flex-1" />
         {trailing}
       </div>
-      <p className="text-xs text-muted-foreground">
-        左为远端、右为本地；两侧都可直接编辑，右侧内容就是保存结果。本地沟槽 `←` 采用远端这一块、`✓`
-        保留本地这一块；远端沟槽 `→` 把本地这一块写回远端。
-      </p>
       <div
         ref={host}
         data-testid="content-split-merge"

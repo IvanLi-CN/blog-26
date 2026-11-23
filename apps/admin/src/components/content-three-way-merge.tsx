@@ -36,6 +36,32 @@ const DECISION_LABEL: Record<Side, string> = {
   remote: "采用远端",
 };
 
+/** Blank block used to keep the reference panes in step with the result pane. */
+class RowSpacer extends WidgetType {
+  constructor(private readonly height: number) {
+    super();
+  }
+
+  override eq(other: WidgetType) {
+    return other instanceof RowSpacer && other.height === this.height;
+  }
+
+  override toDOM() {
+    const block = document.createElement("div");
+    block.className = "cm-row-spacer";
+    block.style.height = `${this.height}px`;
+    return block;
+  }
+
+  override get estimatedHeight() {
+    return this.height;
+  }
+
+  ignoreEvent() {
+    return false;
+  }
+}
+
 const setDecision = StateEffect.define<{ index: number; side: Side }>();
 const clearDecision = StateEffect.define<number>();
 
@@ -127,7 +153,7 @@ function ConflictActions({
   onDecide: (side: Side) => void;
 }) {
   return (
-    <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-2 py-1 shadow-sm">
+    <div className="inline-flex h-8 w-fit max-w-full items-center gap-2 rounded-lg border border-border bg-card px-2 shadow-sm">
       <span className="text-[11px] font-semibold text-foreground">冲突 {ordinal}</span>
       <Badge tone={decision ? "success" : "warning"}>{decision ? "已解决" : "未解决"}</Badge>
       {(["local", "base", "remote"] as const).map((side) => (
@@ -172,7 +198,7 @@ class ConflictPanel extends WidgetType {
 
   override toDOM() {
     const host = document.createElement("div");
-    host.className = "cm-conflict-panel mb-1";
+    host.className = "cm-conflict-panel";
     this.root = createRoot(host);
     this.root.render(
       <ConflictActions
@@ -215,15 +241,28 @@ function decisionPanels(regions: MergeRegion[], onDecide: (index: number, side: 
   });
 }
 
-const conflictMarks = (regions: MergeRegion[], pane: Pane) =>
+const conflictMarks = (regions: MergeRegion[], pane: Pane, panelHeight: number) =>
   EditorView.decorations.compute(["doc", decisionsField], (state) => {
     const decisions = state.field(decisionsField);
-    return Decoration.set(
-      conflictSpans(state.doc.toString(), regions, pane, decisions).map((span) =>
-        Decoration.mark({ class: "cm-merge-conflict" }).range(span.from, span.to)
-      ),
-      true
-    );
+    const decorations: Decoration[] = conflictSpans(
+      state.doc.toString(),
+      regions,
+      pane,
+      decisions
+    ).map((span) => Decoration.mark({ class: "cm-merge-conflict" }).range(span.from, span.to));
+    if (pane !== "result") {
+      for (const span of conflictSpans(state.doc.toString(), regions, pane, decisions)) {
+        if (decisions.has(span.index)) continue;
+        decorations.push(
+          Decoration.widget({
+            widget: new RowSpacer(panelHeight),
+            side: -1,
+            block: true,
+          }).range(span.from)
+        );
+      }
+    }
+    return Decoration.set(decorations, true);
   });
 
 /**
@@ -235,12 +274,14 @@ export function ContentThreeWayMerge({
   regions,
   localText,
   remoteText,
+  panelHeight = 32,
   onReady,
   trailing,
 }: {
   regions: MergeRegion[];
   localText: string;
   remoteText: string;
+  panelHeight?: number;
   onReady?: (handle: ContentMergeHandle) => void;
   trailing?: ReactNode;
 }) {
@@ -376,7 +417,7 @@ export function ContentThreeWayMerge({
             contentLanguageExtension(),
             mergeEditorTheme,
             ...(editable ? [decisionPanels(regions, decide)] : []),
-            conflictMarks(regions, pane),
+            conflictMarks(regions, pane, panelHeight),
             ...(editable ? [] : [EditorState.readOnly.of(true), EditorView.editable.of(false)]),
             EditorView.updateListener.of((update) => {
               if (update.docChanged || update.transactions.length) readStatus(update.view);
@@ -405,7 +446,7 @@ export function ContentThreeWayMerge({
       for (const view of created) view.destroy();
       editors.current = {};
     };
-  }, [conflictIndexes, regions, texts, decide, syncScroll, readStatus]);
+  }, [conflictIndexes, panelHeight, regions, texts, decide, syncScroll, readStatus]);
 
   const unresolvedCount = Math.max(0, status.total - status.solved);
   const position = (() => {
@@ -457,15 +498,6 @@ export function ContentThreeWayMerge({
         <span className="flex-1" />
         {trailing}
       </div>
-      <p className="text-xs text-muted-foreground">
-        中栏（合并结果）可编辑，保存写回它；左栏本地与右栏远端只作参照。裁决后该处浮动面板消失，撤销会同时还原文本与裁决。
-      </p>
-      {unresolvedCount ? (
-        <p className="text-xs text-warning">
-          仍有 {unresolvedCount} 处未解决；现在保存会保留合并结果窗格的当前内容。
-        </p>
-      ) : null}
-
       <div
         className="overflow-hidden rounded-2xl border border-border bg-code-surface"
         data-testid="content-three-way-panes"
