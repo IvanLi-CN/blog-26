@@ -852,6 +852,10 @@
   overflow-wrap: anywhere;
 }
 
+.knowledge-assistant-failure [data-slot="alert-action"] {
+  align-self: start;
+}
+
 .knowledge-assistant-failure button {
   min-block-size: 44px;
 }
