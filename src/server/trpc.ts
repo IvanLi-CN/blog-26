@@ -1,16 +1,26 @@
 import { initTRPC, TRPCError } from "@trpc/server";
-import { z } from "zod";
+import {
+  createErrorRef,
+  normalizePublicErrorCode,
+  publicErrorMessage,
+} from "@/lib/public-error-presets";
 import type { Context } from "./context";
 
 // 初始化 tRPC
 export const t = initTRPC.context<Context>().create({
+  // The raw endpoint is reachable from the public origin, so its error shape must
+  // stay identical in every deployment: no stack, no zod dump, no internal path.
+  isDev: false,
   errorFormatter({ shape, error }) {
+    const httpStatus = getHTTPStatusCodeFromError(error);
+    const code = normalizePublicErrorCode(error.code, httpStatus);
     return {
       ...shape,
+      message: publicErrorMessage(code),
       data: {
-        ...shape.data,
-        zodError: error.cause instanceof z.ZodError ? error.cause.flatten() : null,
-        httpStatus: getHTTPStatusCodeFromError(error),
+        code,
+        httpStatus,
+        errorRef: createErrorRef(),
       },
     };
   },

@@ -54,13 +54,12 @@ export type PublicSearchPageProps = {
 
 function formatError(error: PublicSearchPageProps["error"]) {
   if (!error) return null;
-  if (error instanceof Error) return error.message || "搜索失败，请稍后重试";
+  if (error instanceof Error) return "搜索失败，请稍后重试";
   if (typeof error === "object" && "message" in error) {
     const message = (error as { message?: unknown }).message;
     if (typeof message === "string" && message) return message;
   }
-  if (typeof error !== "string") return "搜索失败，请稍后重试";
-  return error;
+  return typeof error === "string" && error ? error : "搜索失败，请稍后重试";
 }
 
 function SearchPromptPanel({

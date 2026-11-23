@@ -19,6 +19,7 @@ import type {
   AssistantProcessStep,
   FrontendAuthState,
 } from "@/lib/assistant-contracts";
+import { normalizePublicErrorCode, publicErrorMessage } from "@/lib/public-error-presets";
 import {
   getWebDemoRuntimeState,
   getWebDemoShareUrl,
@@ -317,7 +318,11 @@ function errorMessage(error: unknown) {
     return "这段对话已过期，请新建对话。";
   if (error instanceof AssistantClientError && error.status === 401)
     return "登录状态已失效，请重新登录。";
-  return error instanceof Error ? error.message : "助手暂时不可用，请重试。";
+  // The response text is a server-side preset, but the UI never trusts it as a
+  // last resort: an unrecognized shape still resolves to a local preset.
+  const code = error instanceof AssistantClientError ? (error.code ?? null) : null;
+  const status = error instanceof AssistantClientError ? error.status : 500;
+  return publicErrorMessage(normalizePublicErrorCode(code, status));
 }
 
 function AssistantErrorAlert({

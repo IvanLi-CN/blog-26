@@ -12,6 +12,7 @@ import Icon from "@/components/ui/Icon";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import type { ClippingReading } from "@/lib/memo-clipping";
 import { getMemoPresentation } from "@/lib/memo-presentation";
+import { normalizePublicErrorCode, publicErrorMessage } from "@/lib/public-error-presets";
 import type { PublicMediaContext } from "@/lib/public-media";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
 import { WEB_DEMO_STATE_EVENT } from "@/lib/web-demo-runtime";
@@ -118,11 +119,7 @@ async function requestJson<T>(input: RequestInfo | URL, init?: RequestInit): Pro
     const message =
       typeof errorPayload?.error === "string"
         ? errorPayload.error
-        : errorPayload?.error &&
-            typeof errorPayload.error === "object" &&
-            typeof errorPayload.error.message === "string"
-          ? errorPayload.error.message
-          : `Request failed with status ${response.status}`;
+        : publicErrorMessage(normalizePublicErrorCode(null, response.status));
     throw new PublicRequestError(message, response.status);
   }
   return payload as T;

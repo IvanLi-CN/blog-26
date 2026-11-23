@@ -3,6 +3,7 @@ import { encodeJson } from "@/lib/playbook/manifest";
 import { getPlaybookPolicies } from "@/lib/playbook/navigation";
 import { digestSchema, stableTagSchema } from "@/lib/playbook/schema";
 import type { PlaybookEdition } from "@/lib/playbook/types";
+import { buildPublicErrorBody } from "@/lib/public-error-presets";
 import type { PlaybookStoredSnapshot } from "../services/playbook-snapshot-store";
 
 type PublicPlaybookSource =
@@ -39,7 +40,10 @@ export function handlePlaybookRequest(
   source: PublicPlaybookSource
 ) {
   if (request.method !== "GET")
-    return new Response("Method not allowed", { status: 405, headers: { allow: "GET" } });
+    return Response.json(buildPublicErrorBody({ status: 405 }), {
+      status: 405,
+      headers: { allow: "GET" },
+    });
   const url = new URL(request.url);
   const legacy = isLegacyPlaybookStore(source) ? source : null;
   const identityHeaders: Record<string, string> = {};
@@ -54,13 +58,14 @@ export function handlePlaybookRequest(
       !/^[1-9]\d*$/u.test(sourceReleaseId) ||
       !sourceTag.success
     )
-      return Response.json(
-        { error: "A valid edition, sourceReleaseId and sourceTag are required" },
-        { status: 400 }
-      );
+      return Response.json(buildPublicErrorBody({ code: "INVALID_REQUEST", status: 400 }), {
+        status: 400,
+      });
     current = legacy.getEdition(digest.data, sourceReleaseId, sourceTag.data) ?? null;
     if (!current)
-      return Response.json({ error: "Edition unavailable; refresh the page" }, { status: 409 });
+      return Response.json(buildPublicErrorBody({ code: "CONFLICT", status: 409 }), {
+        status: 409,
+      });
     Object.assign(identityHeaders, {
       "x-playbook-edition": digest.data,
       "x-playbook-source-release-id": current.edition.source.releaseId,
@@ -70,7 +75,10 @@ export function handlePlaybookRequest(
   } else {
     current = currentPlaybook(source);
   }
-  if (!current) return Response.json({ error: "Playbook unavailable" }, { status: 503 });
+  if (!current)
+    return Response.json(buildPublicErrorBody({ code: "SERVICE_UNAVAILABLE", status: 503 }), {
+      status: 503,
+    });
 
   if (path === "/playbook/search-index")
     return new Response(encodeJson(publicSearch(current)), {

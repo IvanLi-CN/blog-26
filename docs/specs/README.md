@@ -53,3 +53,6 @@
 | 助手消息渲染 | active | in progress | [assistant-message-rendering/SPEC.md](assistant-message-rendering/SPEC.md) | - | 双角色正文、CommonMark/GFM、代码与数学、受限内容与外图主动加载已集成父分支；正式路由格式、安全请求、导航展示状态及移动端 Drawer 回归已通过，待回归子 PR 与父 PR 审查。 |
 | CI execution efficiency | active | in progress | `ci-performance/SPEC.md` | - | 完整覆盖、精确编译复用、隔离分片与双指标性能验收。 |
 | Content library and content repository sync | active | in progress | `content-git-sync/SPEC.md` | - | Database content library is authoritative; private content repository stays a peer copy through manual push, pull and three-way merge with a diff surface. |
+| 管理端错误面与 Frontmatter 诊断详情 | active | implemented | [admin-error-surface/SPEC.md](admin-error-surface/SPEC.md) | - | 常驻诊断列表、可预测宽度、四层错误色、字段定位、复制全部与语义色 token 一致性。 |
+| 访客可见错误的过滤与预设 | active | implemented | [public-error-visibility/SPEC.md](public-error-visibility/SPEC.md) | - | 封闭错误码、七类状态预设、`errorRef` 追溯，以及关闭 `/api/trpc/*` 调试信息暴露。 |
+| 主体绑定响应的缓存边界 | active | implemented | [principal-bound-response-cache/SPEC.md](principal-bound-response-cache/SPEC.md) | - | 生产网关默认私有、显式头优先，补齐 `vary` 与 `x-robots-tag`。 |

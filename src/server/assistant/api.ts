@@ -3,6 +3,7 @@ import type { AssistantGenerationJob, FrontendPrincipal } from "@/lib/assistant-
 import { initializeDB } from "@/lib/db";
 import { getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
 import { appendPublicCorsHeaders, hasTrustedPublicOrigin } from "@/lib/public-cors";
+import { sanitizePublicErrorBody } from "@/lib/public-error-presets";
 import {
   assertAssistantServiceEnabled,
   SiteFeatureDisabledError,
@@ -58,7 +59,7 @@ function response(
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store, private");
   appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
-  return new Response(JSON.stringify(data), { status, headers });
+  return new Response(JSON.stringify(sanitizePublicErrorBody(data, status)), { status, headers });
 }
 
 function methodNotAllowed(request: Request) {

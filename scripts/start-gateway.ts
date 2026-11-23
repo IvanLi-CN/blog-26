@@ -4,6 +4,7 @@ import { extname, resolve } from "node:path";
 import { getSsoEmailHeaderName } from "@/lib/admin-config";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { getPublicStaticCacheControl } from "@/lib/public-static-cache-policy";
+import { applyPrivateResponseDefaults } from "@/lib/response-cache-policy";
 import { loadWorktreeEnvFileIfPresent, resolveWorktreePort } from "@/lib/worktree-env";
 import { handleAdminApiRequest } from "@/server/admin-api/router";
 import { startAssistantRuntime, stopAssistantRuntime } from "@/server/assistant/runtime";
@@ -495,201 +496,191 @@ const server = Bun.serve({
   hostname,
   port: publicPort,
   fetch: async (request) => {
-    const url = new URL(request.url);
-    const { pathname, search, searchParams } = url;
-    const effectiveRequest = withLocalPreviewIdentity(request, pathname, searchParams);
+    const pathname = new URL(request.url).pathname;
+    const response = await handleGatewayRequest(request);
+    return applyPrivateResponseDefaults(response, pathname);
+  },
+});
 
-    if (pathname === "/api/version") return handleVersionRequest(request, versionInfo);
+async function handleGatewayRequest(request: Request) {
+  const url = new URL(request.url);
+  const { pathname, search, searchParams } = url;
+  const effectiveRequest = withLocalPreviewIdentity(request, pathname, searchParams);
 
-    if (pathname === "/api/health") {
-      const [siteHealthy, adminHealthy, gatewayApis] = await Promise.all([
-        checkSiteHealth(),
-        checkAdminHealth(),
-        mode === "production"
-          ? checkGatewayApiHealth()
-          : Promise.resolve({
-              publicApi: true,
-              adminApi: true,
-              filesApi: true,
-              mcp: true,
-            }),
-      ]);
-      const gatewayApisHealthy = Object.values(gatewayApis).every(Boolean);
-      const status = siteHealthy && adminHealthy && gatewayApisHealthy ? 200 : 503;
-      return Response.json(
-        {
-          status: status === 200 ? "ok" : "degraded",
-          mode,
-          gateway: { status: "ok", port: publicPort },
-          site: {
-            status: servePublicSite ? (siteHealthy ? "ok" : "down") : "external",
-            mode: servePublicSite ? (mode === "production" ? "static" : "proxy") : "external",
-            target: servePublicSite
-              ? mode === "production"
-                ? siteDistDir
-                : `http://${internalHostname}:${sitePort}`
-              : null,
-          },
-          admin: {
-            status: adminHealthy ? "ok" : "down",
-            mode: mode === "production" ? "static" : "proxy",
-            target:
-              mode === "production" ? adminDistDir : `http://${internalHostname}:${adminPort}`,
-          },
-          gatewayApis: {
-            status: gatewayApisHealthy ? "ok" : "degraded",
-            checks: gatewayApis,
-          },
+  if (pathname === "/api/version") return handleVersionRequest(request, versionInfo);
+
+  if (pathname === "/api/health") {
+    const [siteHealthy, adminHealthy, gatewayApis] = await Promise.all([
+      checkSiteHealth(),
+      checkAdminHealth(),
+      mode === "production"
+        ? checkGatewayApiHealth()
+        : Promise.resolve({
+            publicApi: true,
+            adminApi: true,
+            filesApi: true,
+            mcp: true,
+          }),
+    ]);
+    const gatewayApisHealthy = Object.values(gatewayApis).every(Boolean);
+    const status = siteHealthy && adminHealthy && gatewayApisHealthy ? 200 : 503;
+    return Response.json(
+      {
+        status: status === 200 ? "ok" : "degraded",
+        mode,
+        gateway: { status: "ok", port: publicPort },
+        site: {
+          status: servePublicSite ? (siteHealthy ? "ok" : "down") : "external",
+          mode: servePublicSite ? (mode === "production" ? "static" : "proxy") : "external",
+          target: servePublicSite
+            ? mode === "production"
+              ? siteDistDir
+              : `http://${internalHostname}:${sitePort}`
+            : null,
         },
-        {
-          status,
-          headers: {
-            "cache-control": "no-store",
-          },
-        }
-      );
-    }
-
-    if (pathname === "/rss.xml") {
-      return redirectToFeedXml();
-    }
-
-    if (isPublicApiPath(pathname)) {
-      const subPath = pathname.replace(/^\/api\/public/, "") || "/";
-      return handlePublicApiRequest(effectiveRequest, subPath);
-    }
-
-    if (isAdminApiPath(pathname)) {
-      const subPath = pathname.replace(/^\/api\/admin/, "") || "/";
-      return handleAdminApiRequest(effectiveRequest, subPath);
-    }
-
-    if (isFilesApiPath(pathname)) {
-      const match = pathname.match(/^\/api\/files\/([^/]+)\/?(.*)$/);
-      if (!match) {
-        return new Response("Not Found", { status: 404 });
+        admin: {
+          status: adminHealthy ? "ok" : "down",
+          mode: mode === "production" ? "static" : "proxy",
+          target: mode === "production" ? adminDistDir : `http://${internalHostname}:${adminPort}`,
+        },
+        gatewayApis: {
+          status: gatewayApisHealthy ? "ok" : "degraded",
+          checks: gatewayApis,
+        },
+      },
+      {
+        status,
+        headers: {
+          "cache-control": "no-store",
+        },
       }
-      const source = decodeURIComponent(match[1]);
-      const tail = match[2] || "";
-      const pathSegments =
-        tail.length > 0 ? tail.split("/").filter(Boolean).map(decodeURIComponent) : [];
-      return handleFilesApiRequest(effectiveRequest, { source, path: pathSegments });
+    );
+  }
+
+  if (pathname === "/rss.xml") {
+    return redirectToFeedXml();
+  }
+
+  if (isPublicApiPath(pathname)) {
+    const subPath = pathname.replace(/^\/api\/public/, "") || "/";
+    return handlePublicApiRequest(effectiveRequest, subPath);
+  }
+
+  if (isAdminApiPath(pathname)) {
+    const subPath = pathname.replace(/^\/api\/admin/, "") || "/";
+    return handleAdminApiRequest(effectiveRequest, subPath);
+  }
+
+  if (isFilesApiPath(pathname)) {
+    const match = pathname.match(/^\/api\/files\/([^/]+)\/?(.*)$/);
+    if (!match) {
+      return new Response("Not Found", { status: 404 });
     }
+    const source = decodeURIComponent(match[1]);
+    const tail = match[2] || "";
+    const pathSegments =
+      tail.length > 0 ? tail.split("/").filter(Boolean).map(decodeURIComponent) : [];
+    return handleFilesApiRequest(effectiveRequest, { source, path: pathSegments });
+  }
 
-    if (isInternalAssetSourcePath(pathname)) {
-      const match = pathname.match(
-        /^\/_internal\/assets\/source\/(post|memo)\/([^/]+)\/([0-9a-f]+)$/iu
-      );
-      if (!match) {
-        return new Response("Not Found", { status: 404 });
-      }
-      return handleInternalAssetSourceRequest(effectiveRequest, {
-        kind: match[1],
-        slug: decodeURIComponent(match[2]),
-        mediaHash: match[3],
-      });
+  if (isInternalAssetSourcePath(pathname)) {
+    const match = pathname.match(
+      /^\/_internal\/assets\/source\/(post|memo)\/([^/]+)\/([0-9a-f]+)$/iu
+    );
+    if (!match) {
+      return new Response("Not Found", { status: 404 });
     }
+    return handleInternalAssetSourceRequest(effectiveRequest, {
+      kind: match[1],
+      slug: decodeURIComponent(match[2]),
+      mediaHash: match[3],
+    });
+  }
 
-    if (isDevApiPath(pathname)) {
-      if (!devEndpointsEnabled) return rejectDisabledDevEndpoint();
-      const subPath = pathname.replace(/^\/api\/dev/, "") || "/";
-      return handleDevApiRequest(effectiveRequest, subPath);
-    }
+  if (isDevApiPath(pathname)) {
+    if (!devEndpointsEnabled) return rejectDisabledDevEndpoint();
+    const subPath = pathname.replace(/^\/api\/dev/, "") || "/";
+    return handleDevApiRequest(effectiveRequest, subPath);
+  }
 
-    if (isTestApiPath(pathname)) {
-      if (!devEndpointsEnabled) return rejectDisabledDevEndpoint();
-      const subPath = pathname.replace(/^\/api\/test/, "") || "/";
-      return handleTestApiRequest(effectiveRequest, subPath);
-    }
+  if (isTestApiPath(pathname)) {
+    if (!devEndpointsEnabled) return rejectDisabledDevEndpoint();
+    const subPath = pathname.replace(/^\/api\/test/, "") || "/";
+    return handleTestApiRequest(effectiveRequest, subPath);
+  }
 
-    if (isTrpcApiPath(pathname)) {
-      return handleTrpcHttpRequest(effectiveRequest);
-    }
+  if (isTrpcApiPath(pathname)) {
+    return handleTrpcHttpRequest(effectiveRequest);
+  }
 
-    if (isTagsOrganizeCompatPath(pathname)) {
-      return handleAdminApiRequest(effectiveRequest, "/tags/organize");
-    }
+  if (isTagsOrganizeCompatPath(pathname)) {
+    return handleAdminApiRequest(effectiveRequest, "/tags/organize");
+  }
 
-    if (pathname === "/mcp") {
-      return handleMcpHttpRequest(effectiveRequest);
-    }
+  if (pathname === "/mcp") {
+    return handleMcpHttpRequest(effectiveRequest);
+  }
 
-    if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) {
-      return renderHtmlStatusPage(
-        404,
-        "Admin login removed",
-        "This deployment no longer serves a standalone admin login page."
-      );
-    }
+  if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) {
+    return renderHtmlStatusPage(
+      404,
+      "Admin login removed",
+      "This deployment no longer serves a standalone admin login page."
+    );
+  }
 
-    if (isLegacyPreviewRequest(pathname, searchParams)) {
-      const isHtmlRequest = isHtmlNavigationRequest(effectiveRequest, pathname);
-      if (isHtmlRequest) {
-        const auth = await extractAuthFromRequest(effectiveRequest);
-        if (!auth.user) {
-          return renderHtmlStatusPage(
-            401,
-            "Authentication required",
-            "Open this preview from the admin editor with a valid development session or SSO identity."
-          );
-        }
-
-        if (!auth.isAdmin) {
-          return renderHtmlStatusPage(
-            403,
-            "Admin preview denied",
-            "This preview is reserved for administrator sessions only."
-          );
-        }
-      }
-      return Response.redirect(new URL(buildAdminPreviewPath(pathname), url), 307);
-    }
-
-    if (isAdminPath(pathname)) {
-      const requiresAdminAuth = !isAdminAssetRequest(pathname);
-
-      if (requiresAdminAuth) {
-        const auth = await extractAuthFromRequest(effectiveRequest);
-        if (!auth.user) {
-          return renderHtmlStatusPage(
-            401,
-            "Authentication required",
-            "Open the admin area with a valid development session or SSO identity."
-          );
-        }
-
-        if (!auth.isAdmin) {
-          return renderHtmlStatusPage(
-            403,
-            "Admin access denied",
-            "Your current account is signed in, but it does not have administrator privileges."
-          );
-        }
+  if (isLegacyPreviewRequest(pathname, searchParams)) {
+    const isHtmlRequest = isHtmlNavigationRequest(effectiveRequest, pathname);
+    if (isHtmlRequest) {
+      const auth = await extractAuthFromRequest(effectiveRequest);
+      if (!auth.user) {
+        return renderHtmlStatusPage(
+          401,
+          "Authentication required",
+          "Open this preview from the admin editor with a valid development session or SSO identity."
+        );
       }
 
-      if (mode === "dev") {
-        const targetPath = normalizeAdminDevPath(pathname);
-        const target = new URL(`${targetPath}${search}`, `http://${internalHostname}:${adminPort}`);
-        return proxyRequest(effectiveRequest, target);
+      if (!auth.isAdmin) {
+        return renderHtmlStatusPage(
+          403,
+          "Admin preview denied",
+          "This preview is reserved for administrator sessions only."
+        );
+      }
+    }
+    return Response.redirect(new URL(buildAdminPreviewPath(pathname), url), 307);
+  }
+
+  if (isAdminPath(pathname)) {
+    const requiresAdminAuth = !isAdminAssetRequest(pathname);
+
+    if (requiresAdminAuth) {
+      const auth = await extractAuthFromRequest(effectiveRequest);
+      if (!auth.user) {
+        return renderHtmlStatusPage(
+          401,
+          "Authentication required",
+          "Open the admin area with a valid development session or SSO identity."
+        );
       }
 
-      if (requiresAdminAuth) {
-        return new Response(Bun.file(resolve(adminDistDir, "index.html")), {
-          headers: {
-            "cache-control": "no-store",
-          },
-        });
+      if (!auth.isAdmin) {
+        return renderHtmlStatusPage(
+          403,
+          "Admin access denied",
+          "Your current account is signed in, but it does not have administrator privileges."
+        );
       }
+    }
 
-      const adminAsset = await resolveAdminAsset(pathname);
-      if (adminAsset) {
-        return new Response(Bun.file(adminAsset));
-      }
+    if (mode === "dev") {
+      const targetPath = normalizeAdminDevPath(pathname);
+      const target = new URL(`${targetPath}${search}`, `http://${internalHostname}:${adminPort}`);
+      return proxyRequest(effectiveRequest, target);
+    }
 
-      if (isAdminAssetRequest(pathname)) {
-        return new Response("Not Found", { status: 404 });
-      }
-
+    if (requiresAdminAuth) {
       return new Response(Bun.file(resolve(adminDistDir, "index.html")), {
         headers: {
           "cache-control": "no-store",
@@ -697,45 +688,60 @@ const server = Bun.serve({
       });
     }
 
-    if (pathname.startsWith("/api/")) {
-      const message = devEndpointsEnabled
-        ? "Use /api/public/*, /api/admin/*, /api/files/*, /api/dev/*, /api/test/*, /api/trpc/*, /api/health, or /mcp."
-        : "Use /api/public/*, /api/admin/*, /api/files/*, /api/trpc/*, /api/health, or /mcp.";
-      return Response.json(
-        {
-          error: "Not Found",
-          message,
-        },
-        { status: 404 }
-      );
+    const adminAsset = await resolveAdminAsset(pathname);
+    if (adminAsset) {
+      return new Response(Bun.file(adminAsset));
     }
 
-    if (isNonProductionUiToolPath(pathname)) {
+    if (isAdminAssetRequest(pathname)) {
       return new Response("Not Found", { status: 404 });
     }
 
-    if (mode === "dev") {
-      const target = new URL(`${pathname}${search}`, `http://${internalHostname}:${sitePort}`);
-      return proxyRequest(request, target);
-    }
+    return new Response(Bun.file(resolve(adminDistDir, "index.html")), {
+      headers: {
+        "cache-control": "no-store",
+      },
+    });
+  }
 
-    if (!servePublicSite) {
-      return new Response("Not Found", { status: 404 });
-    }
+  if (pathname.startsWith("/api/")) {
+    const message = devEndpointsEnabled
+      ? "Use /api/public/*, /api/admin/*, /api/files/*, /api/dev/*, /api/test/*, /api/trpc/*, /api/health, or /mcp."
+      : "Use /api/public/*, /api/admin/*, /api/files/*, /api/trpc/*, /api/health, or /mcp.";
+    return Response.json(
+      {
+        error: "Not Found",
+        message,
+      },
+      { status: 404 }
+    );
+  }
 
-    const staticFile = await resolveStaticAsset(pathname);
-    if (staticFile) {
-      return servePublicStaticFile(effectiveRequest, staticFile);
-    }
-
-    const notFoundPage = resolve(siteDistDir, "404.html");
-    if (await fileExists(notFoundPage)) {
-      return servePublicStaticFile(effectiveRequest, notFoundPage, 404);
-    }
-
+  if (isNonProductionUiToolPath(pathname)) {
     return new Response("Not Found", { status: 404 });
-  },
-});
+  }
+
+  if (mode === "dev") {
+    const target = new URL(`${pathname}${search}`, `http://${internalHostname}:${sitePort}`);
+    return proxyRequest(request, target);
+  }
+
+  if (!servePublicSite) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  const staticFile = await resolveStaticAsset(pathname);
+  if (staticFile) {
+    return servePublicStaticFile(effectiveRequest, staticFile);
+  }
+
+  const notFoundPage = resolve(siteDistDir, "404.html");
+  if (await fileExists(notFoundPage)) {
+    return servePublicStaticFile(effectiveRequest, notFoundPage, 404);
+  }
+
+  return new Response("Not Found", { status: 404 });
+}
 
 log("gateway ready", {
   mode,

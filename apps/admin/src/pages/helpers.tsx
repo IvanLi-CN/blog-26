@@ -68,9 +68,9 @@ export function getErrorMessage(error: unknown) {
 export function StatusDot({ tone = "info" }: { tone?: "info" | "success" | "warning" | "danger" }) {
   const iconClass = "size-4";
   return tone === "success" ? (
-    <CheckCircle2 className={cn(iconClass, "text-emerald-300")} />
+    <CheckCircle2 className={cn(iconClass, "text-success")} />
   ) : tone === "warning" ? (
-    <AlertTriangle className={cn(iconClass, "text-amber-300")} />
+    <AlertTriangle className={cn(iconClass, "text-warning")} />
   ) : tone === "danger" ? (
     <CircleSlash className={cn(iconClass, "text-destructive")} />
   ) : (

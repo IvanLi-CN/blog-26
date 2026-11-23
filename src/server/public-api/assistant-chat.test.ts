@@ -192,7 +192,7 @@ describe("public assistant chat API", () => {
       }),
     });
     expect(tooLong.status).toBe(400);
-    expect(await tooLong.json()).toMatchObject({ code: "BAD_REQUEST" });
+    expect(await tooLong.json()).toMatchObject({ code: "INVALID_REQUEST" });
 
     const quota = await assistant("/chat/quota", cookie);
     expect(quota.status).toBe(200);
@@ -418,7 +418,7 @@ describe("public assistant chat API", () => {
       }),
     });
     expect(rejected.status).toBe(429);
-    expect(await rejected.json()).toMatchObject({ code: "QUOTA" });
+    expect(await rejected.json()).toMatchObject({ code: "QUOTA_EXCEEDED" });
 
     const retry = await assistant("/chat", cookie, {
       method: "POST",

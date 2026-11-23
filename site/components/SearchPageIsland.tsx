@@ -13,11 +13,14 @@ import {
   stripLegacySearchPlaybookIdentity,
 } from "@/components/search/search-navigation";
 import type { SearchSuggestionItem, SearchSuggestionReason } from "@/lib/ai/search-suggestions";
+import { publicErrorMessage } from "@/lib/public-error-presets";
 import { type SearchMode, type SearchReason, searchModeSchema } from "@/lib/search/settings";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
+/** Distinguishes a server-provided preset from an unexpected local exception. */
+class SearchRequestError extends Error {}
 
 const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v4:";
 const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -123,7 +126,7 @@ async function readSearchStream(
         if (!event || !data) continue;
         if (event === "error") {
           const payload = JSON.parse(data) as { error?: string };
-          throw new Error(payload.error || "搜索失败，请稍后重试");
+          throw new SearchRequestError(payload.error || "搜索失败，请稍后重试");
         }
         if (event === "keyword") {
           onKeywordResults?.(JSON.parse(data) as SearchStreamEnvelope);
@@ -180,7 +183,7 @@ async function search(
     const payload = await response.json().catch(() => ({}));
     const message =
       payload && typeof payload.error === "string" ? payload.error : "搜索失败，请稍后重试";
-    throw new Error(message);
+    throw new SearchRequestError(message);
   }
   if (mode !== "keyword") {
     const envelope = await readSearchStream(response, onKeywordResults);
@@ -323,7 +326,13 @@ export default function SearchPageIsland({
         if (requestIdRef.current !== requestId) return;
         if (!receivedKeywordResults) setResults([]);
         setAiSupplementLoading(false);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(
+          err instanceof SearchRequestError
+            ? err.message
+            : err instanceof TypeError
+              ? publicErrorMessage("NETWORK_ERROR")
+              : publicErrorMessage("SERVICE_UNAVAILABLE")
+        );
       })
       .finally(() => {
         if (requestIdRef.current === requestId) setIsLoading(false);

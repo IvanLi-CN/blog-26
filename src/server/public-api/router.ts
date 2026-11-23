@@ -36,6 +36,7 @@ import {
   hasTrustedPublicOrigin,
   hasTrustedSameOriginNavigation,
 } from "@/lib/public-cors";
+import { buildPublicErrorBody, sanitizePublicErrorBody } from "@/lib/public-error-presets";
 import {
   AdminGithubBindingError,
   cancelAdminGithubBindingOAuth,
@@ -283,6 +284,7 @@ async function removeSafeSystemSharePath(basePath: string, targetPath: string) {
 }
 
 function json(request: Request, data: unknown, init: ResponseInit = {}, extraHeaders?: Headers) {
+  const payload = sanitizePublicErrorBody(data, init.status ?? 200);
   const headers = new Headers(init.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   if (extraHeaders) {
@@ -302,7 +304,7 @@ function json(request: Request, data: unknown, init: ResponseInit = {}, extraHea
     }
   }
   appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
-  return new Response(JSON.stringify(data), { ...init, headers });
+  return new Response(JSON.stringify(payload), { ...init, headers });
 }
 
 function statusFromTrpcError(error: TRPCError) {
@@ -1313,15 +1315,12 @@ function searchStreamResponse(request: Request, input: ContentSearchInput, resHe
         })
         .catch((error: unknown) => {
           if (cancelled || request.signal.aborted) return;
-          const message =
-            error instanceof TRPCError || error instanceof ContentSearchError
-              ? error.message
-              : "搜索失败，请稍后重试";
-          const code =
+          const rawCode =
             error instanceof TRPCError || error instanceof ContentSearchError
               ? error.code
               : "INTERNAL_SERVER_ERROR";
-          send("error", { error: message, code });
+          const searchStatus = rawCode === "SERVICE_UNAVAILABLE" ? 503 : 500;
+          send("error", buildPublicErrorBody({ code: rawCode, status: searchStatus }, error));
         })
         .finally(finish);
     },

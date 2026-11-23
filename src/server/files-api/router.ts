@@ -11,6 +11,7 @@ import {
   createPublicCorsPreflightResponse,
   resolveRequestOrigin,
 } from "@/lib/public-cors";
+import { sanitizePublicErrorBody } from "@/lib/public-error-presets";
 import { recordMediaIdentity } from "@/server/services/media-identity";
 
 const FILES_API_ALLOWED_METHODS = ["GET", "HEAD", "POST", "PUT", "OPTIONS"] as const;
@@ -34,7 +35,10 @@ function json(request: Request, data: unknown, init: ResponseInit = {}) {
   const headers = new Headers(init.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   appendPublicCorsHeaders(headers, request, FILES_API_ALLOWED_METHODS);
-  return new Response(JSON.stringify(data), { ...init, headers });
+  return new Response(JSON.stringify(sanitizePublicErrorBody(data, init.status ?? 200)), {
+    ...init,
+    headers,
+  });
 }
 
 function withCors(headersInit: HeadersInit | undefined, request: Request) {
