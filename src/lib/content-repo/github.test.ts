@@ -45,7 +45,7 @@ describe("content repository transport", () => {
       { body: { sha: commitSha, tree: { sha: treeSha } } },
     ]);
     expect(await transport.resolveHead()).toEqual({ commit: commitSha, tree: treeSha });
-    expect(calls[0]?.url).toContain("/repos/IvanLi-CN/blog-contents/git/commits/main");
+    expect(calls[0]?.url).toContain("/repos/IvanLi-CN/blog-contents/commits/main");
   });
 
   test("lists blobs only and rejects truncated trees", async () => {
