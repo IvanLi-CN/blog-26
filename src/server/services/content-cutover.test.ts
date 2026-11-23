@@ -145,6 +145,29 @@ describe("content authority cutover", () => {
     expect(report.errors.some((entry) => entry.includes("canonical path collision"))).toBe(true);
   });
 
+  test("deletes orphan rows when asked and still completes", async () => {
+    db.insert(posts)
+      .values({
+        id: "Memos/gone.md",
+        slug: "gone",
+        type: "memo",
+        title: "Gone",
+        body: "gone",
+        publishDate: 1,
+        draft: false,
+        public: true,
+        contentHash: "hash",
+        dataSource: "local",
+        source: "local",
+        filePath: "Memos/gone.md",
+      })
+      .run();
+    const report = await runContentCutover({ apply: true, removeOrphans: true });
+    expect(report.errors).toEqual([]);
+    expect(db.select().from(posts).where(eq(posts.id, "Memos/gone.md")).get()).toBeUndefined();
+    expect(db.select().from(contentAuthority).all()[0]?.authority).toBe("database");
+  });
+
   test("blocks when a scanning-era row has no file", async () => {
     db.insert(posts)
       .values({
