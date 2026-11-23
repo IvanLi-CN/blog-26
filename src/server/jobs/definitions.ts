@@ -1,6 +1,7 @@
 import { isLocalContentEnabled, SYSTEM_CONFIG } from "@/config/paths";
 import { vectorizeAll } from "@/lib/ai/vectorization";
 import { runAiUsageMaintenance } from "@/lib/ai-usage";
+import { isDatabaseContentAuthority } from "@/lib/content-authority";
 import { getContentSourceManager, LocalContentSource } from "@/lib/content-sources";
 import { runProjectStatusCheck } from "@/server/services/project-status";
 
@@ -62,6 +63,7 @@ export function nextRunTime(now: number, schedule: JobSchedule) {
 
 async function ensureContentSourcesRegistered() {
   const manager = getContentSourceManager();
+  if (isDatabaseContentAuthority()) return manager;
   const sources = manager.getSources();
   if (sources.length > 0) return manager;
 
@@ -86,6 +88,10 @@ export const jobDefinitions: JobDefinition[] = [
     description: "每30分钟增量同步内容源",
     schedule: { kind: "interval", everyMs: 30 * 60 * 1000 },
     run: async (log, context) => {
+      if (isDatabaseContentAuthority()) {
+        log.info("sync_skipped", { reason: "database-authority" });
+        return;
+      }
       const manager = await ensureContentSourcesRegistered();
       const sources = manager.getSources();
       if (sources.length === 0) {

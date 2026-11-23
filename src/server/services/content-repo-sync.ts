@@ -106,6 +106,23 @@ function clippingFrontmatterFor(contentId: string) {
     : null;
 }
 
+/** Resolve a library row from a repository path using the stored baseline first. */
+function findRowForRepoPath(path: string) {
+  const baseline = db
+    .select()
+    .from(contentRepoBaselines)
+    .where(eq(contentRepoBaselines.path, path))
+    .get();
+  if (baseline?.contentId) {
+    const row = db.select().from(posts).where(eq(posts.id, baseline.contentId)).get();
+    if (row) return row;
+  }
+  return (
+    db.select().from(posts).where(eq(posts.filePath, path)).get() ??
+    db.select().from(posts).where(eq(posts.id, path)).get()
+  );
+}
+
 export async function loadContentRepoEntries(
   ids?: string[],
   options: { tolerateMissingMedia?: boolean } = {}
@@ -459,7 +476,7 @@ export function pullContentRepo(input: { ids?: string[] } = {}): Promise<Content
           skipped.push({ path: item.path, reason: "attachment-changed" });
           continue;
         }
-        const row = db.select().from(posts).where(eq(posts.filePath, item.path)).get();
+        const row = findRowForRepoPath(item.path);
         if (!row) {
           skipped.push({ path: item.path, reason: "missing-local-content" });
           continue;
@@ -675,7 +692,7 @@ export function saveResolvedContent(input: {
   try {
     const bytes = new TextEncoder().encode(input.text);
     const update = toDocumentUpdate(parseRemoteDocument(bytes));
-    const row = db.select().from(posts).where(eq(posts.filePath, input.path)).get();
+    const row = findRowForRepoPath(input.path);
     if (!row) return { status: "unavailable", path: input.path, message: "Unknown path" };
     const document = buildCanonicalDocument({
       ...toContentRecord(row),
@@ -956,7 +973,7 @@ export async function removeRemoteDeleted(
     for (const item of context.items) {
       if (item.state !== "remote-deleted") continue;
       if (wanted.size && !wanted.has(item.path)) continue;
-      const row = db.select().from(posts).where(eq(posts.filePath, item.path)).get();
+      const row = findRowForRepoPath(item.path);
       if (!row) {
         skipped.push({ path: item.path, reason: "missing-local-content" });
         continue;
@@ -1088,7 +1105,7 @@ export function mergeContentRepo(input: { ids?: string[] } = {}): Promise<Conten
 
         const bytes = serializeCanonicalDocument(frontmatter.value, body.lines.join("\n"));
         const update = toDocumentUpdate(parseRemoteDocument(bytes));
-        const row = db.select().from(posts).where(eq(posts.filePath, item.path)).get();
+        const row = findRowForRepoPath(item.path);
         if (!row) {
           skipped.push({ path: item.path, reason: "missing-local-content" });
           continue;

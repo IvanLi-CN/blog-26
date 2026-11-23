@@ -17,6 +17,7 @@ import { triggerRagIndex } from "../../services/rag-index";
 import { EventEmitter, on } from "node:events";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { isDatabaseContentAuthority } from "@/lib/content-authority";
 import { ensureContentSourcesRegistered } from "@/lib/content-sources/register";
 import { SYSTEM_CONFIG } from "../../../config/paths";
 import { getContentSourceManager } from "../../../lib/content-sources";
@@ -129,6 +130,12 @@ export const adminContentSyncRouter = createTRPCRouter({
       const { source = "all", isFullSync = false, ...managerConfig } = input || {};
       if (source === "playbook") {
         return await runPlaybookSync();
+      }
+      if (isDatabaseContentAuthority()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "内容库已是权威，本地内容源扫描已停用。",
+        });
       }
 
       const manager = getContentSourceManager(managerConfig);

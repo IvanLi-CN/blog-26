@@ -63,12 +63,13 @@ describe("canonical content form", () => {
 
   test("keeps the content path stable and rejects traversal", () => {
     expect(canonicalContentPath({ type: "post", slug: "hi", filePath: "" })).toBe("blog/hi.md");
+    expect(canonicalContentPath({ type: "post", slug: "hi", filePath: "Hardware/旧笔记.md" })).toBe(
+      "blog/hi.md"
+    );
     expect(canonicalContentPath({ type: "memo", slug: "m", filePath: "Memos/m.md" })).toBe(
       "Memos/m.md"
     );
-    expect(() =>
-      canonicalContentPath({ type: "post", slug: "x", filePath: "../oops.md" })
-    ).toThrow();
+    expect(() => canonicalContentPath({ type: "post", slug: "..", filePath: "x.md" })).toThrow();
   });
 
   test("produces a stable content hash for identical input", () => {

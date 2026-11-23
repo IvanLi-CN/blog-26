@@ -56,11 +56,28 @@ function normalizeRelativePath(value: string): string {
   return segments.join("/");
 }
 
+/**
+ * Repository layout is fixed by the contract: `blog/<slug>.md` for posts and
+ * `Memos/<file>.md` for memos. A memo keeps its file name (dates live there);
+ * a post's legacy notes path never decides its repository location.
+ */
+function assertSafeName(name: string, label: string) {
+  if (!name || name === "." || name === ".." || name.includes("/") || name.includes("\\"))
+    throw new Error(`Unsafe content repository ${label}: ${name}`);
+}
+
 export function canonicalContentPath(record: Pick<ContentRecord, "type" | "slug" | "filePath">) {
-  const fallback = record.type === "memo" ? `Memos/${record.slug}.md` : `blog/${record.slug}.md`;
-  const raw = record.filePath?.trim() || fallback;
-  const withExtension = /\.md$/iu.test(raw) ? raw : `${raw}.md`;
-  return normalizeRelativePath(withExtension);
+  if (record.type === "memo") {
+    const raw = record.filePath?.trim();
+    const source = raw ? posix.basename(raw.replace(/\\/gu, "/")) : `${record.slug}.md`;
+    const name = /\.md$/iu.test(source) ? source : `${source}.md`;
+    assertSafeName(name, "memo file name");
+    return normalizeRelativePath(`Memos/${name}`);
+  }
+  const slug = record.slug.trim() || "untitled";
+  assertSafeName(slug, "post slug");
+  const name = /\.md$/iu.test(slug) ? slug : `${slug}.md`;
+  return normalizeRelativePath(`blog/${name}`);
 }
 
 export function normalizeContentBody(body: string): string {

@@ -88,7 +88,7 @@
     "test-db:schema": "DB_PATH=./test-data/sqlite.db bun ./scripts/db-tools.ts schema",
     "test-db:posts": "DB_PATH=./test-data/sqlite.db bun ./scripts/db-tools.ts posts",
     "test-db:comments": "DB_PATH=./test-data/sqlite.db bun ./scripts/db-tools.ts comments",
-    "db:which": "echo \"当前数据库路径: ${DB_PATH:-./sqlite.db}\"",
+    "db:which": "echo \"\u5f53\u524d\u6570\u636e\u5e93\u8def\u5f84: ${DB_PATH:-./sqlite.db}\"",
     "dev-sync:trigger": "bun ./scripts/trigger-sync.ts dev",
     "content:scan-api-links": "bun ./scripts/content-scan-api-links.ts",
     "content:migrate-api-links": "bun ./scripts/content-migrate-api-links.ts",
@@ -156,7 +156,9 @@
     "search:native:verify": "bun scripts/verify-native-search.ts",
     "search:index": "bun scripts/search-index.ts",
     "image:prepare": "bun scripts/image.ts prepare",
-    "image:verify": "bun scripts/image.ts verify"
+    "image:verify": "bun scripts/image.ts verify",
+    "content:cutover": "bun ./scripts/content-cutover.ts",
+    "content:repo-seed": "bun ./scripts/content-repo-seed.ts"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "7.3.1",
