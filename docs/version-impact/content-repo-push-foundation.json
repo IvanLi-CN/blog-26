@@ -1,10 +1,12 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "e325bc47f4009a39127ff2cd02bced71ead6b870",
+  "base_sha": "306a4225af4277a1d4d84c4e9207970a9c27e028",
   "covered_files": {
     "src/lib/content-repo/github.test.ts": "bde24deabdca8335e0c079c5ce862b3bddeda706",
     "src/lib/content-repo/github.ts": "83b1b0b4d6f6c3234fa0a9ad3e1c9002a9fefbc8",
+    "src/server/services/content-cutover.test.ts": "9433fded1ab111632beebc415b41f92544672ec2",
+    "src/server/services/content-cutover.ts": "1ca646935080365b2de33977fe3865ecd9ac52ec",
     "src/server/services/content-repo-memo-sync.test.ts": "b673df7fe91d28a09f84a97fbf239d3c0b11d1c3"
   },
   "change": {
@@ -47,9 +49,14 @@
       "assessed_at": "2026-11-22T03:52:58+08:00",
       "evidence": [
         {
+          "path": "src/server/services/content-cutover.test.ts",
+          "blob": "9433fded1ab111632beebc415b41f92544672ec2",
+          "command": "bun test src/server/services/content-cutover.test.ts"
+        },
+        {
           "path": "src/lib/content-repo/github.test.ts",
           "blob": "bde24deabdca8335e0c079c5ce862b3bddeda706",
-          "command": "bun test src/lib/content-repo/github.test.ts src/server/services/content-repo-memo-sync.test.ts"
+          "command": "bun test src/lib/content-repo/github.test.ts"
         }
       ]
     }
