@@ -55,8 +55,8 @@ function fakeGitHub(blobs: Map<string, Uint8Array>) {
     [...blobs.entries()].find(([path]) => sha(path) === target)?.[1];
   const impl = async (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    if (url.endsWith("/git/commits/main"))
-      return Response.json({ sha: COMMIT, tree: { sha: TREE } });
+    if (url.endsWith("/commits/main"))
+      return Response.json({ sha: COMMIT, commit: { tree: { sha: TREE } } });
     if (url.includes(`/git/trees/${TREE}`))
       return Response.json({
         truncated: false,

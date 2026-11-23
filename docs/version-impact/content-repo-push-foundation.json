@@ -3,8 +3,11 @@
   "kind": "version-impact-record",
   "base_sha": "306a4225af4277a1d4d84c4e9207970a9c27e028",
   "covered_files": {
+    "src/lib/content-repo/github.test.ts": "bde24deabdca8335e0c079c5ce862b3bddeda706",
+    "src/lib/content-repo/github.ts": "83b1b0b4d6f6c3234fa0a9ad3e1c9002a9fefbc8",
     "src/server/services/content-cutover.test.ts": "9433fded1ab111632beebc415b41f92544672ec2",
-    "src/server/services/content-cutover.ts": "1ca646935080365b2de33977fe3865ecd9ac52ec"
+    "src/server/services/content-cutover.ts": "1ca646935080365b2de33977fe3865ecd9ac52ec",
+    "src/server/services/content-repo-memo-sync.test.ts": "b673df7fe91d28a09f84a97fbf239d3c0b11d1c3"
   },
   "change": {
     "description": "Add the server-side content repository push foundation: canonical content form, API-only GitHub transport, push planning from sync baselines and an additive content_repo_baselines table.",
@@ -20,7 +23,7 @@
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
           "blob": "4e8c046f73672a493694265c294f93526f9810f5",
-          "command": "bun test src/server/services/content-cutover.test.ts"
+          "command": "bun test src/lib/content-repo/github.test.ts"
         }
       ]
     },
@@ -32,7 +35,7 @@
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
           "blob": "4e8c046f73672a493694265c294f93526f9810f5",
-          "command": "bun test src/server/services/content-cutover.test.ts"
+          "command": "bun test src/lib/content-repo/github.test.ts"
         }
       ],
       "scope_drift": {
@@ -49,6 +52,11 @@
           "path": "src/server/services/content-cutover.test.ts",
           "blob": "9433fded1ab111632beebc415b41f92544672ec2",
           "command": "bun test src/server/services/content-cutover.test.ts"
+        },
+        {
+          "path": "src/lib/content-repo/github.test.ts",
+          "blob": "bde24deabdca8335e0c079c5ce862b3bddeda706",
+          "command": "bun test src/lib/content-repo/github.test.ts"
         }
       ]
     }
@@ -118,7 +126,8 @@
         "4.2.13",
         "4.2.14",
         "4.2.15",
-        "4.2.16"
+        "4.2.16",
+        "4.2.17"
       ],
       "evidence": [
         {
@@ -193,7 +202,8 @@
         "4.2.13",
         "4.2.14",
         "4.2.15",
-        "4.2.16"
+        "4.2.16",
+        "4.2.17"
       ],
       "upgrade_from_versions": [
         "2.7.0",
@@ -256,7 +266,8 @@
         "4.2.13",
         "4.2.14",
         "4.2.15",
-        "4.2.16"
+        "4.2.16",
+        "4.2.17"
       ],
       "evidence": [
         {
