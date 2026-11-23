@@ -151,7 +151,8 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     expect(alert.getAttribute("data-slot")).toBe("alert");
     expect(alert.closest(".knowledge-assistant-content")).toBeTruthy();
     expect(view.getByRole("heading", { name: "知识对话暂时不可用" })).toBeTruthy();
-    expect(view.getByText("Not found")).toBeTruthy();
+    expect(view.getByText("服务暂不可用，请稍后重试。")).toBeTruthy();
+    expect(view.queryByText("Not found")).toBeNull();
 
     fireEvent.click(view.getByRole("button", { name: "重试" }));
     await waitFor(() => expect(authCalls).toBe(2));
@@ -1029,6 +1030,10 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
 
   test("does not render an empty cancelled message and shows failure recovery state", async () => {
     const selected = conversation("terminal-states", "general", null);
+    const question = {
+      ...assistantMessage(selected.id, "original-question", "completed", "原始问题"),
+      role: "user" as const,
+    };
     const cancelled = assistantMessage(selected.id, "cancelled-assistant", "cancelled");
     const failed = assistantMessage(selected.id, "failed-assistant", "failed", "已生成的部分");
     const cancelledJob = {
@@ -1046,7 +1051,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
       if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation"))
         return json({
           conversation: selected,
-          messages: [cancelled, failed],
+          messages: [question, cancelled, failed],
           generationJobs: [cancelledJob],
           activeGenerationJob: null,
         });
@@ -1063,8 +1068,59 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     expect((view.getByRole("button", { name: "发送" }) as HTMLButtonElement).disabled).toBe(true);
     expect(view.container.querySelector('[data-message-id="cancelled-assistant"]')).toBeNull();
     expect(view.getByTestId("assistant-stop-status").textContent).toContain("已停止生成");
-    expect(view.getByText("生成失败，可重试")).toBeTruthy();
+    expect(view.getByText("回答生成失败")).toBeTruthy();
+    expect(view.getByText("已生成的部分")).toBeTruthy();
+    expect(view.queryByText("查看错误详情")).toBeNull();
     expect(view.getByRole("button", { name: "重试" })).toBeTruthy();
+  });
+
+  test("shows the generation error code to administrators only", async () => {
+    const selected = conversation("admin-failure", "general", null);
+    const failed = assistantMessage(selected.id, "failed-for-admin", "failed");
+    const failedJob = {
+      ...generationJob(selected.id, "failed-job", failed.id),
+      status: "failed" as const,
+      finishedAt: 1,
+      errorCode: "assistant-provider-unconfigured",
+      failure: {
+        message: "知识对话暂时不可用，请稍后重试。",
+        diagnostic: {
+          code: "assistant-provider-unconfigured",
+          message: "聊天模型配置不完整。",
+        },
+      },
+    };
+    const adminAuth = {
+      ...auth,
+      principal: { ...auth.principal, isAdmin: true },
+    };
+
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/public/frontend-auth/me") return json(adminAuth);
+      if (url.pathname === "/api/public/chat/quota") return json(quota);
+      if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation"))
+        return json({
+          conversation: selected,
+          messages: [failed],
+          generationJobs: [failedJob],
+          activeGenerationJob: null,
+        });
+      if (url.pathname === "/api/public/chat") return json({ conversations: [selected], quota });
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    }) as typeof fetch;
+
+    window.history.replaceState({}, "", "/chat?conversation=admin-failure");
+    const view = render(<KnowledgeAssistant fullPage />);
+
+    await waitFor(() =>
+      expect(view.container.querySelector('[data-message-id="failed-for-admin"]')).toBeTruthy()
+    );
+    const alert = within(view.getByTestId("assistant-generation-failure"));
+    expect(alert.getByText("查看错误详情")).toBeTruthy();
+    expect(alert.getByText("聊天模型配置不完整。")).toBeTruthy();
+    expect(alert.getByText("assistant-provider-unconfigured")).toBeTruthy();
+    expect(alert.queryByRole("button", { name: "重试" })).toBeNull();
   });
 
   test("renders user text literally and assistant markdown inside isolated message bodies", async () => {

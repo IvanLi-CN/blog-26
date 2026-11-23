@@ -32,6 +32,7 @@ let assistantService: AssistantService | null = null;
 let assistantRuntime: ReturnType<typeof createAssistantRuntimeForTest> | null = null;
 let generationEntered: Promise<void> = Promise.resolve();
 let releaseGeneration: (() => void) | null = null;
+let generationFailed: Promise<void> = Promise.resolve();
 
 function request(pathname: string, options: RequestInit = {}) {
   return new Request(`http://localhost/api/public${pathname}`, {
@@ -141,14 +142,21 @@ describe("public assistant chat API", () => {
     generationEntered = new Promise<void>((resolve) => {
       markGenerationEntered = resolve;
     });
+    const failureSignal = Promise.withResolvers<void>();
+    generationFailed = failureSignal.promise;
     const generationGate = new Promise<void>((resolve) => {
       releaseGeneration = resolve;
     });
     const storage = createAssistantStorage(db ?? undefined);
     assistantRuntime = createAssistantRuntimeForTest({
       storage,
-      generate: async ({ onDelta }) => {
+      generate: async ({ execution, onDelta }) => {
         markGenerationEntered();
+        if (execution.userMessage.content.startsWith("Fail generation for ")) {
+          await onDelta("Partial answer");
+          failureSignal.resolve();
+          throw new Error("assistant-provider-unconfigured");
+        }
         await onDelta("Deterministic assistant answer");
         await generationGate;
         return { content: "Deterministic assistant answer", citations: [] };
@@ -354,6 +362,80 @@ describe("public assistant chat API", () => {
       cookie
     );
     expect(gone.status).toBe(410);
+  });
+
+  it("keeps generation diagnostics private on snapshots and events", async () => {
+    const admin = await bootstrapSession();
+    const adminSession = await assistant("/frontend-auth/me", admin);
+    const adminPrincipalId = (await adminSession.json()).principal.id as string;
+    const submitted = await assistant("/chat", admin, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId: "admin-generation-failure",
+        content: "Fail generation for admin-generation-failure",
+      }),
+    });
+    expect(submitted.status).toBe(202);
+    const { conversationId, turnId } = await submitted.json();
+    await generationEntered;
+    await generationFailed;
+
+    const adminEvents = await assistant(`/chat/conversations/${conversationId}/events`, admin);
+    const adminStream = await adminEvents.text();
+    expect(adminStream).toContain('"status":"failed"');
+    expect(adminStream).toContain("assistant-provider-unconfigured");
+    expect(adminEvents.headers.get("cache-control")).toContain("private");
+    expect(adminEvents.headers.get("cache-control")).toContain("no-store");
+
+    const adminResponse = await assistant(`/chat/snapshot?conversationId=${conversationId}`, admin);
+    expect(adminResponse.headers.get("cache-control")).toContain("private");
+    expect(adminResponse.headers.get("cache-control")).toContain("no-store");
+    const adminSnapshot = await adminResponse.json();
+    expect(adminSnapshot.messages).toContainEqual(
+      expect.objectContaining({ status: "failed", content: "Partial answer" })
+    );
+    expect(adminSnapshot.generationJobs).toContainEqual(
+      expect.objectContaining({
+        id: turnId,
+        failure: {
+          message: "知识对话暂时不可用，请稍后重试。",
+          diagnostic: {
+            code: "assistant-provider-unconfigured",
+            message: expect.stringContaining("聊天模型"),
+          },
+        },
+      })
+    );
+
+    await db
+      ?.update(frontendUsers)
+      .set({ isAdmin: false })
+      .where(eq(frontendUsers.id, adminPrincipalId));
+    const readerResponse = await assistant(
+      `/chat/snapshot?conversationId=${conversationId}`,
+      admin
+    );
+    const readerSnapshot = await readerResponse.json();
+    expect(readerSnapshot.generationJobs).toContainEqual(
+      expect.objectContaining({
+        id: turnId,
+        errorCode: null,
+        failure: { message: "知识对话暂时不可用，请稍后重试。" },
+      })
+    );
+    expect(JSON.stringify(readerSnapshot)).not.toContain("assistant-provider-unconfigured");
+    const readerEvents = await assistant(`/chat/conversations/${conversationId}/events`, admin);
+    expect(await readerEvents.text()).not.toContain("assistant-provider-unconfigured");
+
+    const stopped = await assistant("/chat/stop", admin, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ turnId }),
+    });
+    const stoppedJob = (await stopped.json()).generationJob;
+    expect(stoppedJob.errorCode).toBeNull();
+    expect(stoppedJob.failure).toEqual({ message: "知识对话暂时不可用，请稍后重试。" });
   });
 
   it("does not disclose another or missing conversation", async () => {

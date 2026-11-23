@@ -23,6 +23,8 @@
 
 ## Contract and Privacy Checks
 
+- 回答生成失败时，`src/lib/assistant-generation-failure.ts` 将记录的原因映射为预设，并在 `src/server/assistant/service.ts` 校验归属后仅为管理员附加技术诊断。JSON 快照和 SSE 共用投影，SSE 使用每次读取时重新校验的前台身份。Pi 适配层只保留已识别的状态和原因码，既有任务表无需迁移。
+- `REQ-SKA-024` 的失败卡与正文分开，沿用公共 Alert 原语并占用消息列宽度。聚焦验证为助手 API 4 项、组件 18 项、Pi 提供方 13 项及 `bun run check`；分别独立运行，避免 Happy DOM 对服务端 cookie 测试的全局影响。正式路由 Web Demo 覆盖管理员桌面面板和普通用户手机面板，验证诊断分级、574px/360px 卡片宽度、36px/44px 重试目标与原问题重试。截图是待主人确认的临时证据，不写入规范资产。
 - `drizzle/0021`–`0026` 是 forward-only DDL；`0023` 的讨论数据转换由独立、可暂停、可恢复的 `assistant:discussions:migrate` 执行，DDL 完成不等于 backfill 完成。
 - `frontend_session_id` 只保存 hash，session、对话、消息、generation 和引用接口均按当前 principal 做归属校验；cookie、身份和私人响应使用 `no-store`，公开 snapshot、Web Demo fixture 和静态构建不携带私人正文或生成状态。
 - Web Demo request boundary 只允许 fixture server 处理白名单路由，unknown endpoint 不回落真实 API；live 构建不读取 Demo query/localStorage 开关来切换数据源。

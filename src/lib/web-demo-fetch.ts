@@ -14,6 +14,7 @@ import type {
   FrontendAuthState,
   FrontendPrincipal,
 } from "./assistant-contracts";
+import { presentAssistantGenerationJob } from "./assistant-generation-failure";
 import {
   createConsoleWebDemoStore,
   getConsoleWebDemoClippingArticle,
@@ -342,18 +343,15 @@ function demoAssistantRecord(
     conversationId: recordId,
     sequence: 2,
     role: "assistant",
-    content: generating
-      ? ""
-      : failed
-        ? "这次生成没有完成，请重试。"
-        : "这是一个记录工程实践、项目经验与公开文章的知识库。",
+    content: generating || failed ? "" : "这是一个记录工程实践、项目经验与公开文章的知识库。",
     status: generating ? "streaming" : failed ? "failed" : "completed",
     clientRequestId: null,
     createdAt: now - 9_000,
     updatedAt: now - 9_000,
     completedAt: generating ? null : now - 8_000,
-    citations: generating ? [] : demoAssistantCitations(now - 9_000, `${recordId}-assistant`),
-    processSteps: demoAssistantProcessSteps(generating, `${recordId}-assistant`),
+    citations:
+      generating || failed ? [] : demoAssistantCitations(now - 9_000, `${recordId}-assistant`),
+    processSteps: failed ? [] : demoAssistantProcessSteps(generating, `${recordId}-assistant`),
   };
   const completedUserMessage: AssistantMessage = {
     ...userMessage,
@@ -397,7 +395,7 @@ function demoAssistantRecord(
     cancelRequested: false,
     startedAt: now - 8_500,
     finishedAt: generating ? null : now - 8_000,
-    errorCode: failed ? "provider-error" : null,
+    errorCode: failed ? "assistant-provider-http-503" : null,
     createdAt: now - 9_000,
     updatedAt: now - 8_000,
   };
@@ -462,11 +460,13 @@ function applyDemoMarkdownSnapshot(record: DemoAssistantRecord) {
   }
 }
 
-function demoAssistantSnapshot(record: DemoAssistantRecord) {
+function demoAssistantSnapshot(record: DemoAssistantRecord, canDiagnose: boolean) {
   return {
     conversation: demoAssistantConversation(record),
     messages: record.messages,
-    generationJobs: record.generationJob ? [record.generationJob] : [],
+    generationJobs: record.generationJob
+      ? [presentAssistantGenerationJob(record.generationJob, canDiagnose)]
+      : [],
     activeGenerationJob:
       record.generationJob?.status === "queued" || record.generationJob?.status === "running"
         ? record.generationJob
@@ -1348,7 +1348,7 @@ function getDemoAssistantResponse(
         return jsonResponse({ error: "正在重新连接", code: "RECONNECTING" }, 503);
       if (!record || record.conversation.status === "expired")
         return jsonResponse({ error: "对话已过期", code: "GONE" }, 410);
-      return jsonResponse(demoAssistantSnapshot(record));
+      return jsonResponse(demoAssistantSnapshot(record, principal.isAdmin));
     }
     const seedKey = `${principal.id}:${scene}`;
     const seedId = `demo-assistant-${principal.id}-${scene}`;
@@ -1506,18 +1506,16 @@ function getDemoAssistantResponse(
       sequence: sequence + 1,
       role: "assistant",
       content:
-        assistantStatus === "failed"
-          ? "这次生成没有完成，请点击重试。"
-          : assistantStatus === "streaming"
-            ? ""
-            : "根据公开知识库，这个问题可以从文章、项目和工程方法三个方向理解。\n\n- **文章**：先确认相关原文和上下文。\n- **项目**：再核对实现边界与验证证据。\n- **方法**：最后沉淀为可复用的工作步骤。",
+        assistantStatus === "failed" || assistantStatus === "streaming"
+          ? ""
+          : "根据公开知识库，这个问题可以从文章、项目和工程方法三个方向理解。\n\n- **文章**：先确认相关原文和上下文。\n- **项目**：再核对实现边界与验证证据。\n- **方法**：最后沉淀为可复用的工作步骤。",
       status: assistantStatus,
       clientRequestId: null,
       createdAt: now + 1,
       updatedAt: now + 1,
       completedAt: assistantStatus === "streaming" ? null : now + 1,
       citations:
-        assistantStatus === "streaming"
+        assistantStatus === "failed" || assistantStatus === "streaming"
           ? []
           : demoAssistantCitations(now + 1, `${record.conversation.id}-assistant-${sequence + 1}`),
     };
@@ -1554,7 +1552,7 @@ function getDemoAssistantResponse(
       cancelRequested: false,
       startedAt: now,
       finishedAt: assistantStatus === "streaming" ? null : now + 1,
-      errorCode: assistantStatus === "failed" ? "provider-error" : null,
+      errorCode: assistantStatus === "failed" ? "assistant-provider-http-503" : null,
       createdAt: now,
       updatedAt: now,
     };

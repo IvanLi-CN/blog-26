@@ -328,6 +328,16 @@ export class AgentConfigurationError extends Error {
   }
 }
 
+export class AgentAnswerError extends Error {
+  constructor(
+    readonly code: string,
+    message: string
+  ) {
+    super(message);
+    this.name = "AgentAnswerError";
+  }
+}
+
 function modelFromConfig(config: AgentModelConfig): Model<"openai-completions"> {
   if (!config.model || !config.baseUrl || !config.apiKey) throw new AgentConfigurationError();
   return {
@@ -1002,6 +1012,18 @@ export class AgentRuntimeFacade {
     }
     const result = await submission.wait(BACKGROUND_CONTEXT);
     if (result.status !== "done" || result.type !== "input") {
+      if (result.status === "unanswered" && result.reason === "model_error") {
+        // Pi's OpenAI adapter formats HTTP failures with the status at the start.
+        // Keep only the status: the remaining upstream text can contain credentials.
+        const status =
+          typeof result.detail === "string"
+            ? /^([45]\d\d)(?=[:\s]|$)/u.exec(result.detail)?.[1]
+            : undefined;
+        throw new AgentAnswerError(
+          status ? `assistant-provider-http-${status}` : "assistant-provider-error",
+          "模型生成失败，请重试；已保存的文章和对话仍然保留。"
+        );
+      }
       throw new Error("模型生成失败，请重试；已保存的文章和对话仍然保留。");
     }
     const commit = async () => {
@@ -1014,10 +1036,14 @@ export class AgentRuntimeFacade {
           (message) => message.role === "assistant" && message.stopReason === "length"
         )
       ) {
-        throw new Error("模型输出达到长度限制；未将部分结果标记为全文完成，请重试。");
+        throw new AgentAnswerError(
+          "assistant-provider-output-too-large",
+          "模型输出达到长度限制；未将部分结果标记为全文完成，请重试。"
+        );
       }
       const text = answer?.model?.map(messageText).join("\n").trim();
-      if (!text) throw new Error("模型返回了空内容，请重试。");
+      if (!text)
+        throw new AgentAnswerError("assistant-provider-empty-output", "模型返回了空内容，请重试。");
       return text;
     };
     return beforeCommit ? beforeCommit(commit) : commit();
