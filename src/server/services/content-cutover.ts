@@ -36,6 +36,7 @@ export interface CutoverReport {
   mediaReused: number;
   skipped: CutoverSkipped[];
   orphans: string[];
+  missingAttachments: { path: string; attachment: string }[];
   errors: string[];
 }
 
@@ -113,14 +114,15 @@ async function chooseMedia(
   original: string,
   kind: "blog" | "Memos",
   report: CutoverReport,
-  apply: boolean
+  apply: boolean,
+  documentPath: string
 ): Promise<MediaChoice | null> {
   const source = getLocalPath(original);
   let bytes: Uint8Array;
   try {
     bytes = await readFile(source);
   } catch {
-    report.errors.push(`attachment missing: ${original}`);
+    report.missingAttachments.push({ path: documentPath, attachment: original });
     return null;
   }
   const extension = posix.extname(original);
@@ -212,6 +214,7 @@ export async function runContentCutover(options: CutoverOptions = {}): Promise<C
     mediaReused: 0,
     skipped: [],
     orphans: [],
+    missingAttachments: [],
     errors: [],
   };
 
@@ -339,7 +342,13 @@ export async function runContentCutover(options: CutoverOptions = {}): Promise<C
     const baseBody = entry.row && authoredClipping ? entry.row.body : authoredBody;
     const choices = new Map<string, MediaChoice>();
     for (const original of collectTargets(baseBody, entry.relative)) {
-      const choice = await chooseMedia(original, kindDir, report, options.apply === true);
+      const choice = await chooseMedia(
+        original,
+        kindDir,
+        report,
+        options.apply === true,
+        entry.relative
+      );
       if (choice) choices.set(original, choice);
     }
     const rewrittenBody = rewriteTargets(baseBody, entry.relative, choices);

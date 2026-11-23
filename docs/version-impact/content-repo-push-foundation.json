@@ -1,32 +1,11 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "64c34d10538eb7e1ccd19f1e3372bd2ed9ba70b8",
+  "base_sha": "cc6e4ebceb921f237fae9850eee05ee6d9bf9f04",
   "covered_files": {
-    "docs/runbooks/content-authority-cutover.md": "fd38fd86f8804e1133f6e06e7486a2120b268d20",
-    "docs/specs/content-git-sync/IMPLEMENTATION.md": "84e36caad39ea8df8284a8cfd206a31859298db4",
-    "drizzle/0036_content_authority.sql": "4f49a67d41fca5f7da73e8f1d8061a8a95eeec34",
-    "drizzle/meta/_journal.json": "f985347c302d2ff34d029d1a3513dd60aea2d703",
-    "package.json": "c48a6fbcce3df754ca2575067117f8bfec6a1715",
-    "scripts/content-cutover.ts": "30f40140726e1e5684949b882ef73264d992d334",
-    "scripts/content-repo-seed.ts": "1015d7cdd47dffab76f10dfd0646b82fbd625f1d",
-    "scripts/prepare-backend-dist.sh": "779883e36fa04b4517b4e366963b2f863073bccf",
-    "src/lib/content-authority.ts": "19a30dc6e532f73e77ad11fde3cd1589928a107f",
-    "src/lib/content-repo/canonical.test.ts": "1cb2a1e3dee1cb6721af54ae00523f040807c6d1",
-    "src/lib/content-repo/canonical.ts": "6058e907015df4b37e14591e6165aa74e1ac3441",
-    "src/lib/content-sources/authority-gate.test.ts": "42c23443e96dda85de3ef64398693c75accfd463",
-    "src/lib/content-sources/register.ts": "2585953cf1aa71bfd631a8adceea0c3ba5ef9fe4",
-    "src/lib/schema-content-authority.ts": "563fd8ab7c7861d59eb2167932cd128cf5e4e2e4",
-    "src/lib/schema.ts": "28957eb79b1184e7866ca3162707a22ef51bd3fb",
-    "src/server/clipping/store.ts": "c18d02daeda30f65658056589c44e853a6b64511",
-    "src/server/jobs/definitions.ts": "2e97667169f818006708af585754400a2d6574e5",
-    "src/server/mcp-content-authority.test.ts": "c882d811d7c77865bb77a6a173075122d1fc8383",
-    "src/server/mcp.ts": "2dce5060994680c941012ac0aa1463c89287dfeb",
-    "src/server/routers/admin/content-sync.ts": "05bbad07fe46c03a2d2562c37b7b10fc466eaafb",
-    "src/server/services/content-authority-writer.ts": "68675b4ad20ce03b4e680d29a9ffc76498c2dd15",
-    "src/server/services/content-cutover.test.ts": "6f188e20012fd2b8507be162951123bbdd90ef8f",
-    "src/server/services/content-cutover.ts": "5deecdaaace13f1352b41d111c612bcd32e14fd0",
-    "src/server/services/content-repo-sync.ts": "feaab3fcf25bd3b1394481f37b6fe913d40b283b"
+    "docs/specs/content-git-sync/IMPLEMENTATION.md": "dea1b929d57b7742e1d06d9280bfac8132cf8712",
+    "scripts/content-repo-seed.ts": "e7bc638883d5ca0f741225a2960badffb5ffaf3d",
+    "src/server/services/content-cutover.ts": "91c8f600f2473f3deeb304436c3c1311be562a59"
   },
   "change": {
     "description": "Add the server-side content repository push foundation: canonical content form, API-only GitHub transport, push planning from sync baselines and an additive content_repo_baselines table.",
@@ -71,11 +50,6 @@
           "path": "src/server/services/content-cutover.test.ts",
           "blob": "6f188e20012fd2b8507be162951123bbdd90ef8f",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts src/server/services/content-repo-memo-sync.test.ts src/server/services/content-cutover.test.ts src/lib/content-sources/authority-gate.test.ts"
-        },
-        {
-          "path": "src/server/mcp-content-authority.test.ts",
-          "blob": "c882d811d7c77865bb77a6a173075122d1fc8383",
-          "command": "bun test --isolate src/server/mcp src/server/clipping"
         }
       ]
     }
@@ -143,7 +117,8 @@
         "4.2.11",
         "4.2.12",
         "4.2.13",
-        "4.2.14"
+        "4.2.14",
+        "4.2.15"
       ],
       "evidence": [
         {
@@ -216,7 +191,8 @@
         "4.2.11",
         "4.2.12",
         "4.2.13",
-        "4.2.14"
+        "4.2.14",
+        "4.2.15"
       ],
       "upgrade_from_versions": [
         "2.7.0",
@@ -277,7 +253,8 @@
         "4.2.11",
         "4.2.12",
         "4.2.13",
-        "4.2.14"
+        "4.2.14",
+        "4.2.15"
       ],
       "evidence": [
         {
