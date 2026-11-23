@@ -40,7 +40,11 @@ function changedMediaPaths(entry: ContentRepoEntry, baseline: ContentRepoBaselin
 
 export function computeSyncStates(input: ContentSyncStateInput): ContentSyncStateItem[] {
   const byPath = new Map(input.entries.map((entry) => [entry.document.path, entry]));
-  const paths = new Set<string>([...byPath.keys(), ...input.baselines.keys()]);
+  const paths = new Set<string>([
+    ...byPath.keys(),
+    ...input.baselines.keys(),
+    ...input.remote.keys(),
+  ]);
   const items: ContentSyncStateItem[] = [];
 
   for (const path of [...paths].sort()) {
@@ -50,7 +54,21 @@ export function computeSyncStates(input: ContentSyncStateInput): ContentSyncStat
     const missingMedia = input.missingMedia?.get(path) ?? [];
 
     if (!baseline) {
-      if (!entry) continue;
+      if (!entry) {
+        if (!remoteSha) continue;
+        items.push({
+          path,
+          kind: path.startsWith("Memos/") ? "memo" : "post",
+          state: "remote-new",
+          localHash: null,
+          baselineHash: null,
+          remoteSha,
+          baselineSha: null,
+          changedMedia: [],
+          missingMedia,
+        });
+        continue;
+      }
       items.push({
         path,
         kind: entry.document.kind,

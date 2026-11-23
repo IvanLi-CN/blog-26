@@ -98,6 +98,14 @@ function toContentRecord(row: typeof posts.$inferSelect): ContentRecord {
   };
 }
 
+/** Canonical memos carry the clipping reference; posts never do. */
+function clippingFrontmatterFor(contentId: string) {
+  const clipping = db.select().from(memoClippings).where(eq(memoClippings.memoId, contentId)).get();
+  return clipping?.targetUrl
+    ? { targetUrl: clipping.targetUrl, capturedAt: new Date(clipping.updatedAt).toISOString() }
+    : null;
+}
+
 export async function loadContentRepoEntries(
   ids?: string[],
   options: { tolerateMissingMedia?: boolean } = {}
@@ -120,14 +128,8 @@ export async function loadContentRepoEntries(
   for (const row of rows) {
     const record = toContentRecord(row);
     const kind = record.type === "memo" ? "memo" : "post";
-    const clipping =
-      kind === "memo"
-        ? db.select().from(memoClippings).where(eq(memoClippings.memoId, record.id)).get()
-        : null;
     const document = buildCanonicalDocument(record, {
-      clipping: clipping?.targetUrl
-        ? { targetUrl: clipping.targetUrl, capturedAt: new Date(clipping.updatedAt).toISOString() }
-        : null,
+      clipping: kind === "memo" ? clippingFrontmatterFor(record.id) : null,
     });
     const media: ContentRepoMediaFile[] = [];
     const missing: string[] = [];
@@ -448,10 +450,6 @@ export function pullContentRepo(input: { ids?: string[] } = {}): Promise<Content
       for (const item of items) {
         if (item.state !== "to-pull") continue;
         if (wanted && !wanted.has(item.path)) continue;
-        if (item.kind !== "post") {
-          skipped.push({ path: item.path, reason: "memo-pull-requires-authority-cutover" });
-          continue;
-        }
         const baseline = baselines.get(item.path);
         if (!baseline || !item.remoteSha) continue;
         const mediaChanged = Object.entries(baseline.media).some(
@@ -483,10 +481,11 @@ export function pullContentRepo(input: { ids?: string[] } = {}): Promise<Content
           updateDate: update.updateDate ?? row.updateDate,
           lastModified: Date.now(),
         };
-        const document = buildCanonicalDocument({
-          ...toContentRecord(row),
-          ...updated,
-        });
+        const kind = row.type === "memo" ? "memo" : "post";
+        const document = buildCanonicalDocument(
+          { ...toContentRecord(row), ...updated },
+          { clipping: kind === "memo" ? clippingFrontmatterFor(row.id) : null }
+        );
         db.update(posts)
           .set({ ...updated, contentHash: document.contentHash })
           .where(eq(posts.id, row.id))
@@ -497,7 +496,7 @@ export function pullContentRepo(input: { ids?: string[] } = {}): Promise<Content
         persistBaselineRow({
           path: item.path,
           contentId: row.id,
-          kind: "post",
+          kind,
           contentHash: document.contentHash,
           document: new TextDecoder().decode(document.bytes),
           media: JSON.stringify(baseline.media),
@@ -858,16 +857,12 @@ export async function acceptRemoteNew(
     for (const item of context.items) {
       if (item.state !== "remote-new") continue;
       if (wanted.size && !wanted.has(item.path)) continue;
-      if (item.kind !== "post") {
-        skipped.push({ path: item.path, reason: "memo-adoption-requires-authority-cutover" });
-        continue;
-      }
       if (!item.remoteSha) continue;
       const bytes = await context.transport.readBlob(item.remoteSha);
       const update = toDocumentUpdate(parseRemoteDocument(bytes));
       const document = buildCanonicalDocument({
         id: item.path,
-        type: "post",
+        type: item.kind,
         slug: update.slug,
         title: update.title,
         excerpt: null,
@@ -887,8 +882,8 @@ export async function acceptRemoteNew(
       db.insert(posts)
         .values({
           id: item.path,
+          type: item.kind,
           slug: update.slug,
-          type: "post",
           title: update.title,
           excerpt: update.body.slice(0, 200),
           body: update.body,
@@ -911,7 +906,7 @@ export async function acceptRemoteNew(
       persistBaselineRow({
         path: item.path,
         contentId: item.path,
-        kind: "post",
+        kind: item.kind,
         contentHash: document.contentHash,
         document: decoder.decode(document.bytes),
         media: JSON.stringify({}),
@@ -1052,10 +1047,6 @@ export function mergeContentRepo(input: { ids?: string[] } = {}): Promise<Conten
           skipped.push({ path: item.path, reason: "missing-local-content" });
           continue;
         }
-        if (item.kind !== "post") {
-          skipped.push({ path: item.path, reason: "memo-merge-requires-authority-cutover" });
-          continue;
-        }
         const baseline = baselines.get(item.path);
         if (!baseline?.document) {
           skipped.push({ path: item.path, reason: "baseline-document-unavailable" });
@@ -1116,7 +1107,11 @@ export function mergeContentRepo(input: { ids?: string[] } = {}): Promise<Conten
           updateDate: update.updateDate ?? row.updateDate,
           lastModified: Date.now(),
         };
-        const document = buildCanonicalDocument({ ...toContentRecord(row), ...updated });
+        const kind = row.type === "memo" ? "memo" : "post";
+        const document = buildCanonicalDocument(
+          { ...toContentRecord(row), ...updated },
+          { clipping: kind === "memo" ? clippingFrontmatterFor(row.id) : null }
+        );
         db.update(posts)
           .set({ ...updated, contentHash: document.contentHash })
           .where(eq(posts.id, row.id))
@@ -1127,7 +1122,7 @@ export function mergeContentRepo(input: { ids?: string[] } = {}): Promise<Conten
         persistBaselineRow({
           path: item.path,
           contentId: row.id,
-          kind: "post",
+          kind,
           contentHash: document.contentHash,
           document: decoder.decode(document.bytes),
           media: JSON.stringify(baseline.media),
