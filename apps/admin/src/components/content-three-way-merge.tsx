@@ -488,7 +488,6 @@ export function ContentThreeWayMerge({
         <Badge tone={unresolvedCount ? "warning" : "success"}>
           已解决 {status.solved}/{status.total}
         </Badge>
-        <span className="flex-1" />
         <Button size="sm" variant="outline" onClick={() => decideAll("local")}>
           整篇采用本地
         </Button>
