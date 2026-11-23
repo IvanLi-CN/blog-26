@@ -42,7 +42,7 @@ function bodyAt(calls: Call[], index: number): Record<string, unknown> {
 describe("content repository transport", () => {
   test("resolves the configured ref to a commit and tree", async () => {
     const { calls, transport } = transportWith([
-      { body: { sha: commitSha, tree: { sha: treeSha } } },
+      { body: { sha: commitSha, commit: { tree: { sha: treeSha } } } },
     ]);
     expect(await transport.resolveHead()).toEqual({ commit: commitSha, tree: treeSha });
     expect(calls[0]?.url).toContain("/repos/IvanLi-CN/blog-contents/commits/main");

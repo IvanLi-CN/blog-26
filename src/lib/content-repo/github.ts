@@ -113,12 +113,16 @@ export function createContentRepoTransport(
   return {
     async resolveHead() {
       // `commits/{ref}` resolves a branch or tag name; `git/commits/{sha}` accepts only SHAs.
-      const commit = await requestJson(`${repoUrl}/commits/${encodeURIComponent(config.ref)}`);
-      const tree = commit.tree;
+      const payload = await requestJson(`${repoUrl}/commits/${encodeURIComponent(config.ref)}`);
+      const commitObject = payload.commit;
+      const tree =
+        commitObject && typeof commitObject === "object"
+          ? (commitObject as Record<string, unknown>).tree
+          : payload.tree;
       if (!tree || typeof tree !== "object")
         throw new ContentRepoError("invalid", "GitHub commit has no tree");
       return {
-        commit: readSha(commit.sha, "commit"),
+        commit: readSha(payload.sha, "commit"),
         tree: readSha((tree as Record<string, unknown>).sha, "tree"),
       };
     },

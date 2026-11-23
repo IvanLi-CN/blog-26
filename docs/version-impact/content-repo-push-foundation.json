@@ -3,8 +3,9 @@
   "kind": "version-impact-record",
   "base_sha": "e325bc47f4009a39127ff2cd02bced71ead6b870",
   "covered_files": {
-    "src/lib/content-repo/github.test.ts": "38a24f2a82d2e42453dae6a5940865f717642fd3",
-    "src/lib/content-repo/github.ts": "04ff6d807a55dcf61474c77f9352c11d2afae0d7"
+    "src/lib/content-repo/github.test.ts": "bde24deabdca8335e0c079c5ce862b3bddeda706",
+    "src/lib/content-repo/github.ts": "83b1b0b4d6f6c3234fa0a9ad3e1c9002a9fefbc8",
+    "src/server/services/content-repo-memo-sync.test.ts": "b673df7fe91d28a09f84a97fbf239d3c0b11d1c3"
   },
   "change": {
     "description": "Add the server-side content repository push foundation: canonical content form, API-only GitHub transport, push planning from sync baselines and an additive content_repo_baselines table.",
@@ -47,8 +48,8 @@
       "evidence": [
         {
           "path": "src/lib/content-repo/github.test.ts",
-          "blob": "38a24f2a82d2e42453dae6a5940865f717642fd3",
-          "command": "bun test src/lib/content-repo/github.test.ts"
+          "blob": "bde24deabdca8335e0c079c5ce862b3bddeda706",
+          "command": "bun test src/lib/content-repo/github.test.ts src/server/services/content-repo-memo-sync.test.ts"
         }
       ]
     }
