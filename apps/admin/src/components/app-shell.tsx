@@ -6,6 +6,7 @@ import {
   BrainCircuit,
   ClipboardList,
   Files,
+  GitCompareArrows,
   KeyRound,
   LayoutDashboard,
   Link2,

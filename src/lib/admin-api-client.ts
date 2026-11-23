@@ -733,7 +733,122 @@ function buildSearch(params: Record<string, string | number | boolean | undefine
   return text ? `?${text}` : "";
 }
 
+export interface ContentRepoSyncItem {
+  path: string;
+  kind: "post" | "memo";
+  state: "synced" | "to-push" | "to-pull" | "remote-new" | "remote-deleted" | "merge-conflict";
+  localHash: string | null;
+  baselineHash: string | null;
+  remoteSha: string | null;
+  baselineSha: string | null;
+  changedMedia: string[];
+  missingMedia: string[];
+}
+
+export interface ContentRepoCheckPayload {
+  status: "checked" | "unconfigured" | "failed";
+  repository: string | null;
+  ref: string | null;
+  commit?: string;
+  items?: ContentRepoSyncItem[];
+  counts?: Record<string, number>;
+  message?: string;
+}
+
+export interface ContentRepoStatusPayload {
+  configured: boolean;
+  repository: string | null;
+  ref: string | null;
+  baselines: number;
+  message?: string;
+}
+
+export interface ContentRepoDiffPayload {
+  status: "ready" | "unavailable" | "unconfigured" | "failed";
+  path: string;
+  state?: string;
+  baseText?: string | null;
+  localText?: string | null;
+  remoteText?: string | null;
+  mergedText?: string | null;
+  conflictingFields?: string[];
+  bodyConflicts?: number;
+  regions?: (
+    | { kind: "stable"; text: string }
+    | { kind: "conflict"; base: string; local: string; remote: string }
+  )[];
+  message?: string;
+}
+
+export interface ContentRepoActionPayload {
+  status: string;
+  repository?: string | null;
+  ref?: string | null;
+  commit?: string;
+  merged?: string[];
+  paths?: string[];
+  conflicts?: { path: string; fields: string[]; bodyConflicts: number }[];
+  skipped?: { path: string; reason: string }[];
+  message?: string;
+}
+
 export const adminApi = {
+  getContentRepoStatus: () =>
+    adminRequest<ContentRepoStatusPayload>("/api/admin/content-repo/status"),
+  checkContentRepo: () => adminRequest<ContentRepoCheckPayload>("/api/admin/content-repo/check"),
+  getContentRepoMedia: (path: string) =>
+    adminRequest<{
+      status: "ready" | "unconfigured" | "failed";
+      path: string;
+      items?: {
+        path: string;
+        mime: string;
+        localSha: string | null;
+        remoteSha: string | null;
+        changed: boolean;
+        missing: boolean;
+      }[];
+      message?: string;
+    }>(`/api/admin/content-repo/media?path=${encodeURIComponent(path)}`),
+  adoptRemoteMedia: (input: { path: string; media: string }) =>
+    adminRequest<{ status: string; path: string; mediaPath?: string; message?: string }>(
+      "/api/admin/content-repo/media/adopt",
+      { method: "POST", body: JSON.stringify(input) }
+    ),
+  resolveContentRepo: (input: { path: string; text: string }) =>
+    adminRequest<{ status: string; path: string; contentHash?: string; message?: string }>(
+      "/api/admin/content-repo/resolve",
+      { method: "POST", body: JSON.stringify(input) }
+    ),
+  getContentRepoDiff: (path: string) =>
+    adminRequest<ContentRepoDiffPayload>(
+      `/api/admin/content-repo/diff?path=${encodeURIComponent(path)}`
+    ),
+  pullContentRepo: (input: { ids?: string[] } = {}) =>
+    adminRequest<ContentRepoActionPayload>("/api/admin/content-repo/pull", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  pushContentRepo: (input: { ids?: string[]; all?: boolean } = {}) =>
+    adminRequest<ContentRepoActionPayload>("/api/admin/content-repo/push", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  mergeContentRepo: (input: { ids?: string[] } = {}) =>
+    adminRequest<ContentRepoActionPayload>("/api/admin/content-repo/merge", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  acceptRemoteContent: (input: { paths?: string[] } = {}) =>
+    adminRequest<ContentRepoActionPayload>("/api/admin/content-repo/accept-remote", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  removeRemoteDeletedContent: (input: { paths?: string[] } = {}) =>
+    adminRequest<ContentRepoActionPayload>("/api/admin/content-repo/remove-remote-deleted", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   session: () => adminRequest<AdminSession>("/api/admin/session"),
   getPlaybook: (
     params: {

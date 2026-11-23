@@ -775,47 +775,18 @@ describe("system share API", () => {
     const legacyMigrationsPath = path.join(migrationRoot, "drizzle");
     const legacyDbPath = path.join(migrationRoot, "legacy.sqlite");
     fs.cpSync(migrationsPath, legacyMigrationsPath, { recursive: true });
-    fs.rmSync(path.join(legacyMigrationsPath, "0016_system_share_recovery.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0017_github_reader_comments.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0018_comments_backfill_gate.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0019_playbook_snapshots.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0020_github_admin_comment_identity.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0026_site_knowledge_assistant_contracts.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0027_frontend_session_auth_source.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0028_assistant_discussion_migration.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0029_ai_usage_daily_result_counts.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0030_assistant_message_citations.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0031_assistant_lookup_indexes.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0032_site_feature_settings.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0021_project_status.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0022_project_status_running_guard.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0023_project_status_heartbeat.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0024_scheduler_lease.sql"));
-    fs.rmSync(path.join(legacyMigrationsPath, "0025_project_status_scheduler_owner.sql"));
     const journalPath = path.join(legacyMigrationsPath, "meta", "_journal.json");
     const journal = JSON.parse(fs.readFileSync(journalPath, "utf8")) as {
-      entries: Array<{ tag: string }>;
+      entries: Array<{ idx: number; tag: string }>;
     };
-    journal.entries = journal.entries.filter(
-      (entry) =>
-        entry.tag !== "0016_system_share_recovery" &&
-        entry.tag !== "0017_github_reader_comments" &&
-        entry.tag !== "0018_comments_backfill_gate" &&
-        entry.tag !== "0019_playbook_snapshots" &&
-        entry.tag !== "0020_github_admin_comment_identity" &&
-        entry.tag !== "0026_site_knowledge_assistant_contracts" &&
-        entry.tag !== "0027_frontend_session_auth_source" &&
-        entry.tag !== "0028_assistant_discussion_migration" &&
-        entry.tag !== "0029_ai_usage_daily_result_counts" &&
-        entry.tag !== "0030_assistant_message_citations" &&
-        entry.tag !== "0031_assistant_lookup_indexes" &&
-        entry.tag !== "0032_site_feature_settings" &&
-        entry.tag !== "0021_project_status" &&
-        entry.tag !== "0022_project_status_running_guard" &&
-        entry.tag !== "0023_project_status_heartbeat" &&
-        entry.tag !== "0024_scheduler_lease" &&
-        entry.tag !== "0025_project_status_scheduler_owner"
-    );
+    // Simulate a pre-0016 database: every later migration is absent from the legacy copy.
+    // Keep this cutoff instead of listing tags so new migrations cannot shift the high-water mark.
+    const legacyEntries = journal.entries.filter((entry) => entry.idx <= 15);
+    for (const entry of journal.entries) {
+      if (entry.idx <= 15) continue;
+      fs.rmSync(path.join(legacyMigrationsPath, `${entry.tag}.sql`), { force: true });
+    }
+    journal.entries = legacyEntries;
     fs.writeFileSync(journalPath, `${JSON.stringify(journal)}\n`);
 
     const sqlite = new Database(legacyDbPath);

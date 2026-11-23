@@ -61,6 +61,7 @@ import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 
 const now = Date.now();
+const demoResolvedHashes = new Map<string, string>();
 const consoleWebDemoPreviewStore = createConsoleWebDemoStore();
 
 const postBodies = {
@@ -1231,6 +1232,149 @@ class DemoApiError extends Error {
   }
 }
 
+type DemoMergeRegion =
+  | { kind: "stable"; text: string }
+  | { kind: "conflict"; base: string; local: string; remote: string };
+
+/**
+ * A full-length article for the merge surface. The demo diff must exercise the
+ * real shape: long unchanged stretches that collapse, and conflicts spread
+ * through the document instead of a single stub line.
+ */
+const demoMergeRegions: DemoMergeRegion[] = [
+  { kind: "stable", text: "---" },
+  {
+    kind: "conflict",
+    base: "title: 内容仓库同步的边界",
+    local: "title: 内容仓库同步的边界（补注）",
+    remote: "title: 内容仓库同步的边界（修订）",
+  },
+  { kind: "stable", text: "slug: merge-demo\ndate: 2026-01-02\ndraft: false\npublic: true" },
+  {
+    kind: "conflict",
+    base: "tags: [release]",
+    local: "tags: [release, notes]",
+    remote: "tags: [release, ops]",
+  },
+  {
+    kind: "stable",
+    text: `---
+
+# 内容仓库同步的边界
+
+博客的正文与闪念最终落在一份可版本化的内容仓库里。数据库保存内容身份、媒体引用与同步基线，仓库保存可审阅的历史。这两个事实分开之后，任何一次写入都必须回答同一个问题：这次写入改变了哪一侧，另一侧是否已经前进。
+
+本文记录这条边界在实现中的形态：检查、差异、裁决、推送与回滚。它不描述具体的发布窗口，也不替代内容仓库的写入规范。`,
+  },
+  {
+    kind: "conflict",
+    base: `## 基线
+
+基线记录上一次双方一致的文档摘要。检查任务以基线为锚点，分别计算本地与远端的摘要，再决定内容是否需要合并。`,
+    local: `## 基线
+
+基线记录上一次双方一致的文档摘要。检查任务以基线为锚点，分别计算本地与远端的摘要，再决定内容是否需要合并。本地补充：基线按路径索引，同一路径只能存在一条基线记录。`,
+    remote: `## 基线
+
+基线记录上一次双方一致的文档摘要。检查任务以基线为锚点，分别计算本地与远端的摘要，再决定是否需要合并，并在合并后推进基线。远端修订：基线还保存仓库提交标识，用于追溯来源。`,
+  },
+  {
+    kind: "stable",
+    text: `## 检查流程
+
+一次检查包含四步：
+
+1. 读取内容仓库的目标分支，拿到目录与每个文件的 blob 摘要。
+2. 读取本地内容根，构建规范文档并计算摘要。
+3. 以基线为参照，为每个路径判定状态：一致、待推送、待拉取、远端新增、远端删除或需要合并。
+4. 汇总计数，交给管理端展示。
+
+检查是只读的。它不写入数据库，也不改写内容文件；所有写入都发生在后续的裁决或同步动作里。`,
+  },
+  {
+    kind: "conflict",
+    base: `## 冲突判定
+
+路径两侧都改变时进入合并。frontmatter 按字段比较，正文按段落比较；两侧改动落在不同位置时自动合并，落在同一位置时保留冲突。`,
+    local: `## 冲突判定
+
+路径两侧都改变时进入合并。frontmatter 按字段比较，正文按段落比较；两侧改动落在不同位置时自动合并，落在同一位置时保留冲突。本地补充：标题、摘要与标签始终按冲突处理，不参与自动合并。`,
+    remote: `## 冲突判定
+
+路径两侧都改变时进入合并。frontmatter 按字段比较，正文按行比较；两侧改动落在不同位置时自动合并，落在同一位置时保留冲突。远端修订：正文比较以行为单位，避免段落级合并掩盖行内改动。`,
+  },
+  {
+    kind: "stable",
+    text: `## 自动合并的边界
+
+自动合并只处理可以证明安全的改动：
+
+- 一侧未改变的区域直接采用另一侧。
+- 两侧新增到不同位置的段落按顺序拼接。
+- 删除与新增不交叉时分别保留。
+
+任何需要解释的改动都留给人工裁决。自动合并不会猜测意图，也不会覆盖人工已经保存过的结果。`,
+  },
+  {
+    kind: "stable",
+    text: `## 推送与拉取
+
+推送以单次提交写入仓库，提交信息包含内容路径与摘要。推送成功后基线推进到新的远端摘要，本地状态变为一致。
+
+拉取先比较远端摘要与当前基线，只接受快进的远端版本。远端历史被改写时拒绝拉取，要求人工合并。两条路径都不触发自动发布。`,
+  },
+  {
+    kind: "conflict",
+    base: `## 媒体身份
+
+媒体文件按内容摘要命名，同一份图片在不同文章之间共享身份。正文里的引用保存仓库相对路径，渲染时再解析为站点地址。`,
+    local: `## 媒体身份
+
+媒体文件按内容摘要命名，同一份图片在不同文章之间共享身份。正文里的引用保存仓库相对路径，渲染时再解析为站点地址。本地补充：替换图片时先写入新摘要，再改写引用，旧文件保留到下一次清理。`,
+    remote: `## 媒体身份
+
+媒体按清单登记，清单记录路径、摘要与尺寸；同一份图片在不同文章之间共享摘要。正文里的引用保存仓库相对路径，渲染时再解析为站点地址。远端修订：清单之外的媒体文件在检查时视为缺失。`,
+  },
+  {
+    kind: "stable",
+    text: `## 回滚
+
+回滚是内容仓库的一次普通提交：把路径恢复到指定提交的版本，再让检查任务重新计算状态。动态服务不保存历史版本，也不提供管理端的时间旅行界面。
+
+数据库快照与内容仓库回滚相互独立。数据库恢复不会改写仓库，仓库回滚也不会删除已生成的向量索引；两者都需要单独确认。`,
+  },
+  {
+    kind: "stable",
+    text: `## 观测
+
+每次检查输出一份计数：一致、待推送、待拉取、远端新增、远端删除与需要合并。管理端展示这些计数，并在详情里给出每一处差异。
+
+失败会保留原始错误，分类为未配置、令牌失效、远端不可达与文档解析失败。失败不会自动重试，也不会把状态推进到一致。`,
+  },
+  {
+    kind: "stable",
+    text: `## 常见问题
+
+- 为什么推送没有立刻出现在线上？静态站点按发布流程重建，动态读取按缓存周期刷新。
+- 合并会覆盖本地改动吗？不会，合并结果只有保存后才写入内容库。
+- 冲突可以自动裁决吗？只有两侧改动互不重叠的区域会被自动合并。
+- 基线丢失怎么办？重新执行一次检查，以当前远端摘要重建基线。
+- 仓库暂时不可达时能编辑吗？可以，编辑只依赖本地内容库。`,
+  },
+  {
+    kind: "stable",
+    text: `## 结语
+
+同步的价值不在于自动，而在于每次改动都能回答：改了什么、为什么改、谁裁决的。把这三件事留在仓库历史里，比任何一次自动合并都重要。`,
+  },
+];
+
+function demoMergeDocument(side: "base" | "local" | "remote") {
+  return demoMergeRegions
+    .map((region) => (region.kind === "stable" ? region.text : region[side]))
+    .join("\n");
+}
+
 export function setupAdminDemoApiMocks() {
   ensureDemoCommentsResetListener();
   syncDemoSiteFeatureSettings();
@@ -1912,6 +2056,155 @@ async function handleAdminRequest(
     }
     return json({ success: true, message: "评论状态已更新" });
   }
+  if (path.startsWith("/api/admin/content-repo/")) {
+    const demoRepo = {
+      repository: "IvanLi-CN/blog-contents",
+      ref: "main",
+      commit: "0f1e2d3c4b5a69788796a5b4c3d2e1f001122334",
+    };
+    const demoItems = [
+      {
+        path: "blog/content-repo-sync.md",
+        kind: "post",
+        state: "to-push",
+        localHash: "hash-local-1",
+        baselineHash: "hash-base-1",
+        remoteSha: "remote-sha-1",
+        baselineSha: "remote-sha-1",
+        changedMedia: [],
+        missingMedia: [],
+      },
+      {
+        path: "blog/merge-demo.md",
+        kind: "post",
+        state: "merge-conflict",
+        localHash: "hash-local-2",
+        baselineHash: "hash-base-2",
+        remoteSha: "remote-sha-2",
+        baselineSha: "remote-sha-2",
+        changedMedia: ["blog/assets/cover.png"],
+        missingMedia: [],
+      },
+      {
+        path: "Memos/2026_demo.md",
+        kind: "memo",
+        state: "synced",
+        localHash: "hash-local-3",
+        baselineHash: "hash-base-3",
+        remoteSha: "remote-sha-3",
+        baselineSha: "remote-sha-3",
+        changedMedia: [],
+        missingMedia: [],
+      },
+      {
+        path: "blog/remote-only.md",
+        kind: "post",
+        state: "remote-new",
+        localHash: null,
+        baselineHash: null,
+        remoteSha: "remote-sha-4",
+        baselineSha: null,
+        changedMedia: [],
+        missingMedia: [],
+      },
+    ] as const;
+    if (path === "/api/admin/content-repo/status")
+      return json({ configured: true, ...demoRepo, baselines: 3 });
+    if (path === "/api/admin/content-repo/check")
+      return json({
+        status: "checked",
+        ...demoRepo,
+        items: demoItems.map((item) =>
+          demoResolvedHashes.has(item.path)
+            ? { ...item, state: "to-push" as const, localHash: demoResolvedHashes.get(item.path) }
+            : item
+        ),
+        counts: {
+          synced: 1,
+          "to-push": 1,
+          "to-pull": 0,
+          "remote-new": 1,
+          "remote-deleted": 0,
+          "merge-conflict": 1,
+        },
+      });
+    if (path === "/api/admin/content-repo/media/remote") return demoMediaResponse();
+    if (path === "/api/admin/content-repo/media") {
+      const target = url.searchParams.get("path") ?? demoItems[1].path;
+      return json({
+        status: "ready",
+        path: target,
+        items: [
+          {
+            path: "blog/assets/cover.png",
+            mime: "image/png",
+            localSha: "local-media-sha",
+            remoteSha: "remote-media-sha",
+            changed: true,
+            missing: false,
+          },
+        ],
+      });
+    }
+    if (path === "/api/admin/content-repo/diff") {
+      const target = url.searchParams.get("path") ?? demoItems[1].path;
+      return json({
+        status: "ready",
+        path: target,
+        state: "merge-conflict",
+        baseText: demoMergeDocument("base"),
+        localText: demoMergeDocument("local"),
+        remoteText: demoMergeDocument("remote"),
+        mergedText: null,
+        regions: demoMergeRegions,
+        conflictingFields: ["title", "tags"],
+        bodyConflicts: demoMergeRegions.filter((region) => region.kind === "conflict").length - 2,
+      });
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/resolve") {
+      const targetPath = typeof body.path === "string" ? body.path : null;
+      const text = typeof body.text === "string" ? body.text : null;
+      if (!targetPath || text === null)
+        return json({ error: "path and text are required" }, { status: 400 });
+      const contentHash = `hash-${text.length}`;
+      demoResolvedHashes.set(targetPath, contentHash);
+      recordWebDemoMutation("保存到内容库", "写入本地数据库（模拟）");
+      return json({ status: "saved", path: targetPath, contentHash }, 200);
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/merge") {
+      recordWebDemoMutation("尝试自动合并", "冲突未裁决（模拟）");
+      return json(
+        {
+          status: "conflicts",
+          ...demoRepo,
+          merged: [],
+          conflicts: [{ path: demoItems[1].path, fields: ["title"], bodyConflicts: 1 }],
+          skipped: [],
+        },
+        200
+      );
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/push") {
+      recordWebDemoMutation("推送内容", "写入仓库（模拟）");
+      return json({ status: "pushed", ...demoRepo, merged: [demoItems[0].path], skipped: [] }, 200);
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/pull") {
+      recordWebDemoMutation("拉取内容", "写入内容库（模拟）");
+      return json({ status: "pulled", ...demoRepo, pulled: [], skipped: [] }, 200);
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/accept-remote") {
+      recordWebDemoMutation("接受远端新增", "建立内容（模拟）");
+      return json(
+        { status: "accepted", ...demoRepo, paths: [demoItems[3].path], skipped: [] },
+        200
+      );
+    }
+    if (method === "POST" && path === "/api/admin/content-repo/remove-remote-deleted") {
+      recordWebDemoMutation("确认远端删除", "删除内容（模拟）");
+      return json({ status: "removed", ...demoRepo, paths: [], skipped: [] }, 200);
+    }
+    return json({ error: "not found" }, 404);
+  }
   if (path === "/api/admin/content-sync/status") return json(unifiedSyncStatus(url));
   if (
     (path === "/api/admin/content-sync/trigger" &&
@@ -2173,7 +2466,20 @@ async function handleAdminRequest(
   return json({ error: { message: `未实现的 demo API: ${path}` } }, 404);
 }
 
+const DEMO_MEDIA_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAUAAAADICAYAAACZBDirAAAE1ElEQVR42u3dsQ2AMBAEQTdDAXSAqIE66D8zTexHTOB89Cdt6nWc9y7f9bzp4+Pj45vyLQfk4+MTQAfk4+MTQAfk4+MTQAfk4+MTQAfk4+MTQAfk4+MTQAfk4+MTQAPz8fEJoIH5+PgE0MB8fHwCaGA+Pj4BNDAfH58AGpiPj08ADczHxyeABubj4xNAA/Px8Qmggfn4+ATQwHx8fALIx8fHNxRAg/Dx8f3VJ4B8fHwC6IB8fHwC6IB8fHwC6IB8fHwC6IB8fHwC6IB8fHwC6IB8fHwC6IB8fHwCaGA+Pj4BNDAfH58AGpiPj08ADczHxyeABubj4xNAA/Px8Qmggfn4+ATQwHx8fAJoYD4+PgE0MB8fnwDy8fHxTQXQIHx8fH6Fc0A+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BNDAfH58AGpiPj08ADczHxyeABubj4xNAA/Px8Qmggfn4+ATQwHx8fAJoYD4+PgE0MB8fnwAamI+PTwANzMfHJ4B8fHx8AsjHx8fXBtAgfHx8foVzQD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgE0MB8fnwAamI+PTwANzMfHJ4AG5uPjE0AD8/HxCaCB+fj4BNDAfHx8AmhgPj4+ATQwHx+fABqYj49PAA3Mx8cngHx8fHwCyMfHx9cG0CB8fHx+hXNAPj4+AXRAPj4+AXRAPj4+AXRAPj4+AXRAPj4+AXRAPj4+ATQwHx+fABqYj49PAA3Mx8cngAbm4+MTQAPz8fEJoIH5+PgE0MB8fHwCaGA+Pj4BNDAfH58AGpiPj08ADczHxyeAfHx8fALIx8fH1wbQIHx8fH6Fc0A+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BNDAfH58AGpiPj08ADczHxyeABubj4xNAA/Px8Qmggfn4+ATQwHx8fAJoYD4+PgE0MB8fnwAamI+PTwANzMfHJ4B8fHx8AsjHx8fXBtAgfHx8foVzQD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgE0MB8fnwAamI+PTwANzMfHJ4AG5uPjE0AD8/HxCaCB+fj4BNDAfHx8AmhgPj4+ATQwHx+fABqYj49PAA3Mx8cngHx8fHwCyMfHx9cG0CB8fHx+hXNAPj4+AXRAPj4+AXRAPj4+AXRAPj4+AXRAPj4+AXRAPj4+ATQwHx+fABqYj49PAA3Mx8cngAbm4+MTQAPz8fEJoIH5+PgE0MB8fHwCaGA+Pj4BNDAfH58AGpiPj08ADczHxyeAfHx8fALIx8fH1wbQIHx8fH6Fc0A+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BdEA+Pj4BNDAfH58AGpiPj08ADczHxyeABubj4xNAA/Px8Qmggfn4+ATQwHx8fAJoYD4+PgE0MB8fnwAamI+PTwANzMfHJ4B8fHx8AsjHx8fXBtAgfHx8foVzQD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgF0QD4+PgE0MB8fnwAamI+PTwANzMfHJ4AG5uPjE0AD8/HxCaCB+fj4BNDAfHx8AmhgPj4+ATQwHx+fABqYj49PAA3Mx8cngHx8fHwCyMfHx5e+D6h7UlD+z/KnAAAAAElFTkSuQmCC";
+
+function demoMediaResponse() {
+  const raw = atob(DEMO_MEDIA_PNG);
+  const bytes = new Uint8Array(raw.length);
+  for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
+  return new Response(bytes, {
+    headers: { "content-type": "image/png", "cache-control": "no-store" },
+  });
+}
+
 function handleFileAssetRequest(url: URL) {
+  if (/\.(png|jpe?g|gif|webp|avif)$/iu.test(url.pathname)) return demoMediaResponse();
   return json({ url: url.pathname });
 }
 

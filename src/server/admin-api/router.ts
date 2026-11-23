@@ -1009,6 +1009,115 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       );
     }
 
+    if (pathname === "/content-repo/status") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(await caller.admin.contentRepo.status(), { status: 200 }, resHeaders);
+    }
+    if (pathname === "/content-repo/media") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const path = url.searchParams.get("path");
+      if (!path) return json({ error: "path is required" }, { status: 400 }, resHeaders);
+      return json(await caller.admin.contentRepo.media({ path }), { status: 200 }, resHeaders);
+    }
+    if (pathname === "/content-repo/media/remote") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const sha = url.searchParams.get("sha");
+      const path = url.searchParams.get("path");
+      if (!sha || !path)
+        return json({ error: "sha and path are required" }, { status: 400 }, resHeaders);
+      const media = await caller.admin.contentRepo.remoteMedia({ sha, path });
+      if (media.status !== "ready" || !media.bytes)
+        return json({ error: media.message ?? "unavailable" }, { status: 404 }, resHeaders);
+      const headers = new Headers(resHeaders);
+      headers.set("content-type", media.mime ?? "application/octet-stream");
+      headers.set("cache-control", "no-store");
+      headers.set(
+        "content-disposition",
+        `inline; filename="${path.split("/").pop() ?? "attachment"}"`
+      );
+      const body = new ArrayBuffer(media.bytes.byteLength);
+      new Uint8Array(body).set(media.bytes);
+      return new Response(body, { status: 200, headers });
+    }
+    if (pathname === "/content-repo/media/adopt" && request.method === "POST") {
+      const body = (await parseJsonBody(request)) as { path?: string; media?: string };
+      if (!body?.path || !body.media)
+        return json({ error: "path and media are required" }, { status: 400 }, resHeaders);
+      return json(
+        await caller.admin.contentRepo.adoptMedia({ path: body.path, mediaPath: body.media }),
+        { status: 200 },
+        resHeaders
+      );
+    }
+    if (pathname === "/content-repo/resolve" && request.method === "POST") {
+      const body = (await parseJsonBody(request)) as { path?: string; text?: string };
+      if (!body?.path || typeof body.text !== "string")
+        return json({ error: "path and text are required" }, { status: 400 }, resHeaders);
+      return json(
+        await caller.admin.contentRepo.resolve({ path: body.path, text: body.text }),
+        { status: 200 },
+        resHeaders
+      );
+    }
+    if (pathname === "/content-repo/diff") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const path = url.searchParams.get("path");
+      if (!path) return json({ error: "path is required" }, { status: 400 }, resHeaders);
+      return json(await caller.admin.contentRepo.diff({ path }), { status: 200 }, resHeaders);
+    }
+    if (pathname === "/content-repo/check") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const ids = url.searchParams.getAll("id");
+      return json(
+        await caller.admin.contentRepo.check(ids.length ? { ids } : undefined),
+        { status: 200 },
+        resHeaders
+      );
+    }
+    const contentRepoAction = pathname.match(
+      /^\/content-repo\/(pull|push|merge|accept-remote|remove-remote-deleted)$/
+    );
+    if (contentRepoAction) {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      const body = (await parseJsonBody(request)) as {
+        ids?: string[];
+        paths?: string[];
+        all?: boolean;
+      };
+      switch (contentRepoAction[1]) {
+        case "pull":
+          return json(
+            await caller.admin.contentRepo.pull({ ids: body?.ids }),
+            { status: 200 },
+            resHeaders
+          );
+        case "push":
+          return json(
+            await caller.admin.contentRepo.push({ ids: body?.ids, all: body?.all }),
+            { status: 200 },
+            resHeaders
+          );
+        case "merge":
+          return json(
+            await caller.admin.contentRepo.merge({ ids: body?.ids }),
+            { status: 200 },
+            resHeaders
+          );
+        case "accept-remote":
+          return json(
+            await caller.admin.contentRepo.acceptRemote({ paths: body?.paths }),
+            { status: 200 },
+            resHeaders
+          );
+        default:
+          return json(
+            await caller.admin.contentRepo.removeRemoteDeleted({ paths: body?.paths }),
+            { status: 200 },
+            resHeaders
+          );
+      }
+    }
+
     if (pathname === "/content-sync/system-config") {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
       return json(await caller.admin.contentSync.getSystemConfig(), { status: 200 }, resHeaders);
