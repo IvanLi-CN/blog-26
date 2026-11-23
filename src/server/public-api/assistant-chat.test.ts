@@ -32,7 +32,35 @@ let assistantService: AssistantService | null = null;
 let assistantRuntime: ReturnType<typeof createAssistantRuntimeForTest> | null = null;
 let generationEntered: Promise<void> = Promise.resolve();
 let releaseGeneration: (() => void) | null = null;
-let generationFailed: Promise<void> = Promise.resolve();
+async function readFailedSnapshot(cookie: string, conversationId: string) {
+  const response = await assistant(`/chat/conversations/${conversationId}/events`, cookie);
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("assistant SSE body is missing");
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split("\n\n");
+    buffer = blocks.pop() ?? "";
+    for (const block of blocks) {
+      if (!block.includes("event: snapshot")) continue;
+      const data = block
+        .split("\n")
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trimStart())
+        .join("\n");
+      if (!data) continue;
+      const snapshot = JSON.parse(data);
+      if (snapshot.generationJobs.some((job: { status: string }) => job.status === "failed")) {
+        await reader.cancel();
+        return { snapshot, headers: response.headers };
+      }
+    }
+  }
+  throw new Error("assistant SSE closed before the failed generation snapshot");
+}
 
 function request(pathname: string, options: RequestInit = {}) {
   return new Request(`http://localhost/api/public${pathname}`, {
@@ -142,8 +170,6 @@ describe("public assistant chat API", () => {
     generationEntered = new Promise<void>((resolve) => {
       markGenerationEntered = resolve;
     });
-    const failureSignal = Promise.withResolvers<void>();
-    generationFailed = failureSignal.promise;
     const generationGate = new Promise<void>((resolve) => {
       releaseGeneration = resolve;
     });
@@ -154,7 +180,6 @@ describe("public assistant chat API", () => {
         markGenerationEntered();
         if (execution.userMessage.content.startsWith("Fail generation for ")) {
           await onDelta("Partial answer");
-          failureSignal.resolve();
           throw new Error("assistant-provider-unconfigured");
         }
         await onDelta("Deterministic assistant answer");
@@ -379,14 +404,16 @@ describe("public assistant chat API", () => {
     expect(submitted.status).toBe(202);
     const { conversationId, turnId } = await submitted.json();
     await generationEntered;
-    await generationFailed;
-
-    const adminEvents = await assistant(`/chat/conversations/${conversationId}/events`, admin);
-    const adminStream = await adminEvents.text();
-    expect(adminStream).toContain('"status":"failed"');
-    expect(adminStream).toContain("assistant-provider-unconfigured");
-    expect(adminEvents.headers.get("cache-control")).toContain("private");
-    expect(adminEvents.headers.get("cache-control")).toContain("no-store");
+    const { snapshot: failedEventSnapshot, headers: adminEventHeaders } = await readFailedSnapshot(
+      admin,
+      conversationId
+    );
+    expect(failedEventSnapshot.generationJobs[0]?.status).toBe("failed");
+    expect(failedEventSnapshot.generationJobs[0]?.errorCode).toBe(
+      "assistant-provider-unconfigured"
+    );
+    expect(adminEventHeaders.get("cache-control")).toContain("private");
+    expect(adminEventHeaders.get("cache-control")).toContain("no-store");
 
     const adminResponse = await assistant(`/chat/snapshot?conversationId=${conversationId}`, admin);
     expect(adminResponse.headers.get("cache-control")).toContain("private");
@@ -408,6 +435,13 @@ describe("public assistant chat API", () => {
       })
     );
 
+    const otherReader = await bootstrapReaderSession();
+    const otherOwnerResponse = await assistant(
+      `/chat/snapshot?conversationId=${conversationId}`,
+      otherReader
+    );
+    expect(otherOwnerResponse.status).toBe(404);
+
     await db
       ?.update(frontendUsers)
       .set({ isAdmin: false })
@@ -425,8 +459,14 @@ describe("public assistant chat API", () => {
       })
     );
     expect(JSON.stringify(readerSnapshot)).not.toContain("assistant-provider-unconfigured");
-    const readerEvents = await assistant(`/chat/conversations/${conversationId}/events`, admin);
-    expect(await readerEvents.text()).not.toContain("assistant-provider-unconfigured");
+    const { snapshot: downgradedEventSnapshot, headers: downgradedEventHeaders } =
+      await readFailedSnapshot(admin, conversationId);
+    expect(downgradedEventSnapshot.generationJobs[0]?.errorCode).toBeNull();
+    expect(JSON.stringify(downgradedEventSnapshot)).not.toContain(
+      "assistant-provider-unconfigured"
+    );
+    expect(downgradedEventHeaders.get("cache-control")).toContain("private");
+    expect(downgradedEventHeaders.get("cache-control")).toContain("no-store");
 
     const stopped = await assistant("/chat/stop", admin, {
       method: "POST",

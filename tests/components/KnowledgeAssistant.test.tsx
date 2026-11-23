@@ -1074,7 +1074,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
     expect(view.getByRole("button", { name: "重试" })).toBeTruthy();
   });
 
-  test("shows the generation error code to administrators only", async () => {
+  test("renders administrator generation diagnostics returned by the server", async () => {
     const selected = conversation("admin-failure", "general", null);
     const failed = assistantMessage(selected.id, "failed-for-admin", "failed");
     const failedJob = {
@@ -1090,14 +1090,10 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
         },
       },
     };
-    const adminAuth = {
-      ...auth,
-      principal: { ...auth.principal, isAdmin: true },
-    };
-
     globalThis.fetch = (async (input) => {
       const url = new URL(String(input), "http://localhost");
-      if (url.pathname === "/api/public/frontend-auth/me") return json(adminAuth);
+      if (url.pathname === "/api/public/frontend-auth/me")
+        return json({ ...auth, principal: { ...auth.principal, isAdmin: true } });
       if (url.pathname === "/api/public/chat/quota") return json(quota);
       if (url.pathname === "/api/public/chat" && url.searchParams.has("conversation"))
         return json({
@@ -1110,7 +1106,7 @@ describe.serial("KnowledgeAssistant interaction boundaries", () => {
       throw new Error(`Unexpected request: ${url.pathname}`);
     }) as typeof fetch;
 
-    window.history.replaceState({}, "", "/chat?conversation=admin-failure");
+    window.history.replaceState({}, "", "/chat?conversation=admin-failure&d_persona=admin");
     const view = render(<KnowledgeAssistant fullPage />);
 
     await waitFor(() =>
