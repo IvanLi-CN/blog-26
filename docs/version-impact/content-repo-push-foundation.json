@@ -142,7 +142,8 @@
         "4.2.10",
         "4.2.11",
         "4.2.12",
-        "4.2.13"
+        "4.2.13",
+        "4.2.14"
       ],
       "evidence": [
         {
@@ -155,7 +156,7 @@
     "persistent_state": {
       "impact": "patch",
       "applicable": true,
-      "state_description": "Adds the content_repo_baselines table. Earlier versions ignore the new table; the candidate reads its own baselines and requires no rewrite of existing rows.",
+      "state_description": "Adds content_repo_baselines and content_authority tables. Earlier versions ignore both; the candidate reads its own baselines and the cutover marker.",
       "readable_by_prior_versions": [
         "2.7.0",
         "2.8.3",
@@ -214,7 +215,8 @@
         "4.2.10",
         "4.2.11",
         "4.2.12",
-        "4.2.13"
+        "4.2.13",
+        "4.2.14"
       ],
       "upgrade_from_versions": [
         "2.7.0",
@@ -274,12 +276,13 @@
         "4.2.10",
         "4.2.11",
         "4.2.12",
-        "4.2.13"
+        "4.2.13",
+        "4.2.14"
       ],
       "evidence": [
         {
-          "path": "drizzle/0035_content_repo_baseline_document.sql",
-          "blob": "7de677f23ebbfc3a97c282b4d4bfdaffac74858f",
+          "path": "drizzle/0036_content_authority.sql",
+          "blob": "4f49a67d41fca5f7da73e8f1d8061a8a95eeec34",
           "command": "DB_PATH=<tmp> bun run migrate"
         }
       ]
