@@ -325,7 +325,8 @@ export async function runContentCutover(options: CutoverOptions = {}): Promise<C
     if (plannedPaths.has(posix.normalize(row.filePath))) continue;
     report.orphans.push(posix.normalize(row.filePath));
   }
-  if (report.orphans.length) {
+  const removingOrphans = options.apply === true && options.removeOrphans === true;
+  if (report.orphans.length && !removingOrphans) {
     report.status = "blocked";
     report.errors.push(
       `${report.orphans.length} library rows have no file; pass removeOrphans to delete them`

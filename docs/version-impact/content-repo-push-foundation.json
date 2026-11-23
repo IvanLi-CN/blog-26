@@ -1,11 +1,10 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "cc6e4ebceb921f237fae9850eee05ee6d9bf9f04",
+  "base_sha": "306a4225af4277a1d4d84c4e9207970a9c27e028",
   "covered_files": {
-    "docs/specs/content-git-sync/IMPLEMENTATION.md": "dea1b929d57b7742e1d06d9280bfac8132cf8712",
-    "scripts/content-repo-seed.ts": "e7bc638883d5ca0f741225a2960badffb5ffaf3d",
-    "src/server/services/content-cutover.ts": "91c8f600f2473f3deeb304436c3c1311be562a59"
+    "src/server/services/content-cutover.test.ts": "9433fded1ab111632beebc415b41f92544672ec2",
+    "src/server/services/content-cutover.ts": "1ca646935080365b2de33977fe3865ecd9ac52ec"
   },
   "change": {
     "description": "Add the server-side content repository push foundation: canonical content form, API-only GitHub transport, push planning from sync baselines and an additive content_repo_baselines table.",
@@ -21,7 +20,7 @@
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
           "blob": "4e8c046f73672a493694265c294f93526f9810f5",
-          "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts src/server/services/content-repo-memo-sync.test.ts src/server/services/content-cutover.test.ts src/lib/content-sources/authority-gate.test.ts"
+          "command": "bun test src/server/services/content-cutover.test.ts"
         }
       ]
     },
@@ -33,7 +32,7 @@
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
           "blob": "4e8c046f73672a493694265c294f93526f9810f5",
-          "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts src/server/services/content-repo-memo-sync.test.ts src/server/services/content-cutover.test.ts src/lib/content-sources/authority-gate.test.ts"
+          "command": "bun test src/server/services/content-cutover.test.ts"
         }
       ],
       "scope_drift": {
@@ -48,8 +47,8 @@
       "evidence": [
         {
           "path": "src/server/services/content-cutover.test.ts",
-          "blob": "6f188e20012fd2b8507be162951123bbdd90ef8f",
-          "command": "bun test src/lib/content-repo src/server/services/content-repo-sync.test.ts src/server/services/content-repo-memo-sync.test.ts src/server/services/content-cutover.test.ts src/lib/content-sources/authority-gate.test.ts"
+          "blob": "9433fded1ab111632beebc415b41f92544672ec2",
+          "command": "bun test src/server/services/content-cutover.test.ts"
         }
       ]
     }
@@ -118,7 +117,8 @@
         "4.2.12",
         "4.2.13",
         "4.2.14",
-        "4.2.15"
+        "4.2.15",
+        "4.2.16"
       ],
       "evidence": [
         {
@@ -192,7 +192,8 @@
         "4.2.12",
         "4.2.13",
         "4.2.14",
-        "4.2.15"
+        "4.2.15",
+        "4.2.16"
       ],
       "upgrade_from_versions": [
         "2.7.0",
@@ -254,7 +255,8 @@
         "4.2.12",
         "4.2.13",
         "4.2.14",
-        "4.2.15"
+        "4.2.15",
+        "4.2.16"
       ],
       "evidence": [
         {
