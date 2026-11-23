@@ -422,7 +422,7 @@ export function ContentThreeWayMerge({
 
   return (
     <div className="space-y-3" data-testid="content-three-way-merge">
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           size="sm"
           variant="outline"
