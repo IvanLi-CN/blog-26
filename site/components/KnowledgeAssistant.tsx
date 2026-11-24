@@ -713,16 +713,7 @@ function AssistantFailureNotice({
       <AlertTitle className="text-[color:color-mix(in_srgb,var(--nature-danger)_78%,var(--nature-text))]">
         回答生成失败
       </AlertTitle>
-      <AlertDescription>
-        {failure?.message ?? DEFAULT_ASSISTANT_FAILURE}
-        {failure?.diagnostic ? (
-          <details className="knowledge-assistant-failure-detail">
-            <summary>查看错误详情</summary>
-            <p>{failure.diagnostic.message}</p>
-            <code>{failure.diagnostic.code}</code>
-          </details>
-        ) : null}
-      </AlertDescription>
+      <AlertDescription>{failure?.message ?? DEFAULT_ASSISTANT_FAILURE}</AlertDescription>
       {onRetry ? (
         <AlertAction>
           <Button
@@ -736,6 +727,13 @@ function AssistantFailureNotice({
             重试
           </Button>
         </AlertAction>
+      ) : null}
+      {failure?.diagnostic ? (
+        <details className="knowledge-assistant-failure-detail">
+          <summary>查看错误详情</summary>
+          <p>{failure.diagnostic.message}</p>
+          <code>{failure.diagnostic.code}</code>
+        </details>
       ) : null}
     </Alert>
   );

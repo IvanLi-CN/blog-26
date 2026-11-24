@@ -873,8 +873,17 @@
 }
 
 .knowledge-assistant-failure-detail {
+  grid-column: 2 / -1;
+  grid-row-start: 3;
+  min-inline-size: 0;
   margin-block-start: 0.25rem;
   color: var(--nature-text);
+}
+
+@container (max-width: 20rem) {
+  .knowledge-assistant-failure-detail {
+    grid-row-start: 4;
+  }
 }
 
 .knowledge-assistant-failure-detail summary {
