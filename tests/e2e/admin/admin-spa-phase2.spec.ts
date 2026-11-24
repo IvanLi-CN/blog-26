@@ -93,7 +93,7 @@ test.describe("Admin SPA phase 2", () => {
       timeout: 60_000,
     });
     await expect(page).toHaveURL(/\/admin\/content-sync$/);
-    await expect(page.getByRole("heading", { name: "内容同步" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "内容同步", exact: true })).toBeVisible();
 
     await page.goto("/admin/posts", {
       waitUntil: "domcontentloaded",
