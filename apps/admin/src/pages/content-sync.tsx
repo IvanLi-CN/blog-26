@@ -555,6 +555,13 @@ export function ContentSyncPage() {
           </>
         }
       />
+      <section className="space-y-1" data-testid="content-sync-surfaces">
+        <h2 className="text-sm font-semibold text-foreground">内容同步面</h2>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          内容源（本地内容、Style
+          Playbook）提供可被数据库采用的内容。内容仓库不是内容源，而是数据库的对等副本：它承载双向差异与同步任务，不参与访客阅读、搜索或快照构建。
+        </p>
+      </section>
       {repoStatus.data?.configured ? (
         <Card data-testid="content-repo-quick-actions">
           <CardHeader>
@@ -742,7 +749,8 @@ export function ContentSyncPage() {
           <CardHeader>
             <CardTitle>内容源</CardTitle>
             <CardDescription>
-              收录数量与 RAG 总量不同；章节、资源和上一版不重复收录。
+              内容源提供内容，数据库采用后供阅读与搜索；内容仓库不在这一列。收录数量与 RAG
+              总量不同，章节、资源和上一版不重复收录。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
