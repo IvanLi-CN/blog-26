@@ -127,7 +127,12 @@ export function buildPublicErrorBody(
  * Rewrites any error-shaped body that would otherwise leak upstream text.
  * Bodies without an `error` field are not error payloads and pass through.
  */
-export function sanitizePublicErrorBody(data: unknown, status: number): unknown {
+export function sanitizePublicErrorBody(
+  data: unknown,
+  status: number,
+  options: { isAdmin?: boolean } = {}
+): unknown {
+  if (options.isAdmin) return data;
   if (status < 400 || !data || typeof data !== "object") return data;
   if (!("error" in data)) return data;
 

@@ -111,6 +111,12 @@ describe("public error body sanitizing", () => {
     expect(sanitizePublicErrorBody(payload, 500)).toBe(payload);
   });
 
+  it("keeps the raw payload for administrators", () => {
+    const payload = { error: "创建 memo 失败", code: "INTERNAL_SERVER_ERROR" };
+
+    expect(sanitizePublicErrorBody(payload, 500, { isAdmin: true })).toBe(payload);
+  });
+
   it("builds the documented visitor shape", () => {
     const body = buildPublicErrorBody({ code: "FORBIDDEN", status: 403 });
 

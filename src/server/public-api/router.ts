@@ -283,8 +283,14 @@ async function removeSafeSystemSharePath(basePath: string, targetPath: string) {
   }
 }
 
-function json(request: Request, data: unknown, init: ResponseInit = {}, extraHeaders?: Headers) {
-  const payload = sanitizePublicErrorBody(data, init.status ?? 200);
+function json(
+  request: Request,
+  data: unknown,
+  init: ResponseInit = {},
+  extraHeaders?: Headers,
+  errorOptions: { isAdmin?: boolean } = {}
+) {
+  const payload = sanitizePublicErrorBody(data, init.status ?? 200, errorOptions);
   const headers = new Headers(init.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   if (extraHeaders) {
@@ -1344,6 +1350,8 @@ export async function handlePublicApiRequest(
   subPath: string,
   assistantService?: AssistantService
 ) {
+  // Administrators keep technical failure text on public routes they also use.
+  let callerIsAdmin = false;
   try {
     if (request.method === "OPTIONS") {
       return createPublicCorsPreflightResponse(request, PUBLIC_API_ALLOWED_METHODS);
@@ -1612,6 +1620,7 @@ export async function handlePublicApiRequest(
     }
 
     const { caller, resHeaders, ctx } = await createCallerForRequest(request);
+    callerIsAdmin = ctx.isAdmin;
     if (pathname === "/frontend-auth/me") {
       if (request.method !== "GET") return methodNotAllowed(request, request.method);
       return json(
@@ -2149,7 +2158,9 @@ export async function handlePublicApiRequest(
       return json(
         request,
         { error: error.message, code: error.code },
-        { status: statusFromTrpcError(error) }
+        { status: statusFromTrpcError(error) },
+        undefined,
+        { isAdmin: callerIsAdmin }
       );
     }
 
