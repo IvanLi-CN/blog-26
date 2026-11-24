@@ -355,7 +355,7 @@ function FileCard({
               <PopoverTrigger asChild>
                 <Button
                   size="lg"
-                  disabled={diff.data?.status !== "ready"}
+                  disabled={diff.data?.status !== "ready" || taskBusy}
                   onClick={() => {
                     const text = handle.current?.getText();
                     const unresolved = handle.current?.pending().unresolved ?? 0;
@@ -829,9 +829,12 @@ export function ContentMergePage() {
       }
       await refresh();
       if (status.data?.configured) {
+        if (!result.contentId) {
+          setNotice(`已保存到内容库，但无法确定内容 ID，未推送：${result.path}`);
+          return;
+        }
         setNotice(`已保存到内容库，正在推送到仓库：${result.path}`);
-        // Push by content id: the repository path is not a content id.
-        push.mutate({ ids: [result.contentId ?? input.path] });
+        push.mutate({ ids: [result.contentId] });
         return;
       }
       setNotice(`已保存到内容库（内容仓库未配置，未推送）：${result.path}`);
@@ -965,7 +968,6 @@ export function ContentMergePage() {
     if (operation === "push") push.mutate({ ids });
     else if (operation === "pull") pull.mutate({ ids });
     else merge.mutate({ ids });
-    setSelected(new Set());
   };
 
   const sidebarPanel = useMemo(

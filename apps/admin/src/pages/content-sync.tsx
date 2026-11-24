@@ -654,11 +654,7 @@ export function ContentSyncPage() {
         open={pushConfirmOpen}
         onOpenChange={setPushConfirmOpen}
         title="推送全部内容"
-        description={
-          repoCounts["to-push"] && repoCounts["to-push"] > CONTENT_REPO_MAX_BATCH_CONTENTS
-            ? `将产生 ${Math.ceil(repoCounts["to-push"] / CONTENT_REPO_MAX_BATCH_CONTENTS)} 个提交：当前有 ${repoCounts["to-push"]} 项待推送，超过单批 ${CONTENT_REPO_MAX_BATCH_CONTENTS} 项上限，按路径分块，每块形成一个提交。`
-            : `将产生 1 个提交：当前有 ${repoCounts["to-push"] ?? 0} 项待推送，形成单个提交。远端 ref 更新后不可回滚。`
-        }
+        description={`将按仓库路径稳定顺序分块，每批最多 ${CONTENT_REPO_MAX_BATCH_CONTENTS} 项；每个包含实际待推送内容的批次形成一个提交，提交数取决于待推送项落在哪些批次。当前有 ${repoCounts["to-push"] ?? 0} 项待推送。远端 ref 更新后不可回滚。`}
         confirmLabel="开始推送"
         onConfirm={() => repoAction.mutate("push")}
       />
@@ -959,7 +955,7 @@ export function ContentSyncPage() {
               [
                 ["all", "全部"],
                 ["content-repo", "内容仓库"],
-                ["sync", "内容同步"],
+                ["sync", "内容源"],
               ] as const
             ).map(([value, label]) => (
               <Button
@@ -1036,7 +1032,11 @@ export function ContentSyncPage() {
             );
           })}
           {historyTasks.length === 0 && (
-            <p className="text-sm text-muted-foreground">暂无持久任务记录；此前累计未知。</p>
+            <p className="text-sm text-muted-foreground">
+              {historyFilter === "all"
+                ? "暂无持久任务记录；此前累计未知。"
+                : "当前筛选下没有任务；切换到“全部”查看其他来源。"}
+            </p>
           )}
         </CardContent>
       </Card>

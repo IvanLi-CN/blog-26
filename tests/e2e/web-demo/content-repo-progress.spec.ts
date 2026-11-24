@@ -9,7 +9,10 @@ test.describe("Content repository task progress Web Demo", () => {
     await expect(page.getByTestId("content-task-status")).toContainText("失败");
     await page.getByTestId("content-task-toggle-all").click();
     await page.getByTestId("content-task-filter-all").click();
-    await expect(page.getByTestId("content-task-items")).toContainText("blog/content-repo-sync.md");
+    const completed = page
+      .getByTestId("content-task-item")
+      .filter({ hasText: "blog/content-repo-sync.md" });
+    await expect(completed).toContainText("成功");
     await expect(page.getByTestId("content-task-items")).toContainText("blog/merge-demo.md");
     await page.getByTestId("content-task-filter-skipped").click();
     await expect(page.getByTestId("content-task-items")).toContainText("附件已变化");
@@ -49,7 +52,9 @@ test.describe("Content repository task progress Web Demo", () => {
     await expect(page.getByTestId("content-merge-push-selected")).toBeEnabled();
   });
 
-  test("keeps the task and batch surfaces within a narrow viewport", async ({ page }) => {
+  test("keeps the task and batch surfaces within a narrow viewport", {
+    tag: "@own-viewport",
+  }, async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await page.goto("/admin/content-sync?d_scene=admin-repo-partial");
     await expect(page.getByTestId("content-task-progress")).toBeVisible();

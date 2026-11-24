@@ -18,11 +18,13 @@ import {
   startContentRepoPush,
 } from "./content-repo-sync";
 import {
+  beginContentTask,
   cancelContentTask,
   finishContentTask,
   getContentTask,
   listContentTaskItems,
   readContentTaskProgress,
+  updateContentTask,
   waitContentTask,
 } from "./content-tasks";
 
@@ -470,5 +472,22 @@ describe("content repo pull and retry", () => {
     expect(JSON.stringify(progress)).not.toContain("ownerToken");
     expect(JSON.stringify(progress)).not.toContain("leaseUntil");
     expect(progress?.items[0]?.contentId).toBe("post-a");
+  });
+
+  test("a committed-phase task keeps a genuine failure", async () => {
+    const { task } = await beginContentTask({
+      kind: "sync",
+      source: "content-repo",
+      requestKey: "committed-failure",
+      origin: "manual",
+      target: "{}",
+      operation: "push",
+      exclusive: true,
+    });
+    await updateContentTask(task.id, { phase: "committed" }, task.ownerToken ?? undefined);
+    finishContentTask(task.id, "failed", "second batch failed", task.ownerToken ?? undefined);
+    const finished = await getContentTask(task.id);
+    expect(finished?.status).toBe("failed");
+    expect(finished?.error).toBe("second batch failed");
   });
 });
