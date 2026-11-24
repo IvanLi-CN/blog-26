@@ -43,7 +43,8 @@
     "tests/e2e/admin/admin-spa-phase2.spec.ts": "33f78ae8b0c37b74584c05d18e78d48e7e388eaf",
     "tests/e2e/web-demo/ci.config.ts": "7d9c62bd40d8e70c8ce5395441ba6a4716d9b1c5",
     "tests/e2e/web-demo/content-repo-progress.spec.ts": "edb77169af6986010ddfc9b6fbb5eed968c4c8e1",
-    "tests/e2e/web-demo/content-sync.spec.ts": "18c5ed0c0ccbef33beff30e043e55ee28cc2dc72"
+    "tests/e2e/web-demo/content-sync.spec.ts": "18c5ed0c0ccbef33beff30e043e55ee28cc2dc72",
+    "tests/ci/web-demo-ci-coverage.test.ts": "fc9cc1cbf263e3ac734068093d6fb6675c674a64"
   },
   "change": {
     "description": "Add durable content repository push, pull and merge tasks with per-content progress, attachment counters, cancellation and retry, plus the sync surface information architecture.",
