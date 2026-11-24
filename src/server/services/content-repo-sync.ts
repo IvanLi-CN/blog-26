@@ -1999,6 +1999,13 @@ export async function retryContentRepoTask(taskId: string): Promise<ContentRepoS
   const task = await getContentTask(taskId);
   if (!task) return { status: "failed", operation: "push", message: "Task not found" };
   const operation: ContentTaskOperation = (task.operation as ContentTaskOperation | null) ?? "push";
+  if (task.source !== "content-repo")
+    return {
+      status: "failed",
+      operation,
+      taskId: task.id,
+      message: "Task is not a content repository task",
+    };
   if (task.finishedAt === null)
     return {
       status: "busy",

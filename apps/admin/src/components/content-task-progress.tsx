@@ -497,16 +497,23 @@ export function ContentTaskProgressCard({
   const result = useMemo(() => readTaskResult(progress.result), [progress.result]);
 
   const attention = useMemo(() => items.filter(needsAttention), [items]);
+  const defaultRows = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          item.path === task.currentPath || item.status === "running" || needsAttention(item)
+      ),
+    [items, task.currentPath]
+  );
+  /** Terminal successful tasks have no current/attention rows; show their results. */
+  const fallbackAll = !active && !expanded && filter === "all" && defaultRows.length === 0;
   const visible = useMemo(() => {
-    if (expanded)
+    if (expanded || fallbackAll)
       return filter === "all" ? items : items.filter((item) => itemMatchesFilter(item, filter));
-    const defaultRows = items.filter(
-      (item) => item.path === task.currentPath || item.status === "running" || needsAttention(item)
-    );
     return filter === "all"
       ? defaultRows
       : defaultRows.filter((item) => itemMatchesFilter(item, filter));
-  }, [expanded, filter, items, task.currentPath]);
+  }, [defaultRows, expanded, fallbackAll, filter, items]);
 
   const filterCount = (value: ItemFilter) =>
     value === "all" ? items.length : items.filter((item) => itemMatchesFilter(item, value)).length;
@@ -551,14 +558,16 @@ export function ContentTaskProgressCard({
               {task.currentPath ?? (active ? "准备中" : "—")}
             </span>
           </div>
-          <Progress
-            label={`${heading}进度`}
-            value={task.percent === null ? undefined : task.percent}
-            max={100}
-            tone={progressTone(task)}
-            indeterminate={active && task.percent === null}
-            testId="content-task-progress-bar"
-          />
+          {task.percent !== null || active ? (
+            <Progress
+              label={`${heading}进度`}
+              value={task.percent === null ? undefined : task.percent}
+              max={100}
+              tone={progressTone(task)}
+              indeterminate={active && task.percent === null}
+              testId="content-task-progress-bar"
+            />
+          ) : null}
         </div>
 
         <ContentTaskMetrics task={task} />
@@ -625,11 +634,12 @@ export function ContentTaskProgressCard({
             <Button
               size="sm"
               variant="ghost"
+              disabled={fallbackAll}
               onClick={() => setExpanded((current) => !current)}
               aria-expanded={expanded}
               data-testid="content-task-toggle-all"
             >
-              {expanded ? "收起" : "展开全部"}
+              {fallbackAll ? "全部项" : expanded ? "收起" : "展开全部"}
             </Button>
           </div>
 

@@ -255,6 +255,9 @@ export async function refreshContentTaskCounters(taskId: string) {
 export async function readContentTaskProgress(
   taskId: string
 ): Promise<ContentTaskProgressDto | null> {
+  // Reads must surface a crashed owner as interrupted; otherwise the UI keeps
+  // polling a dead task and never offers retry.
+  reconcileStaleContentTasks();
   const task = await getContentTask(taskId);
   if (!task) return null;
   const items = await listContentTaskItems(taskId);
@@ -570,7 +573,7 @@ export function finishContentTask(
     // A task in the committed phase already moved the remote ref; the commit is
     // not rollbackable, so cancellation must not rewrite the outcome.
     const terminal =
-      committed || task.phase === "committed"
+      committed || (task.phase === "committed" && (status === "success" || status === "cancelled"))
         ? "success"
         : task.cancelRequested && task.phase !== "adopted"
           ? "cancelled"
@@ -608,6 +611,8 @@ export async function getContentTask(id: string) {
 export async function listContentTasks(
   input: { source?: string; kind?: string; offset?: number; limit?: number } = {}
 ) {
+  // Keep the task list and page-level busy state honest after a process exit.
+  reconcileStaleContentTasks();
   const conditions = [];
   if (input.source && input.source !== "all")
     conditions.push(eq(contentTasks.source, input.source));

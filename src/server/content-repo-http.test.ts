@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -54,8 +54,13 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
+function deferred() {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  return { promise, resolve };
+}
+
 /** Only the git-data endpoints the content transport needs for one push. */
-function fakeRepository() {
+function fakeRepository(options: { gate?: Promise<void> } = {}) {
   const files = new Map<string, Uint8Array>();
   const pending = new Map<string, Uint8Array>();
   let headCommit = "a".repeat(40);
@@ -98,6 +103,7 @@ function fakeRepository() {
       return Response.json({ sha: headCommit });
     }
     if (url.includes("/git/refs/heads/") && method === "PATCH") {
+      await options.gate;
       const body = JSON.parse(String(init?.body ?? "{}")) as { sha?: string };
       return Response.json({ object: { sha: body.sha } });
     }
@@ -217,10 +223,24 @@ describe("content repo admin HTTP parity", () => {
     expect(body.items[0]?.contentId).toBe("post-a");
     expect(body.items[0]?.path).toBe("blog/a.md");
     expect(body.result.commits?.length).toBe(1);
+
+    const status = await handleAdminApiRequest(
+      request("/api/admin/content-sync/status"),
+      "/content-sync/status"
+    );
+    expect(status.status).toBe(200);
+    const statusBody = (await status.json()) as {
+      tasks: { items: Record<string, unknown>[] };
+    };
+    expect(JSON.stringify(statusBody)).not.toContain("ownerToken");
+    expect(JSON.stringify(statusBody)).not.toContain("leaseUntil");
+    expect(statusBody.tasks.items.some((task) => task.source === "content-repo")).toBe(true);
   }, 60_000);
 
   test("a second start is busy and keeps the existing task id", async () => {
     insertPost("post-a", "a");
+    const gate = deferred();
+    globalThis.fetch = fakeRepository({ gate: gate.promise });
     const first = await handleAdminApiRequest(
       request("/api/admin/content-repo/push", {
         method: "POST",
@@ -248,10 +268,14 @@ describe("content repo admin HTTP parity", () => {
     const body = (await progress.json()) as { task: Record<string, unknown> };
     expect(body.task).not.toHaveProperty("ownerToken");
     expect(body.task).not.toHaveProperty("leaseUntil");
+    gate.resolve();
+    await waitContentTask(firstPayload.taskId, 60_000);
   }, 60_000);
 
   test("retry rejects a live task and accepts a finished one", async () => {
     insertPost("post-a", "a");
+    const gate = deferred();
+    globalThis.fetch = fakeRepository({ gate: gate.promise });
     const started = await handleAdminApiRequest(
       request("/api/admin/content-repo/push", {
         method: "POST",
@@ -267,6 +291,7 @@ describe("content repo admin HTTP parity", () => {
     expect(live.status).toBe(200);
     expect((await live.json()) as { status: string }).toMatchObject({ status: "busy" });
 
+    gate.resolve();
     await waitContentTask(taskId, 60_000);
     const finished = await handleAdminApiRequest(
       request(`/api/admin/content-repo/tasks/${taskId}/retry`, { method: "POST" }),
@@ -274,5 +299,90 @@ describe("content repo admin HTTP parity", () => {
     );
     expect(finished.status).toBe(200);
     expect((await finished.json()) as { status: string }).toMatchObject({ status: "failed" });
+  }, 60_000);
+
+  test("retry rejects a non-content-repository task", async () => {
+    const taskId = randomUUID();
+    db.insert(contentTasks)
+      .values({
+        id: taskId,
+        kind: "sync",
+        source: "playbook",
+        requestKey: "playbook-check",
+        origin: "manual",
+        target: JSON.stringify({ source: "playbook" }),
+        result: null,
+        status: "success",
+        phase: "success",
+        total: 1,
+        processed: 1,
+        failed: 0,
+        error: null,
+        startedAt: Date.now() - 1000,
+        finishedAt: Date.now(),
+        cancelRequested: false,
+        ownerToken: null,
+        ownerHost: null,
+        ownerPid: null,
+        leaseUntil: null,
+      })
+      .run();
+    const response = await handleAdminApiRequest(
+      request(`/api/admin/content-repo/tasks/${taskId}/retry`, { method: "POST" }),
+      `/content-repo/tasks/${taskId}/retry`
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()) as { status: string }).toMatchObject({
+      status: "failed",
+      message: "Task is not a content repository task",
+    });
+    expect(
+      db
+        .select()
+        .from(contentTasks)
+        .all()
+        .filter((task) => task.source === "content-repo")
+    ).toHaveLength(0);
+  }, 60_000);
+
+  test("a dead content-repository task is interrupted on read", async () => {
+    const taskId = randomUUID();
+    db.insert(contentTasks)
+      .values({
+        id: taskId,
+        kind: "sync",
+        source: "content-repo",
+        requestKey: "dead-push",
+        origin: "manual",
+        target: JSON.stringify({ ids: null }),
+        result: null,
+        status: "running",
+        phase: "uploading",
+        operation: "push",
+        total: 2,
+        processed: 0,
+        failed: 0,
+        error: null,
+        startedAt: Date.now() - 60_000,
+        finishedAt: null,
+        cancelRequested: false,
+        ownerToken: "dead-owner",
+        ownerHost: "dead-host",
+        ownerPid: null,
+        leaseUntil: Date.now() - 1,
+      })
+      .run();
+    const response = await handleAdminApiRequest(
+      request("/api/admin/content-sync/tasks?source=content-repo"),
+      "/content-sync/tasks"
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      items: { id: string; status: string; finishedAt: number | null }[];
+    };
+    expect(body.items.find((task) => task.id === taskId)).toMatchObject({
+      status: "interrupted",
+      finishedAt: expect.any(Number),
+    });
   }, 60_000);
 });
