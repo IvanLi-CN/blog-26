@@ -141,7 +141,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "4e8c046f73672a493694265c294f93526f9810f5",
+          "blob": "c7f2191b79f74b3e0c30a96600a5d86e025080f7",
           "command": "Admin routes are administrator-only; public routes, payloads and search responses are untouched"
         }
       ]
