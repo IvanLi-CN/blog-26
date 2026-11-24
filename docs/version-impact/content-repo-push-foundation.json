@@ -1,12 +1,10 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "1e9011882b44cc0fd71ab7a8cb3c418996e1f16b",
+  "base_sha": "f23a52e46383121eb93358e2b534a6c82d497821",
   "covered_files": {
-    "src/lib/content-repo/canonical.test.ts": "85e60289f0cd5c1976a135432f5abe2214ac1a83",
-    "src/lib/content-repo/canonical.ts": "b8e1fd4c341e02f087f58f50b818bac2478d7070",
-    "src/server/services/content-cutover.test.ts": "e4c5487340b94d7d00110a6fd264da15a79604bd",
-    "src/server/services/content-cutover.ts": "d5365441483ffe3899fb8a5dff3895dbe8f4255c"
+    "src/server/services/content-repo-scale.test.ts": "3a1732dd398283a1f2aeca7cfb2c9ce0511bdf92",
+    "src/server/services/content-repo-sync.ts": "9b95efbbd89fee6c4292916012fd72d9397cad46"
   },
   "change": {
     "description": "Add the server-side content repository push foundation: canonical content form, API-only GitHub transport, push planning from sync baselines and an additive content_repo_baselines table.",
@@ -22,7 +20,7 @@
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
           "blob": "4e8c046f73672a493694265c294f93526f9810f5",
-          "command": "bun test src/lib/content-repo/canonical.test.ts src/server/services/content-cutover.test.ts"
+          "command": "bun test src/server/services/content-repo-scale.test.ts"
         }
       ]
     },
@@ -34,7 +32,7 @@
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
           "blob": "4e8c046f73672a493694265c294f93526f9810f5",
-          "command": "bun test src/lib/content-repo/canonical.test.ts src/server/services/content-cutover.test.ts"
+          "command": "bun test src/server/services/content-repo-scale.test.ts"
         }
       ],
       "scope_drift": {
@@ -48,14 +46,9 @@
       "assessed_at": "2026-11-22T03:52:58+08:00",
       "evidence": [
         {
-          "path": "src/server/services/content-cutover.test.ts",
-          "blob": "e4c5487340b94d7d00110a6fd264da15a79604bd",
-          "command": "bun test src/lib/content-repo/canonical.test.ts src/server/services/content-cutover.test.ts"
-        },
-        {
-          "path": "src/lib/content-repo/canonical.test.ts",
-          "blob": "85e60289f0cd5c1976a135432f5abe2214ac1a83",
-          "command": "bun test src/lib/content-repo/canonical.test.ts src/server/services/content-cutover.test.ts"
+          "path": "src/server/services/content-repo-scale.test.ts",
+          "blob": "3a1732dd398283a1f2aeca7cfb2c9ce0511bdf92",
+          "command": "bun test src/server/services/content-repo-scale.test.ts"
         }
       ]
     }
@@ -127,7 +120,9 @@
         "4.2.15",
         "4.2.16",
         "4.2.17",
-        "4.2.18"
+        "4.2.18",
+        "4.2.19",
+        "4.2.20"
       ],
       "evidence": [
         {
@@ -204,7 +199,9 @@
         "4.2.15",
         "4.2.16",
         "4.2.17",
-        "4.2.18"
+        "4.2.18",
+        "4.2.19",
+        "4.2.20"
       ],
       "upgrade_from_versions": [
         "2.7.0",
@@ -269,7 +266,9 @@
         "4.2.15",
         "4.2.16",
         "4.2.17",
-        "4.2.18"
+        "4.2.18",
+        "4.2.19",
+        "4.2.20"
       ],
       "evidence": [
         {
