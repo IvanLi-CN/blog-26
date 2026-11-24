@@ -522,7 +522,7 @@ export function ContentSyncPage() {
     <div className="space-y-6">
       <PageHeader
         title="内容同步"
-        description="查看已收录内容、公开 RAG 覆盖与持久任务。"
+        description="内容同步面：内容源提供内容，内容仓库是数据库的对等副本；两者角色不同。"
         actions={
           <>
             <Button variant="outline" onClick={refresh}>
@@ -558,10 +558,10 @@ export function ContentSyncPage() {
       {repoStatus.data?.configured ? (
         <Card data-testid="content-repo-quick-actions">
           <CardHeader>
-            <CardTitle>内容仓库同步</CardTitle>
+            <CardTitle>内容仓库（对等副本）</CardTitle>
             <CardDescription>
-              {repoStatus.data.repository ?? "-"} · {repoStatus.data.ref ?? "-"} · 共 {repoPending}{" "}
-              个文件需要处理
+              数据库的对等副本，不是内容源 · {repoStatus.data.repository ?? "-"} ·{" "}
+              {repoStatus.data.ref ?? "-"} · 共 {repoPending} 个文件需要处理
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -738,9 +738,9 @@ export function ContentSyncPage() {
         />
       </div>
       <div className="grid items-start gap-6 xl:grid-cols-2">
-        <Card>
+        <Card data-testid="content-sources">
           <CardHeader>
-            <CardTitle>内容源状态</CardTitle>
+            <CardTitle>内容源</CardTitle>
             <CardDescription>
               收录数量与 RAG 总量不同；章节、资源和上一版不重复收录。
             </CardDescription>

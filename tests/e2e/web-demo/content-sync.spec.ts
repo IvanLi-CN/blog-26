@@ -118,7 +118,7 @@ test.describe("Content sync RAG coverage Web Demo", () => {
     await expect(task).toContainText("playbook · RAG 索引");
     await expect(task).toContainText("144/240");
     await page.getByRole("button", { name: "取消此任务" }).click();
-    await expect(task).toContainText("cancelled");
+    await expect(task).toContainText("已取消");
     await expect(task).toContainText("144/240");
     await expect(page.getByRole("button", { name: "取消此任务" })).toHaveCount(0);
   });
@@ -156,7 +156,7 @@ test.describe("Content sync RAG coverage Web Demo", () => {
     await page.goto("/admin/content-sync?d_scene=admin-sync-disabled");
     const sourceCard = page
       .locator("section")
-      .filter({ has: page.getByRole("heading", { name: "内容源状态" }) });
+      .filter({ has: page.getByRole("heading", { name: "内容源", exact: true }) });
     await expect(sourceCard).toContainText("80");
     await expect(sourceCard).toContainText("同步停用");
     await expect(page.getByTestId("rag-coverage").first().locator("dd").first()).toHaveText("379");
