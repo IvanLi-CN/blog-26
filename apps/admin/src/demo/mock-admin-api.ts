@@ -458,16 +458,38 @@ let demoContentTaskOperation: "push" | "pull" | "merge" = "push";
 /** One demo push task with per-item progress; scene-independent on purpose. */
 function demoContentTaskSummary() {
   const startedAt = now - 120_000;
-  const active = demoContentTaskStarted && !demoContentTaskCancelled;
-  const failed = demoContentTaskCancelled ? 1 : 0;
+  const scene = getWebDemoState(window.location, "admin").scene;
+  const active =
+    !demoContentTaskCancelled &&
+    (demoContentTaskStarted ||
+      scene === "admin-repo-running-push" ||
+      scene === "admin-repo-running-pull");
+  const partial = !demoContentTaskStarted && scene === "admin-repo-partial";
+  const operation =
+    scene === "admin-repo-running-pull" && !demoContentTaskStarted
+      ? "pull"
+      : demoContentTaskOperation;
+  const failed = partial ? 1 : 0;
   return {
     id: DEMO_CONTENT_TASK_ID,
     kind: "content-repo",
     source: "content-repo",
-    operation: demoContentTaskOperation,
+    operation,
     origin: "manual",
-    status: demoContentTaskCancelled ? "cancelled" : active ? "running" : "success",
-    phase: demoContentTaskCancelled ? "cancelled" : active ? "uploading" : "success",
+    status: demoContentTaskCancelled
+      ? "cancelled"
+      : active
+        ? "running"
+        : partial
+          ? "failed"
+          : "success",
+    phase: demoContentTaskCancelled
+      ? "cancelled"
+      : active
+        ? "uploading"
+        : partial
+          ? "failed"
+          : "success",
     total: 3,
     processed: demoContentTaskCancelled ? 2 : active ? 1 : 3,
     failed,
@@ -491,47 +513,50 @@ function demoContentTaskProgress() {
   const active = task.status === "running";
   return {
     task,
-    items: [
-      {
-        path: "blog/content-repo-sync.md",
-        contentId: "demo-post-content-repo-sync",
-        kind: "post",
-        status: active ? "running" : "success",
-        reason: null,
-        error: null,
-        mediaTotal: 2,
-        mediaProcessed: active ? 1 : 2,
-        mediaFailed: 0,
-        retryable: false,
-        updatedAt: now,
-      },
-      {
-        path: "blog/merge-demo.md",
-        contentId: "demo-post-merge-demo",
-        kind: "post",
-        status: "skipped",
-        reason: "attachment-changed",
-        error: null,
-        mediaTotal: 1,
-        mediaProcessed: 0,
-        mediaFailed: 0,
-        retryable: true,
-        updatedAt: now,
-      },
-      {
-        path: "blog/remote-only.md",
-        contentId: "demo-post-remote-only",
-        kind: "post",
-        status: "failed",
-        reason: null,
-        error: "认证失败：令牌没有该仓库写权限（模拟）",
-        mediaTotal: 0,
-        mediaProcessed: 0,
-        mediaFailed: 0,
-        retryable: true,
-        updatedAt: now,
-      },
-    ],
+    items:
+      getWebDemoState(window.location, "admin").scene === "admin-repo-legacy"
+        ? []
+        : [
+            {
+              path: "blog/content-repo-sync.md",
+              contentId: "demo-post-content-repo-sync",
+              kind: "post",
+              status: active ? "running" : "success",
+              reason: null,
+              error: null,
+              mediaTotal: 2,
+              mediaProcessed: active ? 1 : 2,
+              mediaFailed: 0,
+              retryable: false,
+              updatedAt: now,
+            },
+            {
+              path: "blog/merge-demo.md",
+              contentId: "demo-post-merge-demo",
+              kind: "post",
+              status: "skipped",
+              reason: "attachment-changed",
+              error: null,
+              mediaTotal: 1,
+              mediaProcessed: 0,
+              mediaFailed: 0,
+              retryable: true,
+              updatedAt: now,
+            },
+            {
+              path: "blog/remote-only.md",
+              contentId: "demo-post-remote-only",
+              kind: "post",
+              status: "failed",
+              reason: null,
+              error: "认证失败：令牌没有该仓库写权限（模拟）",
+              mediaTotal: 0,
+              mediaProcessed: 0,
+              mediaFailed: 0,
+              retryable: true,
+              updatedAt: now,
+            },
+          ],
     result: JSON.stringify({
       operation: task.operation,
       outcome: "pushed",
@@ -2215,7 +2240,11 @@ async function handleAdminRequest(
       },
     ] as const;
     if (path === "/api/admin/content-repo/status")
-      return json({ configured: true, ...demoRepo, baselines: 3 });
+      return json({
+        configured: getWebDemoState(window.location, "admin").scene !== "admin-repo-unconfigured",
+        ...demoRepo,
+        baselines: 3,
+      });
     if (path === "/api/admin/content-repo/check")
       return json({
         status: "checked",
@@ -2291,6 +2320,20 @@ async function handleAdminRequest(
       }
       return json(demoContentTaskProgress());
     }
+    if (
+      method === "POST" &&
+      [
+        "/api/admin/content-repo/merge",
+        "/api/admin/content-repo/push",
+        "/api/admin/content-repo/pull",
+      ].includes(path) &&
+      demoContentTaskSummary().status === "running"
+    )
+      return json({
+        status: "busy",
+        taskId: DEMO_CONTENT_TASK_ID,
+        operation: demoContentTaskSummary().operation,
+      });
     if (method === "POST" && path === "/api/admin/content-repo/merge") {
       demoContentTaskOperation = "merge";
       demoContentTaskStarted = true;
@@ -2365,8 +2408,29 @@ async function handleAdminRequest(
     const items = demoContentTasks();
     return json({ items, total: items.length });
   }
+  if (path.startsWith("/api/admin/content-sync/tasks/") && path.endsWith("/progress"))
+    return json(demoContentTaskProgress());
+  if (
+    method === "POST" &&
+    path.startsWith("/api/admin/content-sync/tasks/") &&
+    path.endsWith("/retry")
+  ) {
+    demoContentTaskStarted = true;
+    demoContentTaskCancelled = false;
+    recordWebDemoMutation("重试内容仓库任务", "只处理失败与未处理项（模拟）");
+    return json({
+      status: "started",
+      operation: demoContentTaskOperation,
+      taskId: DEMO_CONTENT_TASK_ID,
+    });
+  }
   if (path.startsWith("/api/admin/content-sync/tasks/") && path.endsWith("/cancel")) {
     const taskId = decodeURIComponent(path.split("/").at(-2) ?? "");
+    if (taskId === DEMO_CONTENT_TASK_ID) {
+      demoContentTaskCancelled = true;
+      recordWebDemoMutation("取消内容仓库任务", "保留已处理项目（模拟）");
+      return json({ taskId, status: "cancelled" });
+    }
     if (taskId === DEMO_PLAYBOOK_TASK_ID) {
       demoPlaybookSyncCancelled = true;
       recordWebDemoMutation("取消 Playbook 检查", "保留上一次已采用快照");

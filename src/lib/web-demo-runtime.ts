@@ -64,6 +64,13 @@ export type WebDemoScene =
   | "admin-sync-failed"
   | "admin-sync-unconfigured"
   | "admin-sync-disabled"
+  | "admin-repo-running-push"
+  | "admin-repo-running-pull"
+  | "admin-repo-partial"
+  | "admin-repo-complete"
+  | "admin-repo-unconfigured"
+  | "admin-repo-legacy"
+  | "admin-merge-batch"
   | "admin-sync-history"
   | "system-share-confirmation"
   | "system-share-publishing"
@@ -219,6 +226,13 @@ const scenes = [
   "admin-sync-failed",
   "admin-sync-unconfigured",
   "admin-sync-disabled",
+  "admin-repo-running-push",
+  "admin-repo-running-pull",
+  "admin-repo-partial",
+  "admin-repo-complete",
+  "admin-repo-unconfigured",
+  "admin-repo-legacy",
+  "admin-merge-batch",
   "admin-sync-history",
   "system-share-confirmation",
   "system-share-publishing",
@@ -617,6 +631,31 @@ export function getWebDemoSceneOptions(pathname: string, app: WebDemoApp): WebDe
         label: "后台 · 编辑器",
         description: "文件树、编辑器和模拟保存反馈。",
       },
+      ...(pathname.startsWith("/admin/content-sync") || pathname.startsWith("/admin/content-merge")
+        ? (
+            [
+              "running-push",
+              "running-pull",
+              "partial",
+              "complete",
+              "unconfigured",
+              "legacy",
+            ] as const
+          ).map((state) => ({
+            value: `admin-repo-${state}` as WebDemoScene,
+            label: `内容仓库 · ${state}`,
+            description: "内容仓库任务进度场景。",
+          }))
+        : []),
+      ...(pathname.startsWith("/admin/content-merge")
+        ? [
+            {
+              value: "admin-merge-batch" as WebDemoScene,
+              label: "内容合并 · 批量选择",
+              description: "批量选择和合并操作。",
+            },
+          ]
+        : []),
       ...(pathname.startsWith("/admin/content-sync")
         ? (
             [
