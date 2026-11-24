@@ -39,6 +39,17 @@ export interface CanonicalDocument {
 
 const MARKDOWN_TARGET_PATTERN = /\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/gu;
 const EXTERNAL_TARGET_PATTERN = /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/iu;
+const MEDIA_EXTENSION_PATTERN =
+  /\.(?:png|jpe?g|webp|gif|avif|heic|heif|bmp|tiff?|svg|pdf|mp4|webm|mov|m4v|mp3|wav|m4a|ogg|flac|zip|7z|tar|gz|wasm)$/iu;
+
+/**
+ * A relative Markdown target is an attachment only when it names a media file.
+ * Plain page links (and malformed links) must stay links instead of becoming
+ * required uploads.
+ */
+export function isMediaTargetPath(resolvedPath: string): boolean {
+  return MEDIA_EXTENSION_PATTERN.test(resolvedPath.split(/[?#]/u)[0] ?? resolvedPath);
+}
 
 export function sha256Hex(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -119,7 +130,7 @@ function relativeTarget(fromPath: string, resolvedPath: string): string {
 function rewriteMediaTarget(target: string, documentPath: string, media: Set<string>) {
   if (!target || EXTERNAL_TARGET_PATTERN.test(target)) return target;
   const resolved = resolveContentMediaPath(target, documentPath);
-  if (!resolved) return target;
+  if (!resolved || !isMediaTargetPath(resolved)) return target;
   const normalized = normalizeRelativePath(resolved);
   media.add(normalized);
   return relativeTarget(documentPath, normalized);
@@ -160,7 +171,7 @@ export function buildCanonicalDocument(
     const cover = String(frontmatter.image);
     if (!EXTERNAL_TARGET_PATTERN.test(cover)) {
       const resolved = resolveContentMediaPath(cover, path);
-      if (resolved) {
+      if (resolved && isMediaTargetPath(resolved)) {
         const normalized = normalizeRelativePath(resolved);
         media.add(normalized);
         frontmatter.image = relativeTarget(path, normalized);

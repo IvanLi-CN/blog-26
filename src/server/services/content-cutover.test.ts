@@ -106,6 +106,29 @@ describe("content authority cutover", () => {
     expect(rows.every((row) => !row.filePath.includes(".sync-conflict"))).toBe(true);
   });
 
+  test("copies the frontmatter image and ignores page links", async () => {
+    writeMarkdown(
+      "blog/post-cover.md",
+      ["title: Cover", "slug: cover", "date: 2026-01-02", "image: ./assets/cover.png"],
+      "[first version](../usb-hub-for-electronic-lovers)\n\nbody"
+    );
+    writeFileSync(join(root, "local/blog/assets/cover.png"), "cover-bytes");
+
+    const report = await runContentCutover({ apply: true });
+
+    expect(report.errors).toEqual([]);
+    expect(report.missingAttachments).toEqual([]);
+    const row = db.select().from(posts).where(eq(posts.id, "blog/cover.md")).get();
+    expect(row?.image).toBe("./assets/cover.png");
+    expect(row?.body).toContain("[first version](../usb-hub-for-electronic-lovers)");
+    const mediaPaths = db
+      .select()
+      .from(contentMedia)
+      .all()
+      .map((entry) => entry.path);
+    expect(mediaPaths).toContain("blog/assets/cover.png");
+  });
+
   test("disambiguates attachment name collisions by content hash", async () => {
     writeMarkdown(
       "blog/post-b.md",

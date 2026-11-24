@@ -8,6 +8,7 @@ import {
   buildCanonicalDocument,
   type ContentRecord,
   canonicalContentPath,
+  isMediaTargetPath,
 } from "@/lib/content-repo/canonical";
 import { parseRemoteDocument } from "@/lib/content-repo/document";
 import type { ContentItem, ContentType } from "@/lib/content-sources/types";
@@ -177,13 +178,15 @@ function imageTarget(image: string | null, filePath: string, choices: Map<string
   return choice ? relativeAsset(choice.name) : image;
 }
 
-function collectTargets(text: string, filePath: string): string[] {
+function collectTargets(text: string, filePath: string, image: string | null): string[] {
   const found = new Set<string>();
-  for (const match of text.matchAll(MARKDOWN_TARGET_PATTERN)) {
-    const target = match[1];
-    if (!target) continue;
+  const targets = [...text.matchAll(MARKDOWN_TARGET_PATTERN)]
+    .map((match) => match[1])
+    .filter((target): target is string => Boolean(target));
+  if (image) targets.push(image);
+  for (const target of targets) {
     const resolved = resolveContentMediaPath(target, filePath);
-    if (resolved) found.add(posix.normalize(resolved));
+    if (resolved && isMediaTargetPath(resolved)) found.add(posix.normalize(resolved));
   }
   return [...found];
 }
@@ -342,7 +345,7 @@ export async function runContentCutover(options: CutoverOptions = {}): Promise<C
     const authoredBody = typeof item.metadata?.content === "string" ? item.metadata.content : "";
     const baseBody = entry.row && authoredClipping ? entry.row.body : authoredBody;
     const choices = new Map<string, MediaChoice>();
-    for (const original of collectTargets(baseBody, entry.relative)) {
+    for (const original of collectTargets(baseBody, entry.relative, item.image ?? null)) {
       const choice = await chooseMedia(
         original,
         kindDir,
