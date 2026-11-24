@@ -724,7 +724,7 @@ function AssistantFailureNotice({
             onClick={onRetry}
           >
             <Icon name="tabler:refresh" className="h-4 w-4" aria-hidden="true" />
-            重试
+            <span className="knowledge-assistant-failure-retry-label">重试</span>
           </Button>
         </AlertAction>
       ) : null}
