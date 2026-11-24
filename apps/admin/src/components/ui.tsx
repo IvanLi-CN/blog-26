@@ -518,6 +518,63 @@ export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>
   return <div className={cn("animate-pulse rounded-2xl bg-muted/72", className)} {...props} />;
 }
 
+/**
+ * Determinate or indeterminate progress bar. `value`/`max` are optional for
+ * work whose total is unknown: pass `indeterminate` and no percentage renders.
+ */
+export function Progress({
+  value,
+  max = 100,
+  label,
+  tone = "default",
+  indeterminate = false,
+  className,
+  testId,
+}: {
+  value?: number | null;
+  max?: number;
+  label?: string;
+  tone?: "default" | "success" | "warning" | "danger";
+  indeterminate?: boolean;
+  className?: string;
+  testId?: string;
+}) {
+  const bounded = typeof value === "number" && Number.isFinite(value) && max > 0;
+  const clamped = bounded ? Math.min(max, Math.max(0, value)) : 0;
+  const percent = bounded ? Math.round((clamped / max) * 100) : null;
+  const busy = indeterminate || !bounded;
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={busy ? undefined : 0}
+      aria-valuemax={busy ? undefined : max}
+      aria-valuenow={busy ? undefined : clamped}
+      aria-valuetext={percent === null ? undefined : `${percent}%`}
+      data-testid={testId}
+      data-tone={tone}
+      data-state={busy ? "indeterminate" : "determinate"}
+      className={cn(
+        "relative h-2 w-full overflow-hidden rounded-full bg-muted/72 shadow-inner shadow-shadow-inset",
+        busy && "animate-pulse",
+        className
+      )}
+    >
+      <div
+        className={cn(
+          "h-full rounded-full transition-[width] duration-500 ease-out",
+          tone === "default" && "bg-primary",
+          tone === "success" && "bg-success",
+          tone === "warning" && "bg-warning",
+          tone === "danger" && "bg-destructive",
+          busy && "w-1/3"
+        )}
+        style={busy ? undefined : { width: `${percent ?? 0}%` }}
+      />
+    </div>
+  );
+}
+
 export function Table({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
   return <table className={cn("w-full caption-bottom text-sm", className)} {...props} />;
 }

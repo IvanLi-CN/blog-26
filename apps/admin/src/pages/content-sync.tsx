@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { BookOpen, PauseCircle, PlayCircle, RefreshCcw, Sparkles } from "lucide-react";
+import {
+  BookOpen,
+  Download,
+  GitMerge,
+  PauseCircle,
+  PlayCircle,
+  RefreshCcw,
+  Sparkles,
+  Upload,
+} from "lucide-react";
 import { useState } from "react";
 import {
   adminApi,
@@ -9,6 +18,15 @@ import {
   type UnifiedContentSyncStatus,
   type VectorizationStats,
 } from "@/lib/admin-api-client";
+import { CONTENT_REPO_MAX_BATCH_CONTENTS } from "@/lib/content-repo/config";
+import {
+  ContentTaskProgressCard,
+  contentTaskOperationLabel,
+  contentTaskPhaseLabel,
+  contentTaskStatusLabel,
+  contentTaskStatusTone,
+  useContentRepoTaskMonitor,
+} from "~/components/content-task-progress";
 import {
   Alert,
   Badge,
@@ -18,6 +36,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmDialog,
   Disclosure,
   Select,
   Spinner,
@@ -437,6 +456,31 @@ export function ContentSyncPage() {
     onSuccess: refresh,
   });
   const cancel = useMutation({ mutationFn: adminApi.cancelContentTask, onSuccess: refresh });
+  const repo = useContentRepoTaskMonitor();
+  const [pushConfirmOpen, setPushConfirmOpen] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<"all" | "content-repo" | "sync">("all");
+  const refreshRepo = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["content-repo"] });
+  };
+  const repoAction = useMutation({
+    mutationFn: (operation: "push" | "pull" | "merge") =>
+      operation === "push"
+        ? adminApi.pushContentRepo({ all: true })
+        : operation === "pull"
+          ? adminApi.pullContentRepo()
+          : adminApi.mergeContentRepo(),
+    onSuccess: async (result) => {
+      if (result.status === "started") await refreshRepo();
+    },
+  });
+  const cancelRepo = useMutation({
+    mutationFn: adminApi.cancelContentTask,
+    onSuccess: refreshRepo,
+  });
+  const retryRepo = useMutation({
+    mutationFn: adminApi.retryContentRepoTask,
+    onSuccess: refreshRepo,
+  });
   const data = statusQuery.data;
   const repoStatus = useQuery({
     queryKey: ["content-repo", "status"],
@@ -457,13 +501,28 @@ export function ContentSyncPage() {
   const latestPlaybookSync = data?.tasks.items.find(
     (task) => task.kind === "sync" && task.source === "playbook"
   );
+  // The status payload pages tasks without a source filter, so content-repo
+  // tasks are merged in from their own summary query before filtering here.
+  const allHistoryTasks = [
+    ...(data?.tasks.items ?? []),
+    ...repo.tasks.filter(
+      (task) => !(data?.tasks.items ?? []).some((existing) => existing.id === task.id)
+    ),
+  ].sort((left, right) => right.startedAt - left.startedAt);
+  const historyTasks = allHistoryTasks.filter((task) =>
+    historyFilter === "all"
+      ? true
+      : historyFilter === "content-repo"
+        ? task.source === "content-repo"
+        : task.source !== "content-repo"
+  );
   const count = (value?: number | null) =>
     value === undefined || value === null ? "—" : formatCount(value);
   return (
     <div className="space-y-6">
       <PageHeader
         title="内容同步"
-        description="查看已收录内容、公开 RAG 覆盖与持久任务。"
+        description="内容同步面：内容源提供内容，内容仓库是数据库的对等副本；两者角色不同。"
         actions={
           <>
             <Button variant="outline" onClick={refresh}>
@@ -496,37 +555,135 @@ export function ContentSyncPage() {
           </>
         }
       />
-      {repoStatus.data?.configured && repoPending > 0 ? (
-        <Card>
+      <section className="space-y-1" data-testid="content-sync-surfaces">
+        <h2 className="text-sm font-semibold text-foreground">内容同步面</h2>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          内容源（本地内容、Style
+          Playbook）提供可被数据库采用的内容。内容仓库不是内容源，而是数据库的对等副本：它承载双向差异与同步任务，不参与访客阅读、搜索或快照构建。
+        </p>
+      </section>
+      {repoStatus.data?.configured ? (
+        <Card data-testid="content-repo-quick-actions">
           <CardHeader>
-            <CardTitle>内容仓库待同步</CardTitle>
+            <CardTitle>内容仓库（对等副本）</CardTitle>
             <CardDescription>
-              {repoStatus.data.repository ?? "-"} · {repoStatus.data.ref ?? "-"} · 共 {repoPending}{" "}
-              个文件需要处理
+              数据库的对等副本，不是内容源 · {repoStatus.data.repository ?? "-"} ·{" "}
+              {repoStatus.data.ref ?? "-"} · 共 {repoPending} 个文件需要处理
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-2">
-            {(
-              [
-                ["merge-conflict", "需要合并"],
-                ["to-pull", "待拉取"],
-                ["to-push", "待推送"],
-                ["remote-new", "远端新增"],
-                ["remote-deleted", "远端删除"],
-              ] as const
-            ).map(([state, label]) =>
-              (repoCounts[state] ?? 0) > 0 ? (
-                <Badge key={state} tone={state === "merge-conflict" ? "danger" : "warning"}>
-                  {label} {repoCounts[state]}
-                </Badge>
-              ) : null
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {(
+                [
+                  ["merge-conflict", "需要合并"],
+                  ["to-pull", "待拉取"],
+                  ["to-push", "待推送"],
+                  ["remote-new", "远端新增"],
+                  ["remote-deleted", "远端删除"],
+                ] as const
+              ).map(([state, label]) =>
+                (repoCounts[state] ?? 0) > 0 ? (
+                  <Badge key={state} tone={state === "merge-conflict" ? "danger" : "warning"}>
+                    {label} {repoCounts[state]}
+                  </Badge>
+                ) : null
+              )}
+              {repoPending === 0 ? (
+                <span className="text-sm text-muted-foreground">已一致</span>
+              ) : null}
+              <span className="flex-1" />
+              <Button asChild variant="outline" size="sm">
+                <Link to="/content-merge">打开差异与合并</Link>
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                disabled={repo.busy || repoAction.isPending || (repoCounts["to-push"] ?? 0) === 0}
+                onClick={() => setPushConfirmOpen(true)}
+                data-testid="content-repo-push-all"
+              >
+                <Upload className="size-4" />
+                推送全部（{repoCounts["to-push"] ?? 0}）
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={repo.busy || repoAction.isPending || (repoCounts["to-pull"] ?? 0) === 0}
+                onClick={() => repoAction.mutate("pull")}
+                data-testid="content-repo-pull-all"
+              >
+                <Download className="size-4" />
+                拉取全部（{repoCounts["to-pull"] ?? 0}）
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={
+                  repo.busy || repoAction.isPending || (repoCounts["merge-conflict"] ?? 0) === 0
+                }
+                onClick={() => repoAction.mutate("merge")}
+                data-testid="content-repo-merge-all"
+              >
+                <GitMerge className="size-4" />
+                合并全部（{repoCounts["merge-conflict"] ?? 0}）
+              </Button>
+              {repo.busy ? (
+                <span className="text-xs text-muted-foreground">
+                  内容仓库任务在途：同类操作需要等待其结束或取消。
+                </span>
+              ) : null}
+            </div>
+            {repoAction.data && repoAction.data.status !== "started" ? (
+              <Alert tone="warning">
+                {repoAction.data.status === "busy"
+                  ? "已有内容仓库任务在途，已附着到在途任务或等待其结束。"
+                  : (repoAction.data.message ?? `未开始：${repoAction.data.status}`)}
+              </Alert>
+            ) : null}
+            {repoAction.error ? (
+              <Alert tone="danger">{getErrorMessage(repoAction.error)}</Alert>
+            ) : null}
+            {(cancelRepo.error || retryRepo.error) && (
+              <Alert tone="danger">{getErrorMessage(cancelRepo.error ?? retryRepo.error)}</Alert>
             )}
-            <span className="flex-1" />
-            <Button asChild variant="outline">
-              <Link to="/content-merge">打开差异与合并</Link>
-            </Button>
           </CardContent>
         </Card>
+      ) : null}
+      <ConfirmDialog
+        open={pushConfirmOpen}
+        onOpenChange={setPushConfirmOpen}
+        title="推送全部内容"
+        description={
+          repoCounts["to-push"] && repoCounts["to-push"] > CONTENT_REPO_MAX_BATCH_CONTENTS
+            ? `将产生 ${Math.ceil(repoCounts["to-push"] / CONTENT_REPO_MAX_BATCH_CONTENTS)} 个提交：当前有 ${repoCounts["to-push"]} 项待推送，超过单批 ${CONTENT_REPO_MAX_BATCH_CONTENTS} 项上限，按路径分块，每块形成一个提交。`
+            : `将产生 1 个提交：当前有 ${repoCounts["to-push"] ?? 0} 项待推送，形成单个提交。远端 ref 更新后不可回滚。`
+        }
+        confirmLabel="开始推送"
+        onConfirm={() => repoAction.mutate("push")}
+      />
+      {repo.progress ? (
+        <ContentTaskProgressCard
+          progress={repo.progress}
+          repository={repoStatus.data?.repository ?? null}
+          cancelling={cancelRepo.isPending}
+          retrying={retryRepo.isPending}
+          onCancel={(taskId) => cancelRepo.mutate(taskId)}
+          onRetry={(taskId) => retryRepo.mutate(taskId)}
+        />
+      ) : repo.tasksLoading ? (
+        <Alert>
+          <Spinner /> 读取内容仓库任务…
+        </Alert>
+      ) : repo.total === 0 ? (
+        <div data-testid="content-task-empty">
+          <Alert>
+            尚无内容仓库任务。推送、拉取与自动合并会创建持久任务；检查是只读的，不创建任务。
+          </Alert>
+        </div>
+      ) : null}
+      {repo.progressError ? (
+        <Alert tone="danger">{getErrorMessage(repo.progressError)}</Alert>
       ) : null}
       {statusQuery.isLoading ? (
         <Alert>
@@ -588,11 +745,12 @@ export function ContentSyncPage() {
         />
       </div>
       <div className="grid items-start gap-6 xl:grid-cols-2">
-        <Card>
+        <Card data-testid="content-sources">
           <CardHeader>
-            <CardTitle>内容源状态</CardTitle>
+            <CardTitle>内容源</CardTitle>
             <CardDescription>
-              收录数量与 RAG 总量不同；章节、资源和上一版不重复收录。
+              内容源提供内容，数据库采用后供阅读与搜索；内容仓库不在这一列。收录数量与 RAG
+              总量不同，章节、资源和上一版不重复收录。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -788,42 +946,96 @@ export function ContentSyncPage() {
       <Card>
         <CardHeader>
           <CardTitle>任务与历史</CardTitle>
-          <CardDescription>持久来源任务；内容同步与 RAG 准备分别记录。</CardDescription>
+          <CardDescription>
+            持久来源任务；内容仓库的推送、拉取与自动合并按操作类型区分，RAG 准备单独记录。
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {data?.tasks.items.map((task) => (
-            <div key={task.id} className="min-w-0 rounded-2xl bg-muted/46 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">
-                    {task.source} · {task.kind === "rag" ? "RAG 索引" : "内容同步"}
-                  </span>
-                  <Badge tone={taskTone(task.status)}>{task.status}</Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {task.phase} · {task.processed}/{task.total} · 失败 {task.failed}
-                  </span>
+          <fieldset
+            className="m-0 flex flex-wrap items-center gap-1.5 border-0 p-0"
+            aria-label="任务筛选"
+          >
+            {(
+              [
+                ["all", "全部"],
+                ["content-repo", "内容仓库"],
+                ["sync", "内容同步"],
+              ] as const
+            ).map(([value, label]) => (
+              <Button
+                key={value}
+                size="sm"
+                variant={historyFilter === value ? "default" : "outline"}
+                className="rounded-full!"
+                aria-pressed={historyFilter === value}
+                onClick={() => setHistoryFilter(value)}
+                data-testid={`content-task-history-filter-${value}`}
+              >
+                {label}
+              </Button>
+            ))}
+          </fieldset>
+          {historyTasks.map((task) => {
+            const repoTask = task.source === "content-repo";
+            const historyOperation =
+              task.operation &&
+              (task.operation === "push" || task.operation === "pull" || task.operation === "merge")
+                ? task.operation
+                : null;
+            return (
+              <div
+                key={task.id}
+                className={`min-w-0 rounded-2xl p-4 ${
+                  repoTask ? "bg-primary/8 ring-1 ring-primary/24" : "bg-muted/46"
+                }`}
+                data-testid="content-task-history-row"
+                data-source={task.source}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="font-medium">
+                      {repoTask
+                        ? historyOperation
+                          ? `内容仓库 · ${contentTaskOperationLabel(historyOperation)}`
+                          : "内容仓库"
+                        : `${task.source} · ${task.kind === "rag" ? "RAG 索引" : "内容同步"}`}
+                    </span>
+                    <Badge tone={contentTaskStatusTone(task.status)}>
+                      {contentTaskStatusLabel(task.status)}
+                    </Badge>
+                    <span className="text-sm tabular-nums text-muted-foreground">
+                      {contentTaskPhaseLabel(task.phase)} · {task.processed}/{task.total} · 失败{" "}
+                      {task.failed}
+                    </span>
+                  </div>
+                  {task.finishedAt === null && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={
+                        (repoTask ? cancelRepo.isPending : cancel.isPending) || task.cancelRequested
+                      }
+                      onClick={() =>
+                        repoTask ? cancelRepo.mutate(task.id) : cancel.mutate(task.id)
+                      }
+                    >
+                      <PauseCircle className="size-4" />
+                      {task.cancelRequested ? "取消中" : "取消此任务"}
+                    </Button>
+                  )}
                 </div>
-                {task.finishedAt === null && (
-                  <Button
-                    variant="destructive"
-                    disabled={cancel.isPending || task.cancelRequested}
-                    onClick={() => cancel.mutate(task.id)}
-                  >
-                    <PauseCircle className="size-4" />
-                    {task.cancelRequested ? "取消中" : "取消此任务"}
-                  </Button>
-                )}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {formatDateTime(task.startedAt)} · {task.origin}
+                  {task.currentPath ? ` · ${task.currentPath}` : ""}
+                </p>
+                {task.error && <p className="mt-2 text-sm text-destructive">{task.error}</p>}
+                <Disclosure className="mt-2 text-xs text-muted-foreground" summary="任务身份">
+                  <p className="mt-2 break-all font-mono">{task.id}</p>
+                </Disclosure>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {formatDateTime(task.startedAt)} · {task.origin}
-              </p>
-              {task.error && <p className="mt-2 text-sm text-destructive">{task.error}</p>}
-              <Disclosure className="mt-2 text-xs text-muted-foreground" summary="任务身份">
-                <p className="mt-2 break-all font-mono">{task.id}</p>
-              </Disclosure>
-            </div>
-          ))}
-          {data && !data.tasks.items.length && (
+            );
+          })}
+          {historyTasks.length === 0 && (
             <p className="text-sm text-muted-foreground">暂无持久任务记录；此前累计未知。</p>
           )}
         </CardContent>

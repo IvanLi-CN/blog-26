@@ -1,11 +1,274 @@
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { contentTaskPercent } from "@/lib/content-task-progress";
 import { db } from "@/lib/db";
-import { contentTaskCounters, contentTasks } from "@/lib/schema";
+import { contentTaskCounters, contentTaskItems, contentTasks } from "@/lib/schema";
 import { getPlaybookSnapshotStore } from "./playbook-snapshot-store";
 
 export type ContentTask = typeof contentTasks.$inferSelect;
+export type ContentTaskItem = typeof contentTaskItems.$inferSelect;
+export type ContentTaskOperation = "push" | "pull" | "merge";
+export type ContentTaskItemStatus =
+  | "pending"
+  | "running"
+  | "uploaded"
+  | "success"
+  | "unchanged"
+  | "skipped"
+  | "blocked"
+  | "conflict"
+  | "failed";
+
+export interface ContentTaskItemDto {
+  path: string;
+  contentId: string | null;
+  kind: string | null;
+  status: ContentTaskItemStatus;
+  reason: string | null;
+  error: string | null;
+  mediaTotal: number;
+  mediaProcessed: number;
+  mediaFailed: number;
+  retryable: boolean;
+  updatedAt: number;
+}
+
+export interface ContentTaskSummaryDto {
+  id: string;
+  kind: string;
+  source: string;
+  operation: ContentTaskOperation | null;
+  origin: string;
+  status: string;
+  phase: string;
+  total: number;
+  processed: number;
+  failed: number;
+  skipped: number;
+  blocked: number;
+  conflicts: number;
+  mediaTotal: number;
+  mediaProcessed: number;
+  mediaFailed: number;
+  currentPath: string | null;
+  percent: number | null;
+  startedAt: number;
+  finishedAt: number | null;
+  cancelRequested: boolean;
+  error: string | null;
+}
+
+export interface ContentTaskProgressDto {
+  task: ContentTaskSummaryDto;
+  items: ContentTaskItemDto[];
+  result: unknown;
+}
+
+export type ContentTaskUpdate = Partial<
+  Pick<
+    ContentTask,
+    | "phase"
+    | "total"
+    | "processed"
+    | "failed"
+    | "skipped"
+    | "blocked"
+    | "conflicts"
+    | "mediaTotal"
+    | "mediaProcessed"
+    | "mediaFailed"
+    | "currentPath"
+    | "target"
+    | "result"
+  >
+>;
+
+export interface ContentTaskItemInput {
+  path: string;
+  ordinal: number;
+  contentId?: string | null;
+  kind?: string | null;
+  status: ContentTaskItemStatus;
+  reason?: string | null;
+  error?: string | null;
+  mediaTotal?: number;
+  mediaProcessed?: number;
+  mediaFailed?: number;
+  retryable?: boolean;
+}
+
+/** Whitelisted task view: owner token, host, pid and lease never leave the server. */
+export function toContentTaskSummary(task: ContentTask): ContentTaskSummaryDto {
+  return {
+    id: task.id,
+    kind: task.kind,
+    source: task.source,
+    operation: (task.operation as ContentTaskOperation | null) ?? null,
+    origin: task.origin,
+    status: task.status,
+    phase: task.phase,
+    total: task.total,
+    processed: task.processed,
+    failed: task.failed,
+    skipped: task.skipped,
+    blocked: task.blocked,
+    conflicts: task.conflicts,
+    mediaTotal: task.mediaTotal,
+    mediaProcessed: task.mediaProcessed,
+    mediaFailed: task.mediaFailed,
+    currentPath: task.currentPath ?? null,
+    percent: contentTaskPercent(task),
+    startedAt: task.startedAt,
+    finishedAt: task.finishedAt ?? null,
+    cancelRequested: task.cancelRequested,
+    error: task.error ?? null,
+  };
+}
+
+export function toContentTaskItemDto(row: ContentTaskItem): ContentTaskItemDto {
+  return {
+    path: row.path,
+    contentId: row.contentId ?? null,
+    kind: row.kind ?? null,
+    status: row.status as ContentTaskItemStatus,
+    reason: row.reason ?? null,
+    error: row.error ?? null,
+    mediaTotal: row.mediaTotal,
+    mediaProcessed: row.mediaProcessed,
+    mediaFailed: row.mediaFailed,
+    retryable: row.retryable,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function itemValues(
+  taskId: string,
+  item: ContentTaskItemInput
+): typeof contentTaskItems.$inferInsert {
+  return {
+    taskId,
+    path: item.path,
+    ordinal: item.ordinal,
+    contentId: item.contentId ?? null,
+    kind: item.kind ?? null,
+    status: item.status,
+    reason: item.reason ?? null,
+    error: item.error ?? null,
+    mediaTotal: item.mediaTotal ?? 0,
+    mediaProcessed: item.mediaProcessed ?? 0,
+    mediaFailed: item.mediaFailed ?? 0,
+    retryable: item.retryable ?? true,
+    updatedAt: Date.now(),
+  };
+}
+
+export async function upsertContentTaskItem(taskId: string, item: ContentTaskItemInput) {
+  const values = itemValues(taskId, item);
+  await db
+    .insert(contentTaskItems)
+    .values(values)
+    .onConflictDoUpdate({
+      target: [contentTaskItems.taskId, contentTaskItems.path],
+      set: {
+        ordinal: values.ordinal,
+        contentId: values.contentId,
+        kind: values.kind,
+        status: values.status,
+        reason: values.reason,
+        error: values.error,
+        mediaTotal: values.mediaTotal,
+        mediaProcessed: values.mediaProcessed,
+        mediaFailed: values.mediaFailed,
+        retryable: values.retryable,
+        updatedAt: values.updatedAt,
+      },
+    });
+}
+
+/** Bulk insert used when a task starts: one statement, no per-item round trips. */
+export async function initializeContentTaskItems(taskId: string, items: ContentTaskItemInput[]) {
+  if (!items.length) return;
+  await db
+    .insert(contentTaskItems)
+    .values(items.map((item) => itemValues(taskId, item)))
+    .onConflictDoNothing({ target: [contentTaskItems.taskId, contentTaskItems.path] });
+}
+
+export async function updateContentTaskItem(
+  taskId: string,
+  path: string,
+  values: Partial<Omit<ContentTaskItemInput, "path" | "ordinal">>
+) {
+  await db
+    .update(contentTaskItems)
+    .set({ ...values, updatedAt: Date.now() })
+    .where(and(eq(contentTaskItems.taskId, taskId), eq(contentTaskItems.path, path)));
+}
+
+export async function listContentTaskItems(taskId: string) {
+  return db
+    .select()
+    .from(contentTaskItems)
+    .where(eq(contentTaskItems.taskId, taskId))
+    .orderBy(contentTaskItems.ordinal);
+}
+
+/** Recount the task from its item rows so retries and restarts cannot double count. */
+export async function refreshContentTaskCounters(taskId: string) {
+  const rows = await listContentTaskItems(taskId);
+  let processed = 0;
+  let failed = 0;
+  let skipped = 0;
+  let blocked = 0;
+  let conflicts = 0;
+  let mediaTotal = 0;
+  let mediaProcessed = 0;
+  let mediaFailed = 0;
+  for (const row of rows) {
+    if (row.status !== "pending" && row.status !== "running") processed += 1;
+    if (row.status === "failed") failed += 1;
+    if (row.status === "skipped" || row.status === "unchanged") skipped += 1;
+    if (row.status === "blocked") blocked += 1;
+    if (row.status === "conflict") conflicts += 1;
+    mediaTotal += row.mediaTotal;
+    mediaProcessed += row.mediaProcessed;
+    mediaFailed += row.mediaFailed;
+  }
+  await db
+    .update(contentTasks)
+    .set({
+      total: rows.length,
+      processed,
+      failed,
+      skipped,
+      blocked,
+      conflicts,
+      mediaTotal,
+      mediaProcessed,
+      mediaFailed,
+      updatedAt: Date.now(),
+    })
+    .where(eq(contentTasks.id, taskId));
+}
+
+export async function readContentTaskProgress(
+  taskId: string
+): Promise<ContentTaskProgressDto | null> {
+  const task = await getContentTask(taskId);
+  if (!task) return null;
+  const items = await listContentTaskItems(taskId);
+  let result: unknown = null;
+  if (task.result) {
+    try {
+      result = JSON.parse(task.result);
+    } catch {
+      result = null;
+    }
+  }
+  return { task: toContentTaskSummary(task), items: items.map(toContentTaskItemDto), result };
+}
+
 export const taskControllers = new Map<string, AbortController>();
 const owners = new Map<string, { token: string; timer: ReturnType<typeof setInterval> }>();
 export const CONTENT_TASK_LEASE_MS = 30000;
@@ -95,6 +358,44 @@ export async function waitContentTask(id: string, timeout = 300000) {
   }
   throw new Error(`Task wait timed out: ${id}`);
 }
+type TaskTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db;
+
+/**
+ * Mark active content-repo tasks whose owner lease expired or whose process is
+ * gone as interrupted. Runs inside the starting transaction so a restart can
+ * never see two live tasks.
+ */
+export function reconcileStaleContentTasks(tx: TaskTransaction = db) {
+  const now = Date.now();
+  const active = tx
+    .select()
+    .from(contentTasks)
+    .where(
+      and(
+        eq(contentTasks.source, "content-repo"),
+        inArray(contentTasks.status, ["queued", "running"])
+      )
+    )
+    .all();
+  const interrupted: string[] = [];
+  for (const task of active) {
+    if (taskOwnerIsLive(task)) continue;
+    tx.update(contentTasks)
+      .set({
+        status: "interrupted",
+        phase: "interrupted",
+        error: task.error ?? "Task owner is no longer running",
+        finishedAt: now,
+        updatedAt: now,
+        leaseUntil: null,
+      })
+      .where(and(eq(contentTasks.id, task.id), inArray(contentTasks.status, ["queued", "running"])))
+      .run();
+    interrupted.push(task.id);
+  }
+  return interrupted;
+}
+
 export async function beginContentTask(input: {
   kind: "sync" | "rag";
   source: "local" | "playbook" | "content-repo";
@@ -102,8 +403,15 @@ export async function beginContentTask(input: {
   origin: string;
   target: string;
   resumeId?: string;
+  operation?: ContentTaskOperation;
+  /** Content-repo starts reject or recover a live task instead of attaching to it. */
+  exclusive?: boolean;
+  /** Reconcile a dead active content-repo task before starting a new one. */
+  recoverStale?: boolean;
 }) {
   const result = db.transaction((tx) => {
+    if (input.exclusive && input.source === "content-repo" && input.recoverStale)
+      reconcileStaleContentTasks(tx);
     const active = tx
       .select()
       .from(contentTasks)
@@ -115,6 +423,8 @@ export async function beginContentTask(input: {
         )
       )
       .get();
+    if (active && input.exclusive && input.source === "content-repo")
+      return { task: active, reused: true, busy: true };
     if (active && !(input.resumeId === active.id && !taskOwnerIsLive(active))) {
       if (input.resumeId && active.id !== input.resumeId)
         throw new Error(`Task conflict: ${active.id}`);
@@ -159,6 +469,7 @@ export async function beginContentTask(input: {
           target: previous.target,
           status: "running",
           phase: "recovering",
+          updatedAt: now,
         })
         .where(eq(contentTasks.id, previous.id))
         .run();
@@ -178,6 +489,7 @@ export async function beginContentTask(input: {
       id: randomUUID(),
       kind: input.kind,
       source: input.source,
+      operation: input.operation ?? null,
       requestKey: input.requestKey,
       origin: input.origin,
       target: input.target,
@@ -187,6 +499,14 @@ export async function beginContentTask(input: {
       total: 0,
       processed: 0,
       failed: 0,
+      skipped: 0,
+      blocked: 0,
+      conflicts: 0,
+      mediaTotal: 0,
+      mediaProcessed: 0,
+      mediaFailed: 0,
+      currentPath: null,
+      updatedAt: now,
       error: null,
       startedAt: now,
       finishedAt: null,
@@ -205,14 +525,12 @@ export async function beginContentTask(input: {
 
 export async function updateContentTask(
   id: string,
-  values: Partial<
-    Pick<ContentTask, "phase" | "total" | "processed" | "failed" | "target" | "result">
-  >,
+  values: ContentTaskUpdate,
   token = owners.get(id)?.token
 ) {
   await db
     .update(contentTasks)
-    .set(values)
+    .set({ ...values, updatedAt: Date.now() })
     .where(
       and(
         eq(contentTasks.id, id),
@@ -249,13 +567,23 @@ export function finishContentTask(
         : taskOwnerIsLive(task))
     )
       return;
-    const terminal = committed
-      ? "success"
-      : task.cancelRequested && task.phase !== "adopted"
-        ? "cancelled"
-        : status;
+    // A task in the committed phase already moved the remote ref; the commit is
+    // not rollbackable, so cancellation must not rewrite the outcome.
+    const terminal =
+      committed || task.phase === "committed"
+        ? "success"
+        : task.cancelRequested && task.phase !== "adopted"
+          ? "cancelled"
+          : status;
     tx.update(contentTasks)
-      .set({ status: terminal, phase: terminal, error: error ?? null, finishedAt: Date.now() })
+      .set({
+        status: terminal,
+        phase: terminal,
+        error: error ?? null,
+        finishedAt: Date.now(),
+        updatedAt: Date.now(),
+        currentPath: null,
+      })
       .where(eq(contentTasks.id, id))
       .run();
     if (task.kind === "sync")

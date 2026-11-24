@@ -995,11 +995,22 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         resHeaders
       );
     }
-    const taskRoute = pathname.match(/^\/content-sync\/tasks\/([^/]+)(\/cancel)?$/);
+    const taskProgressRoute = pathname.match(/^\/content-sync\/tasks\/([^/]+)\/progress$/);
+    if (taskProgressRoute) {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(
+        await caller.admin.contentSync.getTaskProgress({ taskId: taskProgressRoute[1] }),
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
+    const taskRoute = pathname.match(/^\/content-sync\/tasks\/([^/]+)(\/cancel|\/retry)?$/);
     if (taskRoute) {
       if (request.method !== (taskRoute[2] ? "POST" : "GET"))
         return methodNotAllowed(request.method, resHeaders);
       const input = { taskId: taskRoute[1] };
+      if (taskRoute[2] === "/retry")
+        return json(await caller.admin.contentRepo.retry(input), { status: 200 }, resHeaders);
       return json(
         taskRoute[2]
           ? await caller.admin.contentSync.cancelTask(input)
@@ -1074,6 +1085,22 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         resHeaders
       );
     }
+    const contentRepoTaskRoute = pathname.match(
+      /^\/content-repo\/tasks\/([^/]+)(\/progress|\/retry)?$/
+    );
+    if (contentRepoTaskRoute) {
+      const taskId = contentRepoTaskRoute[1];
+      if (contentRepoTaskRoute[2] === "/retry") {
+        if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+        return json(await caller.admin.contentRepo.retry({ taskId }), { status: 200 }, resHeaders);
+      }
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      return json(
+        await caller.admin.contentRepo.taskProgress({ taskId }),
+        { status: 200, headers: { "cache-control": "no-store" } },
+        resHeaders
+      );
+    }
     const contentRepoAction = pathname.match(
       /^\/content-repo\/(pull|push|merge|accept-remote|remove-remote-deleted)$/
     );
@@ -1088,19 +1115,19 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         case "pull":
           return json(
             await caller.admin.contentRepo.pull({ ids: body?.ids }),
-            { status: 200 },
+            { status: 202 },
             resHeaders
           );
         case "push":
           return json(
             await caller.admin.contentRepo.push({ ids: body?.ids, all: body?.all }),
-            { status: 200 },
+            { status: 202 },
             resHeaders
           );
         case "merge":
           return json(
             await caller.admin.contentRepo.merge({ ids: body?.ids }),
-            { status: 200 },
+            { status: 202 },
             resHeaders
           );
         case "accept-remote":

@@ -20,6 +20,8 @@ export interface ContentRepoBaselineMedia {
 export interface ContentRepoBaseline {
   contentHash: string;
   repoPath: string;
+  /** Content library id; repository paths are not content ids. */
+  contentId?: string | null;
   /** Canonical ancestors text used for three-way merges. */
   document?: string | null;
   media: Record<string, ContentRepoBaselineMedia>;
@@ -35,6 +37,13 @@ export interface PushItem {
   contentHash: string;
   reason?: string;
   media: { path: string; sha256: string; changed: boolean }[];
+}
+
+/** Progress sink used by the executing service; planning stays pure without it. */
+export interface PushPlanObserver {
+  onPlan?(item: PushItem, entry: ContentRepoEntry): void;
+  onWrite?(write: PushWrite): void;
+  onRefUpdateStart?(commit: string): void;
 }
 
 export interface PushWrite {
@@ -57,6 +66,8 @@ export interface PushPlanInput {
   remote: Map<string, string>;
   baselines: Map<string, ContentRepoBaseline>;
   maxFileBytes: (kind: "post" | "memo") => number;
+  /** Optional progress sink; planning stays pure without it. */
+  observer?: PushPlanObserver;
 }
 
 function mediaChanged(
@@ -152,6 +163,10 @@ export function planPush(input: PushPlanInput): PushPlan {
     });
   }
 
+  for (const item of items) {
+    const entry = input.entries.find((candidate) => candidate.document.path === item.path);
+    if (entry) input.observer?.onPlan?.(item, entry);
+  }
   writes.sort((left, right) => left.path.localeCompare(right.path));
   return { items, writes, counts, skipped, conflicts, blocked };
 }

@@ -735,6 +735,8 @@ function buildSearch(params: Record<string, string | number | boolean | undefine
 
 export interface ContentRepoSyncItem {
   path: string;
+  /** Content library id; null for repository-only paths. */
+  contentId: string | null;
   kind: "post" | "memo";
   state: "synced" | "to-push" | "to-pull" | "remote-new" | "remote-deleted" | "merge-conflict";
   localHash: string | null;
@@ -780,6 +782,71 @@ export interface ContentRepoDiffPayload {
   message?: string;
 }
 
+export type ContentTaskOperation = "push" | "pull" | "merge";
+
+export interface ContentTaskSummary {
+  id: string;
+  kind: string;
+  source: string;
+  operation: ContentTaskOperation | null;
+  origin: string;
+  status: string;
+  phase: string;
+  total: number;
+  processed: number;
+  failed: number;
+  skipped: number;
+  blocked: number;
+  conflicts: number;
+  mediaTotal: number;
+  mediaProcessed: number;
+  mediaFailed: number;
+  currentPath: string | null;
+  percent: number | null;
+  startedAt: number;
+  finishedAt: number | null;
+  cancelRequested: boolean;
+  error: string | null;
+}
+
+export type ContentTaskItemStatus =
+  | "pending"
+  | "running"
+  | "uploaded"
+  | "success"
+  | "unchanged"
+  | "skipped"
+  | "blocked"
+  | "conflict"
+  | "failed";
+
+export interface ContentTaskItem {
+  path: string;
+  contentId: string | null;
+  kind: string | null;
+  status: ContentTaskItemStatus;
+  reason: string | null;
+  error: string | null;
+  mediaTotal: number;
+  mediaProcessed: number;
+  mediaFailed: number;
+  retryable: boolean;
+  updatedAt: number;
+}
+
+export interface ContentTaskProgress {
+  task: ContentTaskSummary;
+  items: ContentTaskItem[];
+  result: unknown;
+}
+
+export interface ContentRepoStartResult {
+  status: "started" | "busy" | "unconfigured" | "failed";
+  taskId?: string;
+  operation: ContentTaskOperation;
+  message?: string;
+}
+
 export interface ContentRepoActionPayload {
   status: string;
   repository?: string | null;
@@ -816,29 +883,41 @@ export const adminApi = {
       { method: "POST", body: JSON.stringify(input) }
     ),
   resolveContentRepo: (input: { path: string; text: string }) =>
-    adminRequest<{ status: string; path: string; contentHash?: string; message?: string }>(
-      "/api/admin/content-repo/resolve",
-      { method: "POST", body: JSON.stringify(input) }
-    ),
+    adminRequest<{
+      status: string;
+      path: string;
+      contentId?: string;
+      contentHash?: string;
+      message?: string;
+    }>("/api/admin/content-repo/resolve", { method: "POST", body: JSON.stringify(input) }),
   getContentRepoDiff: (path: string) =>
     adminRequest<ContentRepoDiffPayload>(
       `/api/admin/content-repo/diff?path=${encodeURIComponent(path)}`
     ),
   pullContentRepo: (input: { ids?: string[] } = {}) =>
-    adminRequest<ContentRepoActionPayload>("/api/admin/content-repo/pull", {
+    adminRequest<ContentRepoStartResult>("/api/admin/content-repo/pull", {
       method: "POST",
       body: JSON.stringify(input),
     }),
   pushContentRepo: (input: { ids?: string[]; all?: boolean } = {}) =>
-    adminRequest<ContentRepoActionPayload>("/api/admin/content-repo/push", {
+    adminRequest<ContentRepoStartResult>("/api/admin/content-repo/push", {
       method: "POST",
       body: JSON.stringify(input),
     }),
   mergeContentRepo: (input: { ids?: string[] } = {}) =>
-    adminRequest<ContentRepoActionPayload>("/api/admin/content-repo/merge", {
+    adminRequest<ContentRepoStartResult>("/api/admin/content-repo/merge", {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  getContentTaskProgress: (taskId: string) =>
+    adminRequest<ContentTaskProgress>(
+      `/api/admin/content-repo/tasks/${encodeURIComponent(taskId)}/progress`
+    ),
+  retryContentRepoTask: (taskId: string) =>
+    adminRequest<ContentRepoStartResult>(
+      `/api/admin/content-repo/tasks/${encodeURIComponent(taskId)}/retry`,
+      { method: "POST" }
+    ),
   acceptRemoteContent: (input: { paths?: string[] } = {}) =>
     adminRequest<ContentRepoActionPayload>("/api/admin/content-repo/accept-remote", {
       method: "POST",
@@ -1025,6 +1104,17 @@ export const adminApi = {
     adminRequest(`/api/admin/content-sync/tasks/${encodeURIComponent(taskId)}/cancel`, {
       method: "POST",
     }),
+  getContentSyncTasks: (
+    params: {
+      source?: "all" | "local" | "playbook" | "content-repo";
+      kind?: "sync" | "rag";
+      offset?: number;
+      limit?: number;
+    } = {}
+  ) =>
+    adminRequest<{ items: ContentTaskSummary[]; total: number }>(
+      `/api/admin/content-sync/tasks${buildSearch(params)}`
+    ),
   getContentSyncManagerStats: () =>
     adminRequest<Record<string, unknown>>("/api/admin/content-sync/manager-stats"),
   getContentSyncContentStats: () =>

@@ -1,5 +1,13 @@
 import { relations, sql } from "drizzle-orm";
-import { blob, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  blob,
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 // 适配实际数据库结构
 export const users = sqliteTable("users", {
@@ -1141,6 +1149,15 @@ export const contentTasks = sqliteTable(
     total: integer("total").notNull().default(0),
     processed: integer("processed").notNull().default(0),
     failed: integer("failed").notNull().default(0),
+    operation: text("operation"),
+    skipped: integer("skipped").notNull().default(0),
+    blocked: integer("blocked").notNull().default(0),
+    conflicts: integer("conflicts").notNull().default(0),
+    mediaTotal: integer("media_total").notNull().default(0),
+    mediaProcessed: integer("media_processed").notNull().default(0),
+    mediaFailed: integer("media_failed").notNull().default(0),
+    currentPath: text("current_path"),
+    updatedAt: integer("updated_at").notNull().default(0),
     error: text("error"),
     startedAt: integer("started_at").notNull(),
     finishedAt: integer("finished_at"),
@@ -1155,6 +1172,30 @@ export const contentTasks = sqliteTable(
     active: uniqueIndex("content_tasks_active_source")
       .on(t.kind, t.source)
       .where(sql`${t.status} IN ('queued','running')`),
+  })
+);
+
+export const contentTaskItems = sqliteTable(
+  "content_task_items",
+  {
+    taskId: text("task_id").notNull(),
+    ordinal: integer("ordinal").notNull(),
+    path: text("path").notNull(),
+    contentId: text("content_id"),
+    kind: text("kind"),
+    status: text("status").notNull(),
+    reason: text("reason"),
+    error: text("error"),
+    mediaTotal: integer("media_total").notNull().default(0),
+    mediaProcessed: integer("media_processed").notNull().default(0),
+    mediaFailed: integer("media_failed").notNull().default(0),
+    retryable: integer("retryable", { mode: "boolean" }).notNull().default(true),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => ({
+    order: index("content_task_items_task_order").on(t.taskId, t.ordinal),
+    status: index("content_task_items_task_status").on(t.taskId, t.status),
+    primary: primaryKey({ columns: [t.taskId, t.path] }),
   })
 );
 

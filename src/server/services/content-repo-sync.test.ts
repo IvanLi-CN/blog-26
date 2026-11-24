@@ -65,7 +65,7 @@ describe("content repository push execution", () => {
     ]);
     const result = await pushEntriesToRepo(
       transport,
-      [{ contentId: "blog/a.md", document: document("blog/a.md", "a"), media: [] }],
+      [{ contentId: "post-a", document: document("blog/a.md", "a"), media: [] }],
       baselines
     );
     expect(result.commit).toBeNull();
@@ -77,7 +77,7 @@ describe("content repository push execution", () => {
     const { calls, transport } = transportWith({ failFirstRef: true });
     const result = await pushEntriesToRepo(
       transport,
-      [{ contentId: "blog/a.md", document: document("blog/a.md", "a"), media: [] }],
+      [{ contentId: "post-a", document: document("blog/a.md", "a"), media: [] }],
       new Map()
     );
     expect(result.commit).toBe("new-commit");
@@ -89,7 +89,7 @@ describe("content repository push execution", () => {
     const { transport } = transportWith({ remote: new Map([["blog/a.md", "remote-sha"]]) });
     const result = await pushEntriesToRepo(
       transport,
-      [{ contentId: "blog/a.md", document: document("blog/a.md", "a"), media: [] }],
+      [{ contentId: "post-a", document: document("blog/a.md", "a"), media: [] }],
       new Map()
     );
     expect(result.commit).toBeNull();
@@ -175,5 +175,33 @@ describe("content repository baselines", () => {
       44
     );
     expect(row).toBeNull();
+  });
+});
+
+describe("content repository retry safety", () => {
+  test("reuses uploaded blobs when the ref moved during the push", async () => {
+    const { calls, transport } = transportWith({ failFirstRef: true });
+    const result = await pushEntriesToRepo(
+      transport,
+      [{ contentId: "post-a", document: document("blog/a.md", "a"), media: [] }],
+      new Map()
+    );
+    // A ref conflict must not re-upload the same document bytes.
+    expect(calls.filter((call) => call.startsWith("blob:"))).toHaveLength(1);
+    expect(result.commit).toBe("new-commit");
+  });
+
+  test("stops before uploading when the signal is already aborted", async () => {
+    const { transport } = transportWith();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      pushEntriesToRepo(
+        transport,
+        [{ contentId: "post-a", document: document("blog/a.md", "a"), media: [] }],
+        new Map(),
+        { signal: controller.signal }
+      )
+    ).rejects.toThrow();
   });
 });

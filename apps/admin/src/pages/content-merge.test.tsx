@@ -4,10 +4,19 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 
 const noop = () => undefined;
 
-import type { ContentRepoDiffPayload } from "@/lib/admin-api-client";
-import { ContentRepoDiffView } from "./content-merge";
+import type {
+  ContentRepoDiffPayload,
+  ContentRepoSyncItem,
+  ContentTaskItem,
+} from "@/lib/admin-api-client";
+import {
+  ContentRepoDiffView,
+  eligibleContentIds,
+  FileTaskChip,
+  pruneActionableSelection,
+} from "./content-merge";
 
-GlobalRegistrator.register();
+if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
 afterEach(() => {
   cleanup();
@@ -95,5 +104,107 @@ describe("ContentRepoDiffView modes", () => {
     );
     expect(queryByTestId("content-three-way-merge")).toBeTruthy();
     expect(getByText(/已解决 0\/1/u)).toBeTruthy();
+  });
+});
+
+function repoItem(overrides: Partial<ContentRepoSyncItem> = {}): ContentRepoSyncItem {
+  return {
+    path: "blog/a.md",
+    contentId: "content-a",
+    kind: "post",
+    state: "to-push",
+    localHash: "local-a",
+    baselineHash: "base-a",
+    remoteSha: "remote-a",
+    baselineSha: "base-a",
+    changedMedia: [],
+    missingMedia: [],
+    ...overrides,
+  };
+}
+
+describe("batch selection helpers", () => {
+  test("selects only document rows whose state matches and drops media rows", () => {
+    const rows = [
+      { key: "blog/a.md", path: "blog/a.md", label: "文章" as const, item: repoItem() },
+      {
+        key: "blog/b.md",
+        path: "blog/b.md",
+        label: "文章" as const,
+        item: repoItem({ path: "blog/b.md", contentId: "content-b", state: "to-pull" }),
+      },
+      {
+        key: "blog/c.md",
+        path: "blog/c.md",
+        label: "文章" as const,
+        item: repoItem({ path: "blog/c.md", contentId: null, state: "remote-new" }),
+      },
+      {
+        key: "blog/assets/a.png",
+        path: "blog/assets/a.png",
+        label: "附件" as const,
+        item: repoItem({ path: "blog/assets/a.png", contentId: "content-a", state: "to-push" }),
+        media: { path: "blog/assets/a.png", missing: false },
+      },
+    ];
+    expect(eligibleContentIds(rows, "to-push")).toEqual(["content-a"]);
+    expect(eligibleContentIds(rows, "to-pull")).toEqual(["content-b"]);
+    expect(eligibleContentIds(rows, "merge-conflict")).toEqual([]);
+  });
+
+  test("keeps only still-actionable content ids after a refresh", () => {
+    const next = pruneActionableSelection(
+      ["content-a", "content-b", "content-c", "content-d"],
+      [
+        repoItem({ contentId: "content-a", state: "to-push" }),
+        repoItem({ path: "blog/b.md", contentId: "content-b", state: "to-pull" }),
+        repoItem({ path: "blog/c.md", contentId: "content-c", state: "synced" }),
+        repoItem({ path: "blog/d.md", contentId: "content-d", state: "remote-deleted" }),
+      ]
+    );
+    expect([...next]).toEqual(["content-a", "content-b"]);
+  });
+});
+
+describe("FileTaskChip", () => {
+  const item = (overrides: Partial<ContentTaskItem> = {}): ContentTaskItem => ({
+    path: "blog/a.md",
+    contentId: "content-a",
+    kind: "post",
+    status: "running",
+    reason: null,
+    error: null,
+    mediaTotal: 0,
+    mediaProcessed: 0,
+    mediaFailed: 0,
+    retryable: false,
+    updatedAt: Date.now(),
+    ...overrides,
+  });
+
+  for (const [status, label] of [
+    ["uploaded", "已上传"],
+    ["success", "成功"],
+    ["skipped", "跳过"],
+    ["blocked", "需处理"],
+    ["conflict", "冲突"],
+    ["failed", "失败"],
+  ] as const) {
+    test(`renders the ${status} file status in Chinese`, () => {
+      const { getByTestId, getByText } = render(<FileTaskChip item={item({ status })} />);
+      expect(getByTestId("file-card-task-status").getAttribute("data-task-item-status")).toBe(
+        status
+      );
+      expect(getByText(label)).toBeTruthy();
+    });
+  }
+
+  test("shows media progress only when the item carries attachments", () => {
+    const { getByTestId, rerender } = render(
+      <FileTaskChip item={item({ status: "success", mediaTotal: 3, mediaProcessed: 2 })} />
+    );
+    expect(getByTestId("file-card-task-status").textContent).toContain("附件 2/3");
+    rerender(<FileTaskChip item={item({ status: "success" })} />);
+    expect(getByTestId("file-card-task-status").textContent).not.toContain("附件");
   });
 });

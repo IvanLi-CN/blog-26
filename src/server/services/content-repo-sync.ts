@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
 import { clearSearchCache } from "@/lib/ai/search-cache";
 import { buildCanonicalDocument, type ContentRecord } from "@/lib/content-repo/canonical";
@@ -35,6 +35,7 @@ import {
   type ContentRepoMediaFile,
   type PushItem,
   type PushPlan,
+  type PushPlanObserver,
   planPush,
 } from "@/lib/content-repo/push";
 import {
@@ -45,8 +46,25 @@ import {
 } from "@/lib/content-repo/state";
 import { db } from "@/lib/db";
 import { inferPublicMediaMimeType } from "@/lib/public-media";
-import { contentRepoBaselines, memoClippings, posts } from "@/lib/schema";
-import { beginContentTask, finishContentTask, updateContentTask } from "./content-tasks";
+import {
+  contentRepoBaselines,
+  contentTaskItems,
+  contentTasks,
+  memoClippings,
+  posts,
+} from "@/lib/schema";
+import {
+  beginContentTask,
+  type ContentTask,
+  type ContentTaskOperation,
+  finishContentTask,
+  getContentTask,
+  initializeContentTaskItems,
+  listContentTaskItems,
+  refreshContentTaskCounters,
+  taskControllers,
+  updateContentTask,
+} from "./content-tasks";
 import { recordMediaIdentity, verifyMediaIdentity } from "./media-identity";
 
 const FILE_LIMITS = {
@@ -59,22 +77,36 @@ export interface ContentRepoPushInput {
   all?: boolean;
 }
 
-export interface ContentRepoPushOutcome {
-  status: "pushed" | "unchanged" | "unconfigured" | "failed";
-  repository: string | null;
-  ref: string | null;
-  commit?: string;
-  counts?: { post: number; memo: number; media: number };
-  items?: PushItem[];
-  message?: string;
-}
-
 export interface ContentRepoStatus {
   configured: boolean;
   repository: string | null;
   ref: string | null;
   baselines: number;
   message?: string;
+}
+
+export type ContentRepoStartStatus = "started" | "busy" | "unconfigured" | "failed";
+
+export interface ContentRepoStartResult {
+  status: ContentRepoStartStatus;
+  taskId?: string;
+  operation: ContentTaskOperation;
+  message?: string;
+}
+
+function toStartResult(
+  outcome: { status: string; taskId?: string; message?: string },
+  operation: ContentTaskOperation
+): ContentRepoStartResult {
+  const status: ContentRepoStartStatus =
+    outcome.status === "busy"
+      ? "busy"
+      : outcome.status === "unconfigured"
+        ? "unconfigured"
+        : outcome.status === "failed"
+          ? "failed"
+          : "started";
+  return { status, taskId: outcome.taskId, operation, message: outcome.message };
 }
 
 function toContentRecord(row: typeof posts.$inferSelect): ContentRecord {
@@ -201,6 +233,7 @@ export function loadContentRepoBaselines(): Map<string, ContentRepoBaseline> {
     baselines.set(row.path, {
       contentHash: row.contentHash,
       repoPath: row.path,
+      contentId: row.contentId,
       document: row.document ?? null,
       media,
       remoteBlobs,
@@ -262,6 +295,7 @@ function persistBaselines(
 ) {
   const now = Date.now();
   const byPath = new Map(entries.map((entry) => [entry.document.path, entry]));
+  const rows: ContentRepoBaselineRow[] = [];
   db.transaction((tx) => {
     for (const item of items) {
       const entry = byPath.get(item.path);
@@ -275,6 +309,7 @@ function persistBaselines(
         now
       );
       if (!values) continue;
+      rows.push(values);
       tx.insert(contentRepoBaselines)
         .values(values)
         .onConflictDoUpdate({
@@ -292,6 +327,15 @@ function persistBaselines(
         .run();
     }
   });
+  for (const values of rows)
+    previous.set(values.path, {
+      contentHash: values.contentHash,
+      repoPath: values.path,
+      contentId: values.contentId,
+      document: values.document,
+      media: JSON.parse(values.media) as ContentRepoBaseline["media"],
+      remoteBlobs: JSON.parse(values.remoteBlobs) as ContentRepoBaseline["remoteBlobs"],
+    });
 }
 
 export function persistBaselineRow(values: typeof contentRepoBaselines.$inferInsert) {
@@ -313,35 +357,56 @@ export function persistBaselineRow(values: typeof contentRepoBaselines.$inferIns
     .run();
 }
 
+export interface PushExecutionOptions {
+  observer?: PushPlanObserver;
+  signal?: AbortSignal;
+  /** Blob shas already uploaded before a retry or a later chunk. */
+  writtenShas?: Map<string, string>;
+}
+
 export async function pushEntriesToRepo(
   transport: ContentRepoTransport,
   entries: ContentRepoEntry[],
-  baselines: Map<string, ContentRepoBaseline>
+  baselines: Map<string, ContentRepoBaseline>,
+  options: PushExecutionOptions = {}
 ): Promise<{ plan: PushPlan; commit: string | null; writtenShas: Map<string, string> }> {
-  let plan = planPush({
-    entries,
-    remote: new Map(),
-    baselines,
-    maxFileBytes: (kind) => FILE_LIMITS[kind],
-  });
+  const { observer, signal } = options;
+  // Uploaded blobs survive a ref-conflict retry: a retry re-plans against the
+  // new head and only uploads bytes it has not uploaded yet.
+  const writtenShas = options.writtenShas ?? new Map<string, string>();
+  const planFor = (remote: Map<string, string>) =>
+    planPush({
+      entries,
+      remote,
+      baselines,
+      maxFileBytes: (kind) => FILE_LIMITS[kind],
+      observer,
+    });
+
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    signal?.throwIfAborted();
     const head = await transport.resolveHead();
     const remote = await transport.listTree(head.tree);
-    plan = planPush({ entries, remote, baselines, maxFileBytes: (kind) => FILE_LIMITS[kind] });
-    if (!plan.writes.length) return { plan, commit: null, writtenShas: new Map() };
+    const plan = planFor(remote);
+    if (!plan.writes.length) return { plan, commit: null, writtenShas };
 
-    const writtenShas = new Map<string, string>();
-    for (const write of plan.writes)
+    for (const write of plan.writes) {
+      if (writtenShas.has(write.path)) continue;
+      signal?.throwIfAborted();
+      observer?.onWrite?.(write);
       writtenShas.set(write.path, await transport.createBlob(write.bytes));
+    }
+    signal?.throwIfAborted();
     const tree = await transport.createTree(
       head.tree,
-      [...writtenShas].map(([path, sha]) => ({ path, sha }))
+      plan.writes.map((write) => ({ path: write.path, sha: writtenShas.get(write.path) ?? "" }))
     );
     const commit = await transport.createCommit({
       message: buildCommitMessage(plan.counts),
       tree,
       parents: [head.commit],
     });
+    observer?.onRefUpdateStart?.(commit);
     try {
       await transport.updateRef(commit);
       return { plan, commit, writtenShas };
@@ -355,80 +420,389 @@ export async function pushEntriesToRepo(
 
 let flight: Promise<ContentRepoPushOutcome> | undefined;
 
-export function pushContentRepo(input: ContentRepoPushInput = {}): Promise<ContentRepoPushOutcome> {
-  if (flight) return Promise.reject(new Error("Content repository push already running"));
-  flight = (async () => {
-    let config: ContentRepoConfig;
-    try {
-      config = readContentRepoConfig();
-    } catch (error) {
-      return {
-        status: "failed" as const,
-        repository: null,
-        ref: null,
-        message: error instanceof ContentRepoConfigError ? error.message : "Invalid configuration",
-      };
-    }
-    if (!config.token)
-      return { status: "unconfigured" as const, repository: config.repository, ref: config.ref };
-    if (input.ids?.length && input.all)
-      throw new Error("A push targets either explicit contents or the whole library");
-    if (input.ids && !input.ids.length && !input.all)
-      throw new Error("A push needs at least one content or the whole library");
+export interface ContentRepoPushOutcome {
+  status: "pushed" | "unchanged" | "unconfigured" | "failed" | "busy";
+  repository: string | null;
+  ref: string | null;
+  commit?: string;
+  commits?: string[];
+  counts?: { post: number; memo: number; media: number };
+  items?: PushItem[];
+  message?: string;
+  taskId?: string;
+  operation?: ContentTaskOperation;
+}
 
-    const ids = input.all ? undefined : input.ids;
-    const requestKey = ids?.length
-      ? `content-repo-push:${[...ids].sort().join(",")}`
-      : "content-repo-push:all";
-    const { task } = await beginContentTask({
-      kind: "sync",
-      source: "content-repo",
-      requestKey,
-      origin: "manual",
-      target: JSON.stringify({ ids: ids ?? null }),
+function chunkByPath(entries: ContentRepoEntry[], size: number): ContentRepoEntry[][] {
+  const ordered = [...entries].sort((left, right) =>
+    left.document.path.localeCompare(right.document.path)
+  );
+  const chunks: ContentRepoEntry[][] = [];
+  for (let index = 0; index < ordered.length; index += size)
+    chunks.push(ordered.slice(index, index + size));
+  return chunks;
+}
+
+interface ContentRepoConfigFailure {
+  status: "failed" | "unconfigured";
+  repository: string | null;
+  ref: string | null;
+  message?: string;
+}
+
+function resolveContentRepoConfig(): { config: ContentRepoConfig } | ContentRepoConfigFailure {
+  let config: ContentRepoConfig;
+  try {
+    config = readContentRepoConfig();
+  } catch (error) {
+    return {
+      status: "failed",
+      repository: null,
+      ref: null,
+      message: error instanceof ContentRepoConfigError ? error.message : "Invalid configuration",
+    };
+  }
+  if (!config.token)
+    return { status: "unconfigured", repository: config.repository, ref: config.ref };
+  return { config };
+}
+
+async function startPushTask(
+  config: ContentRepoConfig,
+  input: ContentRepoPushInput
+): Promise<{ task: ContentTask; ids: string[] | undefined } | ContentRepoPushOutcome> {
+  if (input.ids?.length && input.all)
+    throw new Error("A push targets either explicit contents or the whole library");
+  if (input.ids && !input.ids.length && !input.all)
+    throw new Error("A push needs at least one content or the whole library");
+  const ids = input.all ? undefined : input.ids;
+  const requestKey = ids?.length
+    ? `content-repo-push:${[...ids].sort().join(",")}`
+    : "content-repo-push:all";
+  const started = await beginContentRepoTask({
+    operation: "push",
+    requestKey,
+    target: JSON.stringify({ ids: ids ?? null }),
+  });
+  if (started.busy)
+    return {
+      status: "busy" as const,
+      repository: config.repository,
+      ref: config.ref,
+      taskId: started.task.id,
+      operation: "push" as const,
+      message: "A content repository task is already running",
+    };
+  return { task: started.task, ids };
+}
+
+async function runPushTask(
+  task: ContentTask,
+  config: ContentRepoConfig,
+  ids: string[] | undefined
+): Promise<ContentRepoPushOutcome> {
+  try {
+    const { entries } = await loadContentRepoEntries(ids, { enforceBatchLimit: Boolean(ids) });
+    const ordered = [...entries].sort((left, right) =>
+      left.document.path.localeCompare(right.document.path)
+    );
+    const mediaTotal = ordered.reduce((sum, entry) => sum + entry.media.length, 0);
+    await initializeContentTaskItems(
+      task.id,
+      ordered.map((entry, index) => ({
+        path: entry.document.path,
+        ordinal: index,
+        contentId: entry.contentId,
+        kind: entry.document.kind,
+        status: "pending" as const,
+        mediaTotal: entry.media.length,
+      }))
+    );
+    await updateContentTask(task.id, {
+      phase: "checking",
+      total: ordered.length,
+      mediaTotal,
+      mediaProcessed: 0,
+      currentPath: null,
     });
 
-    try {
-      const { entries } = await loadContentRepoEntries(ids, { enforceBatchLimit: true });
-      await updateContentTask(task.id, { phase: "planning", total: entries.length });
-      const baselines = loadContentRepoBaselines();
-      const transport = createContentRepoTransport(config);
-      const { plan, commit, writtenShas } = await pushEntriesToRepo(transport, entries, baselines);
+    const chunks = ids?.length ? [ordered] : chunkByPath(ordered, CONTENT_REPO_MAX_BATCH_CONTENTS);
+    const baselines = loadContentRepoBaselines();
+    const transport = createContentRepoTransport(config);
+    const writtenShas = new Map<string, string>();
+    const commits: string[] = [];
+    const items: PushItem[] = [];
+    const counts = { post: 0, memo: 0, media: 0 };
+    const mediaOwner = new Map<string, string>();
+    for (const entry of ordered)
+      for (const file of entry.media) mediaOwner.set(file.path, entry.document.path);
 
-      if (!commit) {
-        finishContentTask(task.id, "unchanged");
+    const observer: PushPlanObserver = {
+      onPlan(item) {
+        const media = item.media.length;
+        const settled =
+          item.status === "unchanged"
+            ? "unchanged"
+            : item.status === "write"
+              ? "running"
+              : "blocked";
+        updateContentTaskItemSync(task.id, item.path, {
+          status: settled,
+          reason: item.reason ?? null,
+          retryable: item.status === "write" || item.status === "unchanged",
+          mediaTotal: media,
+          mediaProcessed: item.status === "unchanged" ? media : 0,
+        });
+        if (item.status === "write") setTaskPhaseSync(task.id, "planning", item.path);
+      },
+      onWrite(write) {
+        setTaskPhaseSync(task.id, "uploading", write.path);
+        if (write.source === "document") {
+          updateContentTaskItemSync(task.id, write.path, { status: "uploaded" });
+          return;
+        }
+        const owner = mediaOwner.get(write.path);
+        if (!owner) return;
+        const row = db
+          .select()
+          .from(contentTaskItems)
+          .where(and(eq(contentTaskItems.taskId, task.id), eq(contentTaskItems.path, owner)))
+          .get();
+        updateContentTaskItemSync(task.id, owner, {
+          mediaProcessed: (row?.mediaProcessed ?? 0) + 1,
+        });
+        bumpTaskMediaProcessedSync(task.id);
+      },
+      onRefUpdateStart() {
+        setTaskPhaseSync(task.id, "committing", null);
+      },
+    };
+
+    try {
+      for (const chunk of chunks) {
+        const result = await pushEntriesToRepo(transport, chunk, baselines, {
+          observer,
+          signal: taskControllers.get(task.id)?.signal,
+          writtenShas,
+        });
+        items.push(...result.plan.items);
+        counts.post += result.plan.counts.post;
+        counts.memo += result.plan.counts.memo;
+        counts.media += result.plan.counts.media;
+        for (const item of result.plan.items) {
+          if (item.status === "write")
+            updateContentTaskItemSync(task.id, item.path, {
+              status: "success",
+              mediaProcessed: item.media.length,
+              mediaFailed: 0,
+              retryable: false,
+            });
+          else if (item.status === "unchanged")
+            updateContentTaskItemSync(task.id, item.path, {
+              mediaProcessed: item.media.length,
+            });
+        }
+        if (!result.commit) continue;
+        commits.push(result.commit);
+        // The ref moved: cancellation from here on must not report failure.
+        db.update(contentTasks)
+          .set({ phase: "committed", currentPath: null, updatedAt: Date.now() })
+          .where(and(eq(contentTasks.id, task.id), eq(contentTasks.status, "running")))
+          .run();
+        // Record the commit before persisting baselines: a crash in between
+        // must not lose the fact that the ref already moved.
+        setTaskResultSync(
+          task.id,
+          JSON.stringify(
+            pushResultPayload({
+              outcome: "pushed",
+              repository: config.repository,
+              ref: config.ref,
+              commits,
+              counts,
+              chunks: chunks.length,
+              message: `Pushed ${commits.length} of ${chunks.length} batch(es)`,
+            })
+          )
+        );
+        persistBaselines(result.plan.items, chunk, result.writtenShas, result.commit, baselines);
+        await refreshContentTaskCounters(task.id);
+      }
+    } catch (error) {
+      const cancelled =
+        (error instanceof DOMException && error.name === "AbortError") ||
+        taskControllers.get(task.id)?.signal.aborted === true;
+      const committed = commits.length > 0;
+      const message = cancelled
+        ? committed
+          ? "Content repository push cancelled after the last commit"
+          : "Content repository push cancelled"
+        : error instanceof Error
+          ? error.message
+          : "Content repository push failed";
+      await refreshContentTaskCounters(task.id);
+      setTaskResultSync(
+        task.id,
+        JSON.stringify(
+          pushResultPayload({
+            outcome: cancelled ? (committed ? "pushed" : "cancelled") : "failed",
+            repository: config.repository,
+            ref: config.ref,
+            commits,
+            counts,
+            chunks: chunks.length,
+            message,
+          })
+        )
+      );
+      if (cancelled) {
+        finishContentTask(task.id, committed ? "success" : "cancelled");
         return {
-          status: "unchanged" as const,
+          status: committed ? ("pushed" as const) : ("failed" as const),
           repository: config.repository,
           ref: config.ref,
-          counts: plan.counts,
-          items: plan.items,
+          commit: commits.at(-1),
+          commits,
+          counts,
+          items,
+          message,
+          taskId: task.id,
+          operation: "push" as const,
         };
       }
-
-      persistBaselines(plan.items, entries, writtenShas, commit, baselines);
-      finishContentTask(task.id, "success");
-      return {
-        status: "pushed" as const,
-        repository: config.repository,
-        ref: config.ref,
-        commit,
-        counts: plan.counts,
-        items: plan.items,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Content repository push failed";
       finishContentTask(task.id, "failed", message);
       throw error;
     }
+
+    await refreshContentTaskCounters(task.id);
+    const outcome = commits.length ? ("pushed" as const) : ("unchanged" as const);
+    const payload = pushResultPayload({
+      outcome,
+      repository: config.repository,
+      ref: config.ref,
+      commits,
+      counts,
+      chunks: chunks.length,
+      message: commits.length
+        ? `Pushed ${commits.length} commit(s) in ${chunks.length} batch(es)`
+        : "Repository already matches the content library",
+    });
+    setTaskResultSync(task.id, JSON.stringify(payload));
+    finishContentTask(task.id, commits.length ? "success" : "unchanged");
+    return {
+      status: outcome,
+      repository: config.repository,
+      ref: config.ref,
+      commit: commits.at(-1),
+      commits,
+      counts,
+      items,
+      taskId: task.id,
+      operation: "push" as const,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Content repository push failed";
+    finishContentTask(task.id, "failed", message);
+    throw error;
+  }
+}
+
+export function pushContentRepo(input: ContentRepoPushInput = {}): Promise<ContentRepoPushOutcome> {
+  if (flight) return Promise.reject(new Error("Content repository push already running"));
+  flight = (async () => {
+    const resolved = resolveContentRepoConfig();
+    if (!("config" in resolved))
+      return {
+        status: resolved.status,
+        repository: resolved.repository,
+        ref: resolved.ref,
+        message: resolved.message,
+      };
+    const started = await startPushTask(resolved.config, input);
+    if ("status" in started) return started;
+    return runPushTask(started.task, resolved.config, started.ids);
   })().finally(() => {
     flight = undefined;
   });
   return flight;
 }
 
+export async function startContentRepoPush(
+  input: ContentRepoPushInput = {}
+): Promise<ContentRepoStartResult> {
+  const resolved = resolveContentRepoConfig();
+  if (!("config" in resolved))
+    return { status: resolved.status, operation: "push", message: resolved.message };
+  if (input.ids?.length && input.all)
+    throw new Error("A push targets either explicit contents or the whole library");
+  if (input.ids && !input.ids.length && !input.all)
+    throw new Error("A push needs at least one content or the whole library");
+  const started = await startPushTask(resolved.config, input);
+  if ("status" in started) return toStartResult(started, "push");
+  flight = runPushTask(started.task, resolved.config, started.ids).finally(() => {
+    flight = undefined;
+  });
+  flight.catch(() => undefined);
+  return { status: "started", taskId: started.task.id, operation: "push" };
+}
+
+function pushResultPayload(input: {
+  outcome: "pushed" | "unchanged" | "failed" | "cancelled";
+  repository: string;
+  ref: string;
+  commits: string[];
+  counts: { post: number; memo: number; media: number };
+  chunks: number;
+  message: string;
+}) {
+  return {
+    operation: "push" as const,
+    outcome: input.outcome,
+    repository: input.repository,
+    ref: input.ref,
+    commit: input.commits.at(-1) ?? null,
+    commits: input.commits,
+    counts: input.counts,
+    batches: input.chunks,
+    message: input.message,
+  };
+}
+
+function updateContentTaskItemSync(
+  taskId: string,
+  path: string,
+  values: Partial<typeof contentTaskItems.$inferInsert>
+) {
+  db.update(contentTaskItems)
+    .set({ ...values, updatedAt: Date.now() })
+    .where(and(eq(contentTaskItems.taskId, taskId), eq(contentTaskItems.path, path)))
+    .run();
+}
+
+/** Result writes must survive a cancel request; they describe work already done. */
+function setTaskResultSync(taskId: string, result: string) {
+  db.update(contentTasks)
+    .set({ result, updatedAt: Date.now() })
+    .where(and(eq(contentTasks.id, taskId), eq(contentTasks.status, "running")))
+    .run();
+}
+
+function setTaskPhaseSync(taskId: string, phase: string, currentPath: string | null) {
+  db.update(contentTasks)
+    .set({ phase, currentPath, updatedAt: Date.now() })
+    .where(and(eq(contentTasks.id, taskId), eq(contentTasks.status, "running")))
+    .run();
+}
+
+function bumpTaskMediaProcessedSync(taskId: string) {
+  db.update(contentTasks)
+    .set({ mediaProcessed: sql`${contentTasks.mediaProcessed}+1`, updatedAt: Date.now() })
+    .where(eq(contentTasks.id, taskId))
+    .run();
+}
+
 export interface ContentRepoPullOutcome {
-  status: "pulled" | "nothing" | "unconfigured" | "failed";
+  status: "pulled" | "nothing" | "unconfigured" | "failed" | "busy";
   repository: string | null;
   ref: string | null;
   commit?: string;
@@ -437,62 +811,168 @@ export interface ContentRepoPullOutcome {
   message?: string;
 }
 
+/**
+ * Start a content-repository task exclusively: a live task of any operation
+ * yields `busy`, a dead one is reconciled to `interrupted` first.
+ */
+async function beginContentRepoTask(input: {
+  operation: ContentTaskOperation;
+  requestKey: string;
+  target: string;
+  origin?: string;
+}) {
+  return beginContentTask({
+    kind: "sync",
+    source: "content-repo",
+    operation: input.operation,
+    exclusive: true,
+    recoverStale: true,
+    requestKey: input.requestKey,
+    origin: input.origin ?? "manual",
+    target: input.target,
+  });
+}
+
+function busyOutcome<T extends { repository: string | null; ref: string | null }>(
+  task: { id: string },
+  operation: ContentTaskOperation,
+  base: T
+) {
+  return {
+    ...base,
+    status: "busy" as const,
+    taskId: task.id,
+    operation,
+    message: "A content repository task is already running",
+  };
+}
+
+function pullResultPayload(input: {
+  outcome: "pulled" | "nothing" | "failed" | "cancelled";
+  repository: string;
+  ref: string;
+  commit: string;
+  pulled: string[];
+  skipped: { path: string; reason: string }[];
+  message: string;
+}) {
+  return {
+    operation: "pull" as const,
+    outcome: input.outcome,
+    repository: input.repository,
+    ref: input.ref,
+    commit: input.commit,
+    counts: { pulled: input.pulled.length, skipped: input.skipped.length },
+    message: input.message,
+  };
+}
+
 let pullFlight: Promise<ContentRepoPullOutcome> | undefined;
 
-export function pullContentRepo(input: { ids?: string[] } = {}): Promise<ContentRepoPullOutcome> {
-  if (pullFlight) return Promise.reject(new Error("Content repository pull already running"));
-  pullFlight = (async () => {
-    let config: ContentRepoConfig;
-    try {
-      config = readContentRepoConfig();
-    } catch (error) {
-      return {
-        status: "failed" as const,
-        repository: null,
-        ref: null,
-        message: error instanceof Error ? error.message : "Invalid configuration",
-      };
-    }
-    if (!config.token)
-      return { status: "unconfigured" as const, repository: config.repository, ref: config.ref };
+async function startPullTask(
+  config: ContentRepoConfig,
+  input: { ids?: string[] }
+): Promise<
+  | { task: ContentTask; config: ContentRepoConfig; ids: string[] | undefined }
+  | ContentRepoPullOutcome
+> {
+  const requestKey = input.ids?.length
+    ? `content-repo-pull:${[...input.ids].sort().join(",")}`
+    : "content-repo-pull:all";
+  const started = await beginContentRepoTask({
+    operation: "pull",
+    requestKey,
+    target: JSON.stringify({ ids: input.ids ?? null }),
+  });
+  if (started.busy)
+    return busyOutcome(started.task, "pull", { repository: config.repository, ref: config.ref });
+  return { task: started.task, config, ids: input.ids };
+}
 
-    const pulled: string[] = [];
-    const skipped: { path: string; reason: string }[] = [];
-    try {
-      const { entries, missingMedia } = await loadContentRepoEntries(undefined, {
-        tolerateMissingMedia: true,
-      });
-      const baselines = loadContentRepoBaselines();
-      const transport = createContentRepoTransport(config);
-      const head = await transport.resolveHead();
-      const remote = await transport.listTree(head.tree);
-      const items = computeSyncStates({ entries, baselines, remote, missingMedia });
-      const wanted = input.ids?.length ? new Set(input.ids) : null;
+async function runPullTask(
+  task: ContentTask,
+  config: ContentRepoConfig,
+  input: { ids?: string[] }
+): Promise<ContentRepoPullOutcome> {
+  const signal = taskControllers.get(task.id)?.signal;
 
-      for (const item of items) {
-        if (item.state !== "to-pull") continue;
-        if (wanted && !wanted.has(item.path)) continue;
-        const baseline = baselines.get(item.path);
-        if (!baseline || !item.remoteSha) continue;
-        const mediaChanged = Object.entries(baseline.media).some(
-          ([mediaPath, recorded]) => remote.get(mediaPath) !== recorded.remoteSha
-        );
-        if (mediaChanged) {
-          skipped.push({ path: item.path, reason: "attachment-changed" });
-          continue;
-        }
-        const row = findRowForRepoPath(item.path);
-        if (!row) {
-          skipped.push({ path: item.path, reason: "missing-local-content" });
-          continue;
-        }
+  const pulled: string[] = [];
+  const skipped: { path: string; reason: string }[] = [];
+  let head = "";
+  try {
+    await updateContentTask(task.id, { phase: "checking" });
+    const { entries, missingMedia } = await loadContentRepoEntries(undefined, {
+      tolerateMissingMedia: true,
+      recordIdentity: false,
+    });
+    const baselines = loadContentRepoBaselines();
+    const transport = createContentRepoTransport(config);
+    const resolved = await transport.resolveHead();
+    head = resolved.commit;
+    const remote = await transport.listTree(resolved.tree);
+    const items = computeSyncStates({ entries, baselines, remote, missingMedia });
+    const wanted = input.ids?.length ? new Set(input.ids) : null;
+    const candidates = items.filter(
+      (item) =>
+        item.state === "to-pull" && (!wanted || (item.contentId && wanted.has(item.contentId)))
+    );
+    await initializeContentTaskItems(
+      task.id,
+      candidates.map((item, index) => ({
+        path: item.path,
+        ordinal: index,
+        contentId: item.contentId,
+        kind: item.kind,
+        status: "pending" as const,
+      }))
+    );
+    await updateContentTask(task.id, { total: candidates.length });
+
+    for (const item of candidates) {
+      signal?.throwIfAborted();
+      setTaskPhaseSync(task.id, "pulling", item.path);
+      updateContentTaskItemSync(task.id, item.path, { status: "running" });
+      const baseline = baselines.get(item.path);
+      if (!baseline || !item.remoteSha) {
+        skipped.push({ path: item.path, reason: "missing-remote-state" });
+        updateContentTaskItemSync(task.id, item.path, {
+          status: "skipped",
+          reason: "missing-remote-state",
+          retryable: true,
+        });
+        continue;
+      }
+      const mediaChanged = Object.entries(baseline.media).some(
+        ([mediaPath, recorded]) => remote.get(mediaPath) !== recorded.remoteSha
+      );
+      if (mediaChanged) {
+        skipped.push({ path: item.path, reason: "attachment-changed" });
+        updateContentTaskItemSync(task.id, item.path, {
+          status: "skipped",
+          reason: "attachment-changed",
+          retryable: true,
+        });
+        await refreshContentTaskCounters(task.id);
+        continue;
+      }
+      const row = findRowForRepoPath(item.path);
+      if (!row) {
+        skipped.push({ path: item.path, reason: "missing-local-content" });
+        updateContentTaskItemSync(task.id, item.path, {
+          status: "skipped",
+          reason: "missing-local-content",
+          retryable: true,
+        });
+        await refreshContentTaskCounters(task.id);
+        continue;
+      }
+      try {
         const bytes = await transport.readBlob(item.remoteSha);
         const update = toDocumentUpdate(parseRemoteDocument(bytes));
-        const nextBody = update.body;
         const updated = {
           slug: update.slug,
           title: update.title,
-          body: nextBody,
+          body: update.body,
           draft: update.draft,
           public: update.public,
           category: update.category,
@@ -523,35 +1003,122 @@ export function pullContentRepo(input: { ids?: string[] } = {}): Promise<Content
           document: new TextDecoder().decode(document.bytes),
           media: JSON.stringify(baseline.media),
           remoteBlobs: JSON.stringify(remoteBlobs),
-          commitSha: head.commit,
+          commitSha: head,
           updatedAt: Date.now(),
         });
         pulled.push(item.path);
+        updateContentTaskItemSync(task.id, item.path, {
+          status: "success",
+          retryable: false,
+        });
+        await refreshContentTaskCounters(task.id);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Pull item failed";
+        updateContentTaskItemSync(task.id, item.path, {
+          status: "failed",
+          error: message,
+          retryable: !(error instanceof ContentRepoError) || error.kind === "failed",
+        });
+        throw error;
       }
-
-      if (pulled.length) clearSearchCache();
-      return {
-        status: pulled.length ? ("pulled" as const) : ("nothing" as const),
-        repository: config.repository,
-        ref: config.ref,
-        commit: head.commit,
-        pulled,
-        skipped,
-      };
-    } catch (error) {
-      return {
-        status: "failed" as const,
-        repository: config.repository,
-        ref: config.ref,
-        pulled,
-        skipped,
-        message: error instanceof Error ? error.message : "Content repository pull failed",
-      };
     }
+
+    if (pulled.length) clearSearchCache();
+    await refreshContentTaskCounters(task.id);
+    const outcome = pulled.length ? ("pulled" as const) : ("nothing" as const);
+    setTaskResultSync(
+      task.id,
+      JSON.stringify(
+        pullResultPayload({
+          outcome,
+          repository: config.repository,
+          ref: config.ref,
+          commit: head,
+          pulled,
+          skipped,
+          message: pulled.length
+            ? `Pulled ${pulled.length} content(s), skipped ${skipped.length}`
+            : "Nothing to pull",
+        })
+      )
+    );
+    finishContentTask(task.id, "success");
+    return {
+      status: outcome,
+      repository: config.repository,
+      ref: config.ref,
+      commit: head,
+      pulled,
+      skipped,
+    };
+  } catch (error) {
+    const cancelled =
+      (error instanceof DOMException && error.name === "AbortError") || signal?.aborted === true;
+    await refreshContentTaskCounters(task.id);
+    const message = cancelled
+      ? "Content repository pull cancelled"
+      : error instanceof Error
+        ? error.message
+        : "Content repository pull failed";
+    setTaskResultSync(
+      task.id,
+      JSON.stringify(
+        pullResultPayload({
+          outcome: cancelled ? "cancelled" : "failed",
+          repository: config.repository,
+          ref: config.ref,
+          commit: head,
+          pulled,
+          skipped,
+          message,
+        })
+      )
+    );
+    finishContentTask(task.id, cancelled ? "cancelled" : "failed", cancelled ? undefined : message);
+    return {
+      status: cancelled ? ("nothing" as const) : ("failed" as const),
+      repository: config.repository,
+      ref: config.ref,
+      pulled,
+      skipped,
+      message,
+    };
+  }
+}
+
+export function pullContentRepo(input: { ids?: string[] } = {}): Promise<ContentRepoPullOutcome> {
+  if (pullFlight) return Promise.reject(new Error("Content repository pull already running"));
+  pullFlight = (async () => {
+    const resolved = resolveContentRepoConfig();
+    if (!("config" in resolved))
+      return {
+        status: resolved.status,
+        repository: resolved.repository,
+        ref: resolved.ref,
+        message: resolved.message,
+      };
+    const started = await startPullTask(resolved.config, input);
+    if ("status" in started) return started;
+    return runPullTask(started.task, started.config, input);
   })().finally(() => {
     pullFlight = undefined;
   });
   return pullFlight;
+}
+
+export async function startContentRepoPull(
+  input: { ids?: string[] } = {}
+): Promise<ContentRepoStartResult> {
+  const resolved = resolveContentRepoConfig();
+  if (!("config" in resolved))
+    return { status: resolved.status, operation: "pull", message: resolved.message };
+  const started = await startPullTask(resolved.config, input);
+  if ("status" in started) return toStartResult(started, "pull");
+  pullFlight = runPullTask(started.task, started.config, input).finally(() => {
+    pullFlight = undefined;
+  });
+  pullFlight.catch(() => undefined);
+  return { status: "started", taskId: started.task.id, operation: "pull" };
 }
 
 export interface ContentRepoMediaItem {
@@ -681,6 +1248,8 @@ export async function adoptRemoteMedia(input: {
 export interface ContentRepoResolveOutcome {
   status: "saved" | "unavailable" | "failed";
   path: string;
+  /** Content id; callers must push by id, never by repository path. */
+  contentId?: string;
   contentHash?: string;
   message?: string;
 }
@@ -734,7 +1303,12 @@ export function saveResolvedContent(input: {
       .where(eq(posts.id, row.id))
       .run();
     clearSearchCache();
-    return { status: "saved", path: input.path, contentHash: document.contentHash };
+    return {
+      status: "saved",
+      path: input.path,
+      contentId: row.id,
+      contentHash: document.contentHash,
+    };
   } catch (error) {
     return {
       status: "failed",
@@ -839,6 +1413,7 @@ export interface ContentRepoAdoptOutcome {
 async function inspectContentRepo(config: ContentRepoConfig) {
   const { entries, missingMedia } = await loadContentRepoEntries(undefined, {
     tolerateMissingMedia: true,
+    recordIdentity: false,
   });
   const baselines = loadContentRepoBaselines();
   const transport = createContentRepoTransport(config);
@@ -1017,7 +1592,7 @@ export interface ContentRepoMergeConflict {
 }
 
 export interface ContentRepoMergeOutcome {
-  status: "merged" | "conflicts" | "nothing" | "unconfigured" | "failed";
+  status: "merged" | "conflicts" | "nothing" | "unconfigured" | "failed" | "busy";
   repository: string | null;
   ref: string | null;
   commit?: string;
@@ -1027,164 +1602,309 @@ export interface ContentRepoMergeOutcome {
   message?: string;
 }
 
+function mergeResultPayload(input: {
+  outcome: "merged" | "conflicts" | "nothing" | "failed" | "cancelled";
+  repository: string;
+  ref: string;
+  commit: string;
+  merged: string[];
+  conflicts: ContentRepoMergeConflict[];
+  skipped: { path: string; reason: string }[];
+  message: string;
+}) {
+  return {
+    operation: "merge" as const,
+    outcome: input.outcome,
+    repository: input.repository,
+    ref: input.ref,
+    commit: input.commit,
+    counts: {
+      merged: input.merged.length,
+      conflicts: input.conflicts.length,
+      skipped: input.skipped.length,
+    },
+    conflicts: input.conflicts,
+    message: input.message,
+  };
+}
+
 let mergeFlight: Promise<ContentRepoMergeOutcome> | undefined;
+
+async function startMergeTask(
+  config: ContentRepoConfig,
+  input: { ids?: string[] }
+): Promise<{ task: ContentTask; config: ContentRepoConfig } | ContentRepoMergeOutcome> {
+  const requestKey = input.ids?.length
+    ? `content-repo-merge:${[...input.ids].sort().join(",")}`
+    : "content-repo-merge:all";
+  const started = await beginContentRepoTask({
+    operation: "merge",
+    requestKey,
+    target: JSON.stringify({ ids: input.ids ?? null }),
+  });
+  if (started.busy)
+    return busyOutcome(started.task, "merge", { repository: config.repository, ref: config.ref });
+  return { task: started.task, config };
+}
+
+async function runMergeTask(
+  task: ContentTask,
+  config: ContentRepoConfig,
+  input: { ids?: string[] }
+): Promise<ContentRepoMergeOutcome> {
+  const signal = taskControllers.get(task.id)?.signal;
+
+  const merged: string[] = [];
+  const conflicts: ContentRepoMergeConflict[] = [];
+  const skipped: { path: string; reason: string }[] = [];
+  let head = "";
+  try {
+    await updateContentTask(task.id, { phase: "checking" });
+    const { entries, missingMedia } = await loadContentRepoEntries(undefined, {
+      tolerateMissingMedia: true,
+      recordIdentity: false,
+    });
+    const baselines = loadContentRepoBaselines();
+    const transport = createContentRepoTransport(config);
+    const resolved = await transport.resolveHead();
+    head = resolved.commit;
+    const remote = await transport.listTree(resolved.tree);
+    const items = computeSyncStates({ entries, baselines, remote, missingMedia });
+    const wanted = input.ids?.length ? new Set(input.ids) : null;
+    const decoder = new TextDecoder();
+    const candidates = items.filter(
+      (item) =>
+        item.state === "merge-conflict" &&
+        (!wanted || (item.contentId !== null && wanted.has(item.contentId)))
+    );
+    await initializeContentTaskItems(
+      task.id,
+      candidates.map((item, index) => ({
+        path: item.path,
+        ordinal: index,
+        contentId: item.contentId,
+        kind: item.kind,
+        status: "pending" as const,
+      }))
+    );
+    await updateContentTask(task.id, { total: candidates.length });
+
+    const skip = async (path: string, reason: string) => {
+      skipped.push({ path, reason });
+      updateContentTaskItemSync(task.id, path, {
+        status: "skipped",
+        reason,
+        retryable: true,
+      });
+      await refreshContentTaskCounters(task.id);
+    };
+
+    for (const item of candidates) {
+      signal?.throwIfAborted();
+      setTaskPhaseSync(task.id, "merging", item.path);
+      updateContentTaskItemSync(task.id, item.path, { status: "running" });
+      const entry = entries.find((candidate) => candidate.document.path === item.path);
+      if (!entry) {
+        await skip(item.path, "missing-local-content");
+        continue;
+      }
+      const baseline = baselines.get(item.path);
+      if (!baseline?.document) {
+        await skip(item.path, "baseline-document-unavailable");
+        continue;
+      }
+      const mediaChanged = Object.entries(baseline.media).some(
+        ([mediaPath, recorded]) => remote.get(mediaPath) !== recorded.remoteSha
+      );
+      if (mediaChanged) {
+        await skip(item.path, "attachment-changed");
+        continue;
+      }
+      if (!item.remoteSha) {
+        await skip(item.path, "remote-deleted");
+        continue;
+      }
+
+      const baseDoc = parseRemoteDocument(new TextEncoder().encode(baseline.document));
+      const localDoc = parseRemoteDocument(entry.document.bytes);
+      const remoteDoc = parseRemoteDocument(await transport.readBlob(item.remoteSha));
+      const frontmatter = mergeFrontmatter(
+        baseDoc.frontmatter,
+        localDoc.frontmatter,
+        remoteDoc.frontmatter
+      );
+      const body = mergeBody(
+        baseDoc.body.split("\n"),
+        localDoc.body.split("\n"),
+        remoteDoc.body.split("\n")
+      );
+      if (frontmatter.conflicts.length || !body.clean) {
+        conflicts.push({
+          path: item.path,
+          fields: frontmatter.conflicts,
+          bodyConflicts: body.conflicts,
+        });
+        // A conflict is a normal outcome, not a task failure.
+        updateContentTaskItemSync(task.id, item.path, {
+          status: "conflict",
+          reason: [...frontmatter.conflicts, `${body.conflicts} body conflict(s)`].join(", "),
+          retryable: false,
+        });
+        await refreshContentTaskCounters(task.id);
+        continue;
+      }
+
+      const bytes = serializeCanonicalDocument(frontmatter.value, body.lines.join("\n"));
+      const update = toDocumentUpdate(parseRemoteDocument(bytes));
+      const row = findRowForRepoPath(item.path);
+      if (!row) {
+        await skip(item.path, "missing-local-content");
+        continue;
+      }
+      const updated = {
+        slug: update.slug,
+        title: update.title,
+        body: update.body,
+        draft: update.draft,
+        public: update.public,
+        category: update.category,
+        tags: JSON.stringify(update.tags),
+        author: update.author,
+        image: update.image,
+        publishDate: update.publishDate,
+        updateDate: update.updateDate ?? row.updateDate,
+        lastModified: Date.now(),
+      };
+      const kind = row.type === "memo" ? "memo" : "post";
+      const document = buildCanonicalDocument(
+        { ...toContentRecord(row), ...updated },
+        { clipping: kind === "memo" ? clippingFrontmatterFor(row.id) : null }
+      );
+      db.update(posts)
+        .set({ ...updated, contentHash: document.contentHash })
+        .where(eq(posts.id, row.id))
+        .run();
+      const remoteBlobs: Record<string, string> = { [item.path]: item.remoteSha };
+      for (const [mediaPath, recorded] of Object.entries(baseline.media))
+        remoteBlobs[mediaPath] = recorded.remoteSha;
+      persistBaselineRow({
+        path: item.path,
+        contentId: row.id,
+        kind,
+        contentHash: document.contentHash,
+        document: decoder.decode(document.bytes),
+        media: JSON.stringify(baseline.media),
+        remoteBlobs: JSON.stringify(remoteBlobs),
+        commitSha: head,
+        updatedAt: Date.now(),
+      });
+      merged.push(item.path);
+      updateContentTaskItemSync(task.id, item.path, { status: "success", retryable: false });
+      await refreshContentTaskCounters(task.id);
+    }
+
+    if (merged.length) clearSearchCache();
+    const status = conflicts.length
+      ? ("conflicts" as const)
+      : merged.length
+        ? ("merged" as const)
+        : ("nothing" as const);
+    await refreshContentTaskCounters(task.id);
+    setTaskResultSync(
+      task.id,
+      JSON.stringify(
+        mergeResultPayload({
+          outcome: status,
+          repository: config.repository,
+          ref: config.ref,
+          commit: head,
+          merged,
+          conflicts,
+          skipped,
+          message: `Merged ${merged.length}, conflicts ${conflicts.length}, skipped ${skipped.length}`,
+        })
+      )
+    );
+    finishContentTask(task.id, "success");
+    return {
+      status,
+      repository: config.repository,
+      ref: config.ref,
+      commit: head,
+      merged,
+      conflicts,
+      skipped,
+    };
+  } catch (error) {
+    const cancelled =
+      (error instanceof DOMException && error.name === "AbortError") || signal?.aborted === true;
+    await refreshContentTaskCounters(task.id);
+    const message = cancelled
+      ? "Content repository merge cancelled"
+      : error instanceof Error
+        ? error.message
+        : "Content repository merge failed";
+    setTaskResultSync(
+      task.id,
+      JSON.stringify(
+        mergeResultPayload({
+          outcome: cancelled ? "cancelled" : "failed",
+          repository: config.repository,
+          ref: config.ref,
+          commit: head,
+          merged,
+          conflicts,
+          skipped,
+          message,
+        })
+      )
+    );
+    finishContentTask(task.id, cancelled ? "cancelled" : "failed", cancelled ? undefined : message);
+    return {
+      status: "failed" as const,
+      repository: config.repository,
+      ref: config.ref,
+      merged,
+      conflicts,
+      skipped,
+      message,
+    };
+  }
+}
 
 export function mergeContentRepo(input: { ids?: string[] } = {}): Promise<ContentRepoMergeOutcome> {
   if (mergeFlight) return Promise.reject(new Error("Content repository merge already running"));
   mergeFlight = (async () => {
-    let config: ContentRepoConfig;
-    try {
-      config = readContentRepoConfig();
-    } catch (error) {
+    const resolved = resolveContentRepoConfig();
+    if (!("config" in resolved))
       return {
-        status: "failed" as const,
-        repository: null,
-        ref: null,
-        message: error instanceof Error ? error.message : "Invalid configuration",
+        status: resolved.status,
+        repository: resolved.repository,
+        ref: resolved.ref,
+        message: resolved.message,
       };
-    }
-    if (!config.token)
-      return { status: "unconfigured" as const, repository: config.repository, ref: config.ref };
-
-    const merged: string[] = [];
-    const conflicts: ContentRepoMergeConflict[] = [];
-    const skipped: { path: string; reason: string }[] = [];
-    try {
-      const { entries, missingMedia } = await loadContentRepoEntries(undefined, {
-        tolerateMissingMedia: true,
-      });
-      const baselines = loadContentRepoBaselines();
-      const transport = createContentRepoTransport(config);
-      const head = await transport.resolveHead();
-      const remote = await transport.listTree(head.tree);
-      const items = computeSyncStates({ entries, baselines, remote, missingMedia });
-      const wanted = input.ids?.length ? new Set(input.ids) : null;
-      const decoder = new TextDecoder();
-
-      for (const item of items) {
-        if (item.state !== "merge-conflict") continue;
-        if (wanted && !wanted.has(item.path)) continue;
-        const entry = entries.find((candidate) => candidate.document.path === item.path);
-        if (!entry) {
-          skipped.push({ path: item.path, reason: "missing-local-content" });
-          continue;
-        }
-        const baseline = baselines.get(item.path);
-        if (!baseline?.document) {
-          skipped.push({ path: item.path, reason: "baseline-document-unavailable" });
-          continue;
-        }
-        const mediaChanged = Object.entries(baseline.media).some(
-          ([mediaPath, recorded]) => remote.get(mediaPath) !== recorded.remoteSha
-        );
-        if (mediaChanged) {
-          skipped.push({ path: item.path, reason: "attachment-changed" });
-          continue;
-        }
-        if (!item.remoteSha) {
-          skipped.push({ path: item.path, reason: "remote-deleted" });
-          continue;
-        }
-
-        const baseDoc = parseRemoteDocument(new TextEncoder().encode(baseline.document));
-        const localDoc = parseRemoteDocument(entry.document.bytes);
-        const remoteDoc = parseRemoteDocument(await transport.readBlob(item.remoteSha));
-        const frontmatter = mergeFrontmatter(
-          baseDoc.frontmatter,
-          localDoc.frontmatter,
-          remoteDoc.frontmatter
-        );
-        const body = mergeBody(
-          baseDoc.body.split("\n"),
-          localDoc.body.split("\n"),
-          remoteDoc.body.split("\n")
-        );
-        if (frontmatter.conflicts.length || !body.clean) {
-          conflicts.push({
-            path: item.path,
-            fields: frontmatter.conflicts,
-            bodyConflicts: body.conflicts,
-          });
-          continue;
-        }
-
-        const bytes = serializeCanonicalDocument(frontmatter.value, body.lines.join("\n"));
-        const update = toDocumentUpdate(parseRemoteDocument(bytes));
-        const row = findRowForRepoPath(item.path);
-        if (!row) {
-          skipped.push({ path: item.path, reason: "missing-local-content" });
-          continue;
-        }
-        const updated = {
-          slug: update.slug,
-          title: update.title,
-          body: update.body,
-          draft: update.draft,
-          public: update.public,
-          category: update.category,
-          tags: JSON.stringify(update.tags),
-          author: update.author,
-          image: update.image,
-          publishDate: update.publishDate,
-          updateDate: update.updateDate ?? row.updateDate,
-          lastModified: Date.now(),
-        };
-        const kind = row.type === "memo" ? "memo" : "post";
-        const document = buildCanonicalDocument(
-          { ...toContentRecord(row), ...updated },
-          { clipping: kind === "memo" ? clippingFrontmatterFor(row.id) : null }
-        );
-        db.update(posts)
-          .set({ ...updated, contentHash: document.contentHash })
-          .where(eq(posts.id, row.id))
-          .run();
-        const remoteBlobs: Record<string, string> = { [item.path]: item.remoteSha };
-        for (const [mediaPath, recorded] of Object.entries(baseline.media))
-          remoteBlobs[mediaPath] = recorded.remoteSha;
-        persistBaselineRow({
-          path: item.path,
-          contentId: row.id,
-          kind,
-          contentHash: document.contentHash,
-          document: decoder.decode(document.bytes),
-          media: JSON.stringify(baseline.media),
-          remoteBlobs: JSON.stringify(remoteBlobs),
-          commitSha: head.commit,
-          updatedAt: Date.now(),
-        });
-        merged.push(item.path);
-      }
-
-      if (merged.length) clearSearchCache();
-      const status = conflicts.length
-        ? ("conflicts" as const)
-        : merged.length
-          ? ("merged" as const)
-          : ("nothing" as const);
-      return {
-        status,
-        repository: config.repository,
-        ref: config.ref,
-        commit: head.commit,
-        merged,
-        conflicts,
-        skipped,
-      };
-    } catch (error) {
-      return {
-        status: "failed" as const,
-        repository: config.repository,
-        ref: config.ref,
-        merged,
-        conflicts,
-        skipped,
-        message: error instanceof Error ? error.message : "Content repository merge failed",
-      };
-    }
+    const started = await startMergeTask(resolved.config, input);
+    if ("status" in started) return started;
+    return runMergeTask(started.task, started.config, input);
   })().finally(() => {
     mergeFlight = undefined;
   });
   return mergeFlight;
+}
+
+export async function startContentRepoMerge(
+  input: { ids?: string[] } = {}
+): Promise<ContentRepoStartResult> {
+  const resolved = resolveContentRepoConfig();
+  if (!("config" in resolved))
+    return { status: resolved.status, operation: "merge", message: resolved.message };
+  const started = await startMergeTask(resolved.config, input);
+  if ("status" in started) return toStartResult(started, "merge");
+  mergeFlight = runMergeTask(started.task, started.config, input).finally(() => {
+    mergeFlight = undefined;
+  });
+  mergeFlight.catch(() => undefined);
+  return { status: "started", taskId: started.task.id, operation: "merge" };
 }
 
 export interface ContentRepoCheckOutcome {
@@ -1215,6 +1935,7 @@ export async function checkContentRepo(
     return { status: "unconfigured", repository: config.repository, ref: config.ref };
 
   try {
+    // Check is read-only: loading must not record or repair media identity.
     const { entries, missingMedia } = await loadContentRepoEntries(input.ids, {
       tolerateMissingMedia: true,
       recordIdentity: false,
@@ -1270,4 +1991,62 @@ export function readContentRepoStatus(): ContentRepoStatus {
       message: error instanceof Error ? error.message : "Invalid configuration",
     };
   }
+}
+
+/**
+ * Retry only the items that did not succeed. A task without item rows (older
+ * task) falls back to its original target so the operator is never blocked.
+ */
+export async function retryContentRepoTask(taskId: string): Promise<ContentRepoStartResult> {
+  const task = await getContentTask(taskId);
+  if (!task) return { status: "failed", operation: "push", message: "Task not found" };
+  const operation: ContentTaskOperation = (task.operation as ContentTaskOperation | null) ?? "push";
+  if (task.finishedAt === null)
+    return {
+      status: "busy",
+      operation,
+      taskId: task.id,
+      message: "Task is still running",
+    };
+  const items = await listContentTaskItems(task.id);
+  if (!items.length) {
+    const target = parseTaskTarget(task.target);
+    return startContentRepoOperation(operation, target);
+  }
+  const retryable = items.filter(
+    (item) => item.retryable && ["failed", "pending", "skipped", "blocked"].includes(item.status)
+  );
+  const ids = [
+    ...new Set(retryable.map((item) => item.contentId).filter((id): id is string => Boolean(id))),
+  ];
+  if (!ids.length && retryable.length)
+    return {
+      status: "failed",
+      operation,
+      message: "Retryable items have no content id; start the batch again",
+    };
+  if (!ids.length)
+    return { status: "failed", operation, taskId: task.id, message: "Nothing to retry" };
+  return startContentRepoOperation(operation, { ids });
+}
+
+function parseTaskTarget(target: string): { ids?: string[]; all?: boolean } {
+  try {
+    const parsed: unknown = JSON.parse(target);
+    if (!parsed || typeof parsed !== "object") return { all: true };
+    const ids = (parsed as { ids?: unknown }).ids;
+    if (!Array.isArray(ids) || !ids.length) return { all: true };
+    return { ids: ids.filter((id): id is string => typeof id === "string") };
+  } catch {
+    return { all: true };
+  }
+}
+
+function startContentRepoOperation(
+  operation: ContentTaskOperation,
+  input: { ids?: string[]; all?: boolean }
+): Promise<ContentRepoStartResult> {
+  if (operation === "pull") return startContentRepoPull({ ids: input.ids });
+  if (operation === "merge") return startContentRepoMerge({ ids: input.ids });
+  return startContentRepoPush({ ids: input.ids, all: input.all });
 }

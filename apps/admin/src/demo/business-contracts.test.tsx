@@ -74,6 +74,20 @@ describe("Web Demo business contracts without Chromium", () => {
     });
   }
 
+  test("content repository task adapter exposes progress without owner fields", async () => {
+    scene("d_scene=admin-repo-partial");
+    const list = await (await api("content-sync/tasks?source=content-repo")).json();
+    expect(list.items[0]).toMatchObject({ source: "content-repo", status: "failed" });
+    const progress = await (await api(`content-sync/tasks/${list.items[0].id}/progress`)).json();
+    expect(progress.items.length).toBeGreaterThan(0);
+    expect(JSON.stringify(progress)).not.toContain("ownerId");
+    expect(JSON.stringify(progress)).not.toContain("ownerToken");
+    const retry = await (
+      await api(`content-repo/tasks/${list.items[0].id}/retry`, { method: "POST" })
+    ).json();
+    expect(retry).toMatchObject({ status: "started", taskId: list.items[0].id, operation: "push" });
+  });
+
   test("denies the real admin adapter status endpoint to guests", async () => {
     scene("d_persona=guest");
     const response = await api("content-sync/status");

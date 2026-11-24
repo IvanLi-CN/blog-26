@@ -6,14 +6,16 @@ import {
   checkContentRepo,
   diffContentRepo,
   inspectContentMedia,
-  mergeContentRepo,
-  pullContentRepo,
-  pushContentRepo,
   readContentRepoStatus,
   readRemoteMedia,
   removeRemoteDeleted,
+  retryContentRepoTask,
   saveResolvedContent,
+  startContentRepoMerge,
+  startContentRepoPull,
+  startContentRepoPush,
 } from "../../services/content-repo-sync";
+import { readContentTaskProgress } from "../../services/content-tasks";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 export const adminContentRepoRouter = createTRPCRouter({
@@ -53,11 +55,11 @@ export const adminContentRepoRouter = createTRPCRouter({
 
   merge: adminProcedure
     .input(z.object({ ids: z.array(z.string().min(1)).max(200).optional() }).optional())
-    .mutation(({ input }) => mergeContentRepo(input ?? {})),
+    .mutation(({ input }) => startContentRepoMerge(input ?? {})),
 
   pull: adminProcedure
     .input(z.object({ ids: z.array(z.string().min(1)).max(200).optional() }).optional())
-    .mutation(({ input }) => pullContentRepo(input ?? {})),
+    .mutation(({ input }) => startContentRepoPull(input ?? {})),
 
   push: adminProcedure
     .input(
@@ -68,7 +70,7 @@ export const adminContentRepoRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       try {
-        return await pushContentRepo(input);
+        return await startContentRepoPush(input);
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         const message = error instanceof Error ? error.message : "推送失败";
@@ -76,5 +78,17 @@ export const adminContentRepoRouter = createTRPCRouter({
           throw new TRPCError({ code: "CONFLICT", message });
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
       }
+    }),
+
+  retry: adminProcedure
+    .input(z.object({ taskId: z.string().min(1) }))
+    .mutation(({ input }) => retryContentRepoTask(input.taskId)),
+
+  taskProgress: adminProcedure
+    .input(z.object({ taskId: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const progress = await readContentTaskProgress(input.taskId);
+      if (!progress) throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+      return progress;
     }),
 });

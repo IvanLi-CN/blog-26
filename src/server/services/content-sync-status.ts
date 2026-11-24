@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { getPlaybookPolicies } from "@/lib/playbook/navigation";
 import { contentTasks, posts, searchOutbox } from "@/lib/schema";
 import { playbookSyncEnabled } from "./content-sync-runtime";
-import { contentSyncTotals, listContentTasks } from "./content-tasks";
+import { contentSyncTotals, listContentTasks, toContentTaskSummary } from "./content-tasks";
 import {
   getPlaybookSnapshotStore,
   type PlaybookStoredSnapshot,
@@ -167,7 +167,8 @@ async function readStatus(scope: RagScope = {}) {
               ? "current"
               : "unavailable";
   const totals = await contentSyncTotals();
-  const tasks = await listContentTasks({ limit: 10 });
+  const taskPage = await listContentTasks({ limit: 10 });
+  const tasks = { ...taskPage, items: taskPage.items.map(toContentTaskSummary) };
   const selected = scope.edition === "previous" ? previous : current;
   const coverage = (await ragCoverage({ ...scope, playbook: selected })).status;
   const metrics = (counts: typeof coverage.contents, unknown: boolean) => ({

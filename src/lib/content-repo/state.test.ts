@@ -15,12 +15,13 @@ function document(path: string, content: string): CanonicalDocument {
   };
 }
 
+/** Content ids are never repository paths; keep them distinct so a bug shows. */
 function entry(
   path: string,
   content: string,
   media: ContentRepoEntry["media"] = []
 ): ContentRepoEntry {
-  return { contentId: path, document: document(path, content), media };
+  return { contentId: `content-${path}`, document: document(path, content), media };
 }
 
 function baseline(overrides: Partial<ContentRepoBaseline> = {}): ContentRepoBaseline {

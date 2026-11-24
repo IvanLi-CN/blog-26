@@ -21,12 +21,20 @@ import {
   type ContentRepoActionPayload,
   type ContentRepoDiffPayload,
   type ContentRepoSyncItem,
+  type ContentTaskItem,
 } from "@/lib/admin-api-client";
 import { useAppShellSidebar } from "~/components/app-shell";
 import { ContentMediaCompare } from "~/components/content-media-compare";
 import { ContentMergeEditor } from "~/components/content-merge-editor";
 import type { ContentMergeHandle } from "~/components/content-merge-handle";
 import { ContentSplitMerge } from "~/components/content-split-merge";
+import {
+  CONTENT_TASK_ITEM_LABELS,
+  ContentTaskProgressCard,
+  contentTaskItemTone,
+  isContentTaskActive,
+  useContentRepoTaskMonitor,
+} from "~/components/content-task-progress";
 import { ContentThreeWayMerge } from "~/components/content-three-way-merge";
 import {
   Alert,
@@ -34,9 +42,9 @@ import {
   Button,
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  Checkbox,
   Disclosure,
   EmptyState,
   Popover,
@@ -56,7 +64,7 @@ const STATE_LABEL: Record<ContentRepoSyncItem["state"], string> = {
   "merge-conflict": "需要合并",
 };
 
-type FileRow = {
+export type FileRow = {
   key: string;
   path: string;
   label: "文章" | "闪念" | "附件";
@@ -199,6 +207,23 @@ function StatusChip({
   );
 }
 
+/** Live task item for one repository path, rendered as the card's status chip. */
+export function FileTaskChip({ item }: { item: ContentTaskItem }) {
+  const label = CONTENT_TASK_ITEM_LABELS[item.status];
+  const media = item.mediaTotal > 0 ? `附件 ${item.mediaProcessed}/${item.mediaTotal}` : null;
+  return (
+    <span
+      className="inline-flex min-w-0 items-center gap-1.5 text-[11px] leading-none"
+      data-testid="file-card-task-status"
+      data-task-item-status={item.status}
+      title={item.error ?? item.reason ?? label}
+    >
+      <Badge tone={contentTaskItemTone(item.status)}>{label}</Badge>
+      {media ? <span className="tabular-nums text-muted-foreground">{media}</span> : null}
+    </span>
+  );
+}
+
 function FileStatusMarker({ row, conflicts }: { row: FileRow; conflicts: number | null }) {
   if (row.media) return <StatusChip status="merge-conflict" title="二进制文件存在冲突" />;
   if (row.item.state === "merge-conflict")
@@ -250,6 +275,10 @@ function FileCard({
   onAccept,
   onRemove,
   busy,
+  selected,
+  onSelectChange,
+  taskItem,
+  taskBusy,
 }: {
   row: FileRow;
   mode: "inline" | "split" | "three";
@@ -262,6 +291,10 @@ function FileCard({
   onAccept: (path: string) => void;
   onRemove: (path: string) => void;
   busy: boolean;
+  selected?: boolean;
+  onSelectChange?: (selected: boolean) => void;
+  taskItem?: ContentTaskItem;
+  taskBusy?: boolean;
 }) {
   const { ref, seen } = useInView<HTMLDivElement>(true);
   const handle = useRef<ContentMergeHandle | null>(null);
@@ -279,7 +312,7 @@ function FileCard({
   });
 
   useEffect(() => {
-    if (!diff.data || diff.data.status !== "ready") return;
+    if (diff.data?.status !== "ready") return;
     const conflicts = (diff.data.conflictingFields?.length ?? 0) + (diff.data.bodyConflicts ?? 0);
     onCount(row.path, conflicts);
   }, [diff.data, onCount, row.path]);
@@ -288,12 +321,30 @@ function FileCard({
 
   return (
     <div ref={ref}>
-      <Card data-testid={`file-card-${row.path}`}>
+      <Card
+        data-testid={`file-card-${row.path}`}
+        data-task-item-status={taskItem?.status}
+        data-task-busy={taskBusy ? "true" : undefined}
+      >
         <CardHeader className="flex-row items-start justify-between gap-4">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="size-4 text-muted-foreground" />
-            {row.path}
-          </CardTitle>
+          <div className="flex min-w-0 items-start gap-3">
+            {onSelectChange ? (
+              <Checkbox
+                className="mt-0.5 size-5"
+                aria-label={`选择 ${row.path}`}
+                checked={selected ?? false}
+                onCheckedChange={(value) => onSelectChange(value === true)}
+                data-testid={`file-card-select-${row.path}`}
+              />
+            ) : null}
+            <div className="min-w-0 space-y-2">
+              <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+                <FileText className="size-4 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 break-all">{row.path}</span>
+              </CardTitle>
+              {taskItem ? <FileTaskChip item={taskItem} /> : null}
+            </div>
+          </div>
           {!row.media ? (
             <Popover
               open={Boolean(confirm)}
@@ -304,7 +355,7 @@ function FileCard({
               <PopoverTrigger asChild>
                 <Button
                   size="lg"
-                  disabled={!diff.data || diff.data.status !== "ready"}
+                  disabled={diff.data?.status !== "ready"}
                   onClick={() => {
                     const text = handle.current?.getText();
                     const unresolved = handle.current?.pending().unresolved ?? 0;
@@ -382,18 +433,33 @@ function FileCard({
               <Separator />
               <div className="flex flex-wrap gap-2">
                 {!row.media && row.item.state === "merge-conflict" ? (
-                  <Button onClick={() => onMerge(row.path)}>尝试自动合并</Button>
+                  <Button disabled={taskBusy} onClick={() => onMerge(row.path)}>
+                    尝试自动合并
+                  </Button>
                 ) : null}
                 {!row.media && row.item.state === "to-pull" ? (
-                  <Button onClick={() => onPull(row.path)}>拉取到内容库</Button>
+                  <Button disabled={taskBusy} onClick={() => onPull(row.path)}>
+                    拉取到内容库
+                  </Button>
                 ) : null}
                 {!row.media && row.item.state === "remote-new" ? (
-                  <Button onClick={() => onAccept(row.path)}>接受远端新增</Button>
+                  <Button disabled={taskBusy} onClick={() => onAccept(row.path)}>
+                    接受远端新增
+                  </Button>
                 ) : null}
                 {!row.media && row.item.state === "remote-deleted" ? (
-                  <Button variant="destructive" onClick={() => onRemove(row.path)}>
+                  <Button
+                    variant="destructive"
+                    disabled={taskBusy}
+                    onClick={() => onRemove(row.path)}
+                  >
                     确认远端删除
                   </Button>
+                ) : null}
+                {taskBusy ? (
+                  <span className="self-center text-xs text-muted-foreground">
+                    该路径在任务中处理中，操作已暂停。
+                  </span>
                 ) : null}
               </div>
             </>
@@ -644,6 +710,32 @@ function FileTreeRow({
   );
 }
 
+/** Only document rows with a content id can be selected; media rows cannot. */
+export function eligibleContentIds(rows: FileRow[], state: ContentRepoSyncItem["state"]) {
+  const ids: string[] = [];
+  for (const row of rows) {
+    if (row.media || row.item.state !== state || !row.item.contentId) continue;
+    ids.push(row.item.contentId);
+  }
+  return ids;
+}
+
+/** Selection survives a refresh only for ids that still have actionable work. */
+export function pruneActionableSelection(
+  selected: Iterable<string>,
+  items: ContentRepoSyncItem[]
+): Set<string> {
+  const actionable = new Set<string>();
+  for (const item of items) {
+    if (!item.contentId) continue;
+    if (item.state === "to-push" || item.state === "to-pull" || item.state === "merge-conflict")
+      actionable.add(item.contentId);
+  }
+  const next = new Set<string>();
+  for (const id of selected) if (actionable.has(id)) next.add(id);
+  return next;
+}
+
 interface SavedMark {
   contentHash: string;
   remoteSha: string | null;
@@ -657,6 +749,9 @@ export function ContentMergePage() {
   const [saved, setSaved] = useState<Record<string, SavedMark>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [snapshot, setSnapshot] = useState<ContentRepoSyncItem[] | null>(null);
+  /** Selection stores content ids: repository paths are not content identities. */
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const repo = useContentRepoTaskMonitor({ limit: 4 });
 
   const status = useQuery({
     queryKey: ["content-repo", "status"],
@@ -735,7 +830,8 @@ export function ContentMergePage() {
       await refresh();
       if (status.data?.configured) {
         setNotice(`已保存到内容库，正在推送到仓库：${result.path}`);
-        push.mutate({ ids: [input.path] });
+        // Push by content id: the repository path is not a content id.
+        push.mutate({ ids: [result.contentId ?? input.path] });
         return;
       }
       setNotice(`已保存到内容库（内容仓库未配置，未推送）：${result.path}`);
@@ -744,23 +840,29 @@ export function ContentMergePage() {
   });
   const merge = useMutation({
     mutationFn: (input: { ids?: string[] }) => adminApi.mergeContentRepo(input),
-    onSuccess,
+    onSuccess: async (result) => {
+      await onSuccess(result);
+      if (result.status === "started") setNotice("自动合并任务已开始，进度见上方任务卡片。");
+    },
     onError,
   });
   const push = useMutation({
     mutationFn: (input: { ids?: string[] }) => adminApi.pushContentRepo(input),
     onSuccess: async (result, input) => {
       const path = input.ids?.[0] ?? "";
-      if (result.status === "pushed") setNotice(`已保存并推送到仓库：${path}`);
-      else if (result.status === "unchanged") setNotice(`已保存到内容库，仓库内容已一致：${path}`);
-      else setNotice(`已保存到内容库，推送未完成：${result.message ?? result.status}`);
+      if (result.status === "started")
+        setNotice(`已保存到内容库，推送已开始：${path}（任务 ${result.taskId ?? "-"}）`);
+      else setNotice(`已保存到内容库，推送未开始：${result.message ?? result.status}`);
       await refresh();
     },
     onError: (error) => setNotice(`已保存到内容库，推送失败：${getErrorMessage(error)}`),
   });
   const pull = useMutation({
     mutationFn: (input: { ids?: string[] }) => adminApi.pullContentRepo(input),
-    onSuccess,
+    onSuccess: async (result) => {
+      await onSuccess(result);
+      if (result.status === "started") setNotice("拉取任务已开始，进度见上方任务卡片。");
+    },
     onError,
   });
   const accept = useMutation({
@@ -772,6 +874,14 @@ export function ContentMergePage() {
     mutationFn: (input: { paths?: string[] }) => adminApi.removeRemoteDeletedContent(input),
     onSuccess,
     onError,
+  });
+  const cancelRepo = useMutation({
+    mutationFn: adminApi.cancelContentTask,
+    onSuccess: refresh,
+  });
+  const retryRepo = useMutation({
+    mutationFn: adminApi.retryContentRepoTask,
+    onSuccess: refresh,
   });
 
   const isSavedRow = useCallback(
@@ -787,6 +897,13 @@ export function ContentMergePage() {
 
   const onCount = (path: string, count: number) =>
     setConflicts((current) => (current[path] === count ? current : { ...current, [path]: count }));
+
+  const pruneSelection = useCallback((items: ContentRepoSyncItem[]) => {
+    setSelected((current) => {
+      const next = pruneActionableSelection(current, items);
+      return next.size === current.size ? current : next;
+    });
+  }, []);
 
   const resync = useCallback(async () => {
     const result = await check.refetch();
@@ -805,10 +922,51 @@ export function ContentMergePage() {
         }
         return next;
       });
+      pruneSelection(items);
     }
     await status.refetch();
     await queryClient.invalidateQueries({ queryKey: ["content-repo", "diff"] });
-  }, [check, queryClient, status]);
+  }, [check, pruneSelection, queryClient, status]);
+
+  /** Task item per repository path; only an active task may disable file actions. */
+  const taskItems = useMemo(() => {
+    const map = new Map<string, ContentTaskItem>();
+    const progress = repo.progress;
+    if (!progress || !isContentTaskActive(progress.task)) return map;
+    for (const item of progress.items) map.set(item.path, item);
+    return map;
+  }, [repo.progress]);
+
+  const pushableIds = eligibleContentIds(rows, "to-push");
+  const pullableIds = eligibleContentIds(rows, "to-pull");
+  const mergeableIds = eligibleContentIds(rows, "merge-conflict");
+  const selectedCount = selected.size;
+  const batchBusy = repo.busy || push.isPending || pull.isPending || merge.isPending;
+
+  const toggleSelected = (contentId: string, next: boolean) =>
+    setSelected((current) => {
+      const values = new Set(current);
+      if (next) values.add(contentId);
+      else values.delete(contentId);
+      return values;
+    });
+
+  const selectAll = (ids: string[]) => {
+    setSelected((current) => {
+      const values = new Set(current);
+      for (const id of ids) values.add(id);
+      return values;
+    });
+  };
+
+  const runBatch = (operation: "push" | "pull" | "merge") => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    if (operation === "push") push.mutate({ ids });
+    else if (operation === "pull") pull.mutate({ ids });
+    else merge.mutate({ ids });
+    setSelected(new Set());
+  };
 
   const sidebarPanel = useMemo(
     () => ({
@@ -919,26 +1077,168 @@ export function ContentMergePage() {
         <Alert tone="danger">{check.data.message ?? "检查内容仓库失败"}</Alert>
       ) : null}
 
+      {repo.progress ? (
+        <ContentTaskProgressCard
+          progress={repo.progress}
+          repository={status.data?.repository ?? null}
+          title={`内容仓库${repo.progress.task.operation === "push" ? "推送" : repo.progress.task.operation === "pull" ? "拉取" : repo.progress.task.operation === "merge" ? "自动合并" : ""}任务`}
+          cancelling={cancelRepo.isPending}
+          retrying={retryRepo.isPending}
+          onCancel={(taskId) => cancelRepo.mutate(taskId)}
+          onRetry={(taskId) => retryRepo.mutate(taskId)}
+          onSelectPath={(path) =>
+            document
+              .querySelector(`[data-testid="file-card-${CSS.escape(path)}"]`)
+              ?.scrollIntoView({ block: "start", behavior: "smooth" })
+          }
+        />
+      ) : null}
+      {repo.progress?.task.finishedAt !== null && repo.progress ? (
+        <div data-testid="content-merge-remaining">
+          <Alert>
+            任务结束后仍有 {actionable.length} 个文件待处理。
+            {actionable.length ? " 剩余入口：" : ""}
+            {actionable.slice(0, 6).map((row) => (
+              <a
+                key={row.path}
+                href={`#file-card-${row.path}`}
+                className="ml-1 text-primary underline decoration-primary/40 underline-offset-2"
+                onClick={(event) => {
+                  event.preventDefault();
+                  document
+                    .querySelector(`[data-testid="file-card-${CSS.escape(row.path)}"]`)
+                    ?.scrollIntoView({ block: "start", behavior: "smooth" });
+                }}
+              >
+                {row.path}
+              </a>
+            ))}
+            {actionable.length > 6 ? ` 等 ${actionable.length} 项` : null}
+          </Alert>
+        </div>
+      ) : null}
+
+      <Card data-testid="content-merge-batch-toolbar">
+        <CardContent className="flex flex-col gap-3 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium tabular-nums">已选 {selectedCount} 项</span>
+            <span className="flex-1" />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={batchBusy || pushableIds.length === 0}
+              onClick={() => selectAll(pushableIds)}
+              data-testid="content-merge-select-push"
+            >
+              全选待推送（{pushableIds.length}）
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={batchBusy || pullableIds.length === 0}
+              onClick={() => selectAll(pullableIds)}
+              data-testid="content-merge-select-pull"
+            >
+              全选待拉取（{pullableIds.length}）
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={batchBusy || mergeableIds.length === 0}
+              onClick={() => selectAll(mergeableIds)}
+              data-testid="content-merge-select-merge"
+            >
+              全选可合并（{mergeableIds.length}）
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={selectedCount === 0}
+              onClick={() => setSelected(new Set())}
+              data-testid="content-merge-clear"
+            >
+              清除
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              disabled={batchBusy || selectedCount === 0}
+              onClick={() => runBatch("push")}
+              data-testid="content-merge-push-selected"
+            >
+              <Upload className="size-4" />
+              推送所选
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={batchBusy || selectedCount === 0}
+              onClick={() => runBatch("pull")}
+              data-testid="content-merge-pull-selected"
+            >
+              <Download className="size-4" />
+              拉取所选
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={batchBusy || selectedCount === 0}
+              onClick={() => runBatch("merge")}
+              data-testid="content-merge-merge-selected"
+            >
+              <GitMerge className="size-4" />
+              自动合并所选
+            </Button>
+            {repo.busy ? (
+              <span className="text-xs text-muted-foreground">
+                内容仓库任务在途：批量操作暂停，等待任务结束后可重试。
+              </span>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="space-y-4">
         {actionable.length === 0 ? (
           <EmptyState title="没有待处理文件" description="本地内容库与内容仓库一致。" />
         ) : (
-          actionable.map((row) => (
-            <FileCard
-              key={`${row.path}|${row.item.remoteSha ?? "-"}|${row.item.localHash ?? "-"}`}
-              row={row}
-              mode={mode}
-              onModeChange={setMode}
-              onCount={onCount}
-              onSave={(path, text) => resolve.mutate({ path, text, remoteSha: row.item.remoteSha })}
-              onAdopt={(path, media) => adoptMedia.mutate({ path, media })}
-              onMerge={(path) => merge.mutate({ ids: [path] })}
-              onPull={(path) => pull.mutate({ ids: [path] })}
-              onAccept={(path) => accept.mutate({ paths: [path] })}
-              onRemove={(path) => remove.mutate({ paths: [path] })}
-              busy={adoptMedia.isPending}
-            />
-          ))
+          actionable.map((row) => {
+            const contentId = row.item.contentId;
+            const taskItem = taskItems.get(row.path);
+            return (
+              <FileCard
+                key={`${row.path}|${row.item.remoteSha ?? "-"}|${row.item.localHash ?? "-"}`}
+                row={row}
+                mode={mode}
+                onModeChange={setMode}
+                onCount={onCount}
+                onSave={(path, text) =>
+                  resolve.mutate({ path, text, remoteSha: row.item.remoteSha })
+                }
+                onAdopt={(path, media) => adoptMedia.mutate({ path, media })}
+                onMerge={() => {
+                  if (contentId) merge.mutate({ ids: [contentId] });
+                }}
+                onPull={() => {
+                  if (contentId) pull.mutate({ ids: [contentId] });
+                }}
+                onAccept={(path) => accept.mutate({ paths: [path] })}
+                onRemove={(path) => remove.mutate({ paths: [path] })}
+                busy={adoptMedia.isPending}
+                selected={contentId ? selected.has(contentId) : false}
+                onSelectChange={contentId ? (next) => toggleSelected(contentId, next) : undefined}
+                taskItem={taskItem}
+                taskBusy={
+                  Boolean(taskItem) &&
+                  repo.busy &&
+                  (taskItem?.status === "running" ||
+                    taskItem?.status === "pending" ||
+                    row.path === repo.progress?.task.currentPath)
+                }
+              />
+            );
+          })
         )}
       </div>
     </div>

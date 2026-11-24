@@ -5,6 +5,7 @@ export const consoleFiles = [
   "console-memo-boundary.spec.ts",
   "console-comments.spec.ts",
   "content-sync.spec.ts",
+  "content-repo-progress.spec.ts",
   "project-status.spec.ts",
   "system-share.spec.ts",
   "ai-usage.spec.ts",

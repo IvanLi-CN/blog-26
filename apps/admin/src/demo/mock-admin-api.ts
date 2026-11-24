@@ -445,11 +445,135 @@ const initialDemoComments = comments.map((comment) => ({ ...comment }));
 let commentsResetWindow: Window | null = null;
 const DEMO_RAG_TASK_ID = "550e8400-e29b-41d4-a716-446655440000";
 const DEMO_PLAYBOOK_TASK_ID = "550e8400-e29b-41d4-a716-446655440001";
+const DEMO_CONTENT_TASK_ID = "550e8400-e29b-41d4-a716-446655440003";
 let demoIndexCancelled = false;
 let demoIndexStarted = false;
 let demoPlaybookSyncCancelled = false;
 let demoPlaybookSyncStarted = false;
 let demoProjectStatusStartedAt: number | null = null;
+let demoContentTaskStarted = false;
+let demoContentTaskCancelled = false;
+let demoContentTaskOperation: "push" | "pull" | "merge" = "push";
+
+/** One demo push task with per-item progress; scene-independent on purpose. */
+function demoContentTaskSummary() {
+  const startedAt = now - 120_000;
+  const scene = getWebDemoState(window.location, "admin").scene;
+  const active =
+    !demoContentTaskCancelled &&
+    (demoContentTaskStarted ||
+      scene === "admin-repo-running-push" ||
+      scene === "admin-repo-running-pull");
+  const partial = !demoContentTaskStarted && scene === "admin-repo-partial";
+  const operation =
+    scene === "admin-repo-running-pull" && !demoContentTaskStarted
+      ? "pull"
+      : demoContentTaskOperation;
+  const failed = partial ? 1 : 0;
+  return {
+    id: DEMO_CONTENT_TASK_ID,
+    kind: "content-repo",
+    source: "content-repo",
+    operation,
+    origin: "manual",
+    status: demoContentTaskCancelled
+      ? "cancelled"
+      : active
+        ? "running"
+        : partial
+          ? "failed"
+          : "success",
+    phase: demoContentTaskCancelled
+      ? "cancelled"
+      : active
+        ? "uploading"
+        : partial
+          ? "failed"
+          : "success",
+    total: 3,
+    processed: demoContentTaskCancelled ? 2 : active ? 1 : 3,
+    failed,
+    skipped: 1,
+    blocked: 0,
+    conflicts: demoContentTaskOperation === "merge" ? 1 : 0,
+    mediaTotal: 2,
+    mediaProcessed: active ? 1 : 2,
+    mediaFailed: 0,
+    currentPath: active ? "blog/content-repo-sync.md" : null,
+    percent: demoContentTaskCancelled ? 67 : active ? 33 : 100,
+    startedAt,
+    finishedAt: active ? null : now - 1000,
+    cancelRequested: demoContentTaskCancelled,
+    error: failed ? "GitHub 请求被拒绝（模拟）" : null,
+  };
+}
+
+function demoContentTaskProgress() {
+  const task = demoContentTaskSummary();
+  const active = task.status === "running";
+  return {
+    task,
+    items:
+      getWebDemoState(window.location, "admin").scene === "admin-repo-legacy"
+        ? []
+        : [
+            {
+              path: "blog/content-repo-sync.md",
+              contentId: "demo-post-content-repo-sync",
+              kind: "post",
+              status: active ? "running" : "success",
+              reason: null,
+              error: null,
+              mediaTotal: 2,
+              mediaProcessed: active ? 1 : 2,
+              mediaFailed: 0,
+              retryable: false,
+              updatedAt: now,
+            },
+            {
+              path: "blog/merge-demo.md",
+              contentId: "demo-post-merge-demo",
+              kind: "post",
+              status: "skipped",
+              reason: "attachment-changed",
+              error: null,
+              mediaTotal: 1,
+              mediaProcessed: 0,
+              mediaFailed: 0,
+              retryable: true,
+              updatedAt: now,
+            },
+            {
+              path: "blog/remote-only.md",
+              contentId: "demo-post-remote-only",
+              kind: "post",
+              status: "failed",
+              reason: null,
+              error: "认证失败：令牌没有该仓库写权限（模拟）",
+              mediaTotal: 0,
+              mediaProcessed: 0,
+              mediaFailed: 0,
+              retryable: true,
+              updatedAt: now,
+            },
+          ],
+    result: JSON.stringify({
+      operation: task.operation,
+      outcome: "pushed",
+      repository: "IvanLi-CN/blog-contents",
+      ref: "main",
+      commit: "0f1e2d3c4b5a69788796a5b4c3d2e1f001122334",
+      commits: ["0f1e2d3c4b5a69788796a5b4c3d2e1f001122334"],
+      counts: { post: 1, media: 2 },
+      batches: 1,
+      message: "Pushed 1 commit(s) in 1 batch(es)",
+    }),
+  };
+}
+
+function demoContentTasks() {
+  return [demoContentTaskSummary()];
+}
 
 function resetDemoContentSyncState() {
   demoIndexCancelled = false;
@@ -457,6 +581,9 @@ function resetDemoContentSyncState() {
   demoPlaybookSyncCancelled = false;
   demoPlaybookSyncStarted = false;
   demoProjectStatusStartedAt = null;
+  demoContentTaskStarted = false;
+  demoContentTaskCancelled = false;
+  demoContentTaskOperation = "push";
 }
 
 function ensureDemoCommentsResetListener() {
@@ -2065,6 +2192,7 @@ async function handleAdminRequest(
     const demoItems = [
       {
         path: "blog/content-repo-sync.md",
+        contentId: "demo-post-content-repo-sync",
         kind: "post",
         state: "to-push",
         localHash: "hash-local-1",
@@ -2076,6 +2204,7 @@ async function handleAdminRequest(
       },
       {
         path: "blog/merge-demo.md",
+        contentId: "demo-post-merge-demo",
         kind: "post",
         state: "merge-conflict",
         localHash: "hash-local-2",
@@ -2087,6 +2216,7 @@ async function handleAdminRequest(
       },
       {
         path: "Memos/2026_demo.md",
+        contentId: "demo-memo-2026",
         kind: "memo",
         state: "synced",
         localHash: "hash-local-3",
@@ -2098,6 +2228,7 @@ async function handleAdminRequest(
       },
       {
         path: "blog/remote-only.md",
+        contentId: null,
         kind: "post",
         state: "remote-new",
         localHash: null,
@@ -2109,7 +2240,11 @@ async function handleAdminRequest(
       },
     ] as const;
     if (path === "/api/admin/content-repo/status")
-      return json({ configured: true, ...demoRepo, baselines: 3 });
+      return json({
+        configured: getWebDemoState(window.location, "admin").scene !== "admin-repo-unconfigured",
+        ...demoRepo,
+        baselines: 3,
+      });
     if (path === "/api/admin/content-repo/check")
       return json({
         status: "checked",
@@ -2171,26 +2306,54 @@ async function handleAdminRequest(
       recordWebDemoMutation("保存到内容库", "写入本地数据库（模拟）");
       return json({ status: "saved", path: targetPath, contentHash }, 200);
     }
+    if (path.startsWith("/api/admin/content-repo/tasks/")) {
+      const rest = path.slice("/api/admin/content-repo/tasks/".length);
+      if (rest.endsWith("/retry")) {
+        demoContentTaskStarted = true;
+        demoContentTaskCancelled = false;
+        recordWebDemoMutation("重试内容仓库任务", "只处理失败与未处理项（模拟）");
+        return json({
+          status: "started",
+          operation: demoContentTaskOperation,
+          taskId: DEMO_CONTENT_TASK_ID,
+        });
+      }
+      return json(demoContentTaskProgress());
+    }
+    if (
+      method === "POST" &&
+      [
+        "/api/admin/content-repo/merge",
+        "/api/admin/content-repo/push",
+        "/api/admin/content-repo/pull",
+      ].includes(path) &&
+      demoContentTaskSummary().status === "running"
+    )
+      return json({
+        status: "busy",
+        taskId: DEMO_CONTENT_TASK_ID,
+        operation: demoContentTaskSummary().operation,
+      });
     if (method === "POST" && path === "/api/admin/content-repo/merge") {
+      demoContentTaskOperation = "merge";
+      demoContentTaskStarted = true;
+      demoContentTaskCancelled = false;
       recordWebDemoMutation("尝试自动合并", "冲突未裁决（模拟）");
-      return json(
-        {
-          status: "conflicts",
-          ...demoRepo,
-          merged: [],
-          conflicts: [{ path: demoItems[1].path, fields: ["title"], bodyConflicts: 1 }],
-          skipped: [],
-        },
-        200
-      );
+      return json({ status: "started", operation: "merge", taskId: DEMO_CONTENT_TASK_ID }, 202);
     }
     if (method === "POST" && path === "/api/admin/content-repo/push") {
+      demoContentTaskOperation = "push";
+      demoContentTaskStarted = true;
+      demoContentTaskCancelled = false;
       recordWebDemoMutation("推送内容", "写入仓库（模拟）");
-      return json({ status: "pushed", ...demoRepo, merged: [demoItems[0].path], skipped: [] }, 200);
+      return json({ status: "started", operation: "push", taskId: DEMO_CONTENT_TASK_ID }, 202);
     }
     if (method === "POST" && path === "/api/admin/content-repo/pull") {
+      demoContentTaskOperation = "pull";
+      demoContentTaskStarted = true;
+      demoContentTaskCancelled = false;
       recordWebDemoMutation("拉取内容", "写入内容库（模拟）");
-      return json({ status: "pulled", ...demoRepo, pulled: [], skipped: [] }, 200);
+      return json({ status: "started", operation: "pull", taskId: DEMO_CONTENT_TASK_ID }, 202);
     }
     if (method === "POST" && path === "/api/admin/content-repo/accept-remote") {
       recordWebDemoMutation("接受远端新增", "建立内容（模拟）");
@@ -2241,8 +2404,33 @@ async function handleAdminRequest(
       202
     );
   }
+  if (path === "/api/admin/content-sync/tasks") {
+    const items = demoContentTasks();
+    return json({ items, total: items.length });
+  }
+  if (path.startsWith("/api/admin/content-sync/tasks/") && path.endsWith("/progress"))
+    return json(demoContentTaskProgress());
+  if (
+    method === "POST" &&
+    path.startsWith("/api/admin/content-sync/tasks/") &&
+    path.endsWith("/retry")
+  ) {
+    demoContentTaskStarted = true;
+    demoContentTaskCancelled = false;
+    recordWebDemoMutation("重试内容仓库任务", "只处理失败与未处理项（模拟）");
+    return json({
+      status: "started",
+      operation: demoContentTaskOperation,
+      taskId: DEMO_CONTENT_TASK_ID,
+    });
+  }
   if (path.startsWith("/api/admin/content-sync/tasks/") && path.endsWith("/cancel")) {
     const taskId = decodeURIComponent(path.split("/").at(-2) ?? "");
+    if (taskId === DEMO_CONTENT_TASK_ID) {
+      demoContentTaskCancelled = true;
+      recordWebDemoMutation("取消内容仓库任务", "保留已处理项目（模拟）");
+      return json({ taskId, status: "cancelled" });
+    }
     if (taskId === DEMO_PLAYBOOK_TASK_ID) {
       demoPlaybookSyncCancelled = true;
       recordWebDemoMutation("取消 Playbook 检查", "保留上一次已采用快照");
