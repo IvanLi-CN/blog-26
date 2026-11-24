@@ -125,7 +125,7 @@ function findRowForRepoPath(path: string) {
 
 export async function loadContentRepoEntries(
   ids?: string[],
-  options: { tolerateMissingMedia?: boolean } = {}
+  options: { tolerateMissingMedia?: boolean; enforceBatchLimit?: boolean } = {}
 ): Promise<{ entries: ContentRepoEntry[]; missingMedia: Map<string, string[]> }> {
   const where = ids?.length ? inArray(posts.id, ids) : inArray(posts.type, ["post", "memo"]);
   const rows = db
@@ -134,7 +134,7 @@ export async function loadContentRepoEntries(
     .where(where)
     .all()
     .filter((row) => row.type === "post" || row.type === "memo");
-  if (rows.length > CONTENT_REPO_MAX_BATCH_CONTENTS)
+  if (options.enforceBatchLimit && rows.length > CONTENT_REPO_MAX_BATCH_CONTENTS)
     throw new ContentRepoError(
       "invalid",
       `A push batch is limited to ${CONTENT_REPO_MAX_BATCH_CONTENTS} contents`
@@ -384,7 +384,7 @@ export function pushContentRepo(input: ContentRepoPushInput = {}): Promise<Conte
     });
 
     try {
-      const { entries } = await loadContentRepoEntries(ids);
+      const { entries } = await loadContentRepoEntries(ids, { enforceBatchLimit: true });
       await updateContentTask(task.id, { phase: "planning", total: entries.length });
       const baselines = loadContentRepoBaselines();
       const transport = createContentRepoTransport(config);
