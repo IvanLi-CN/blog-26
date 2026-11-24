@@ -1104,6 +1104,17 @@ export const adminApi = {
     adminRequest(`/api/admin/content-sync/tasks/${encodeURIComponent(taskId)}/cancel`, {
       method: "POST",
     }),
+  getContentSyncTasks: (
+    params: {
+      source?: "all" | "local" | "playbook" | "content-repo";
+      kind?: "sync" | "rag";
+      offset?: number;
+      limit?: number;
+    } = {}
+  ) =>
+    adminRequest<{ items: ContentTaskSummary[]; total: number }>(
+      `/api/admin/content-sync/tasks${buildSearch(params)}`
+    ),
   getContentSyncManagerStats: () =>
     adminRequest<Record<string, unknown>>("/api/admin/content-sync/manager-stats"),
   getContentSyncContentStats: () =>
