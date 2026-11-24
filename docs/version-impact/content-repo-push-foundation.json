@@ -10,7 +10,7 @@
     "src/lib/content-repo/state.ts": "0c0e1c89e616b5344890be6185181d853a6c7048",
     "src/server/services/content-authority-writer.ts": "89d44188d6a93ab84a9524fd085b261560909e59",
     "src/server/services/content-cutover.ts": "5d2f1e4bf70a6f7e869925ba33980dc77e0340c3",
-    "src/server/services/content-repo-sync.ts": "92d85e6a985ad95336de23aa8c5d2ef5c142cf74"
+    "src/server/services/content-repo-sync.ts": "d48f7c22ce8df33a12b02c66040fe1c24e366a96"
   },
   "change": {
     "description": "Add the server-side content repository push foundation: canonical content form, API-only GitHub transport, push planning from sync baselines and an additive content_repo_baselines table.",
@@ -25,7 +25,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "c7f2191b79f74b3e0c30a96600a5d86e025080f7",
+          "blob": "84cefc0fdffdea09d2c7e69d05b258e6300ccc93",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-scale.test.ts"
         }
       ]
@@ -37,7 +37,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "c7f2191b79f74b3e0c30a96600a5d86e025080f7",
+          "blob": "84cefc0fdffdea09d2c7e69d05b258e6300ccc93",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-scale.test.ts"
         }
       ],
@@ -141,7 +141,7 @@
       "evidence": [
         {
           "path": "docs/specs/content-git-sync/SPEC.md",
-          "blob": "c7f2191b79f74b3e0c30a96600a5d86e025080f7",
+          "blob": "84cefc0fdffdea09d2c7e69d05b258e6300ccc93",
           "command": "Admin routes are administrator-only; public routes, payloads and search responses are untouched"
         }
       ]
