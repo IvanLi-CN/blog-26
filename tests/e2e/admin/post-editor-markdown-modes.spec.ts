@@ -944,8 +944,8 @@ publishDate: not-a-date
     await page.getByRole("button", { name: "WYSIWYG" }).click();
     const errorMarker = page.getByTestId("frontmatter-diagnostics-error");
     await expect(errorMarker).toBeVisible();
-    await expect(page.getByText("tags 必须写成数组：")).toHaveCount(0);
-    await expect(page.getByText("publishDate 必须是可解析的日期文本。")).toHaveCount(0);
+    // The list renders field and summary; the raw YAML detail stays collapsed.
+    await expect(page.getByText("- React")).toBeHidden();
     await expect(
       page.locator('[data-testid="frontmatter-block"] [data-frontmatter-diagnostic-line]')
     ).toHaveCount(2);
