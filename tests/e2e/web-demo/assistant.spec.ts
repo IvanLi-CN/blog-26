@@ -30,7 +30,7 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(page.getByText("站点功能配置已保存。")).toBeVisible();
 
     await page.goto("/chat?d_persona=user&d_delay=normal");
-    await expect(page.getByTestId("assistant-request-error")).toContainText("站点助手功能未启用");
+    await expect(page.getByTestId("assistant-request-error")).toContainText("该功能当前未开放。");
   });
 
   test("creates a distinct conversation after the first message", async ({ page }) => {

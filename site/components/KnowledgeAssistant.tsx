@@ -319,6 +319,8 @@ function errorMessage(error: unknown) {
   }
   if (error instanceof AssistantClientError && error.code === "RECONNECTING")
     return `正在重新连接${ASSISTANT_DISPLAY_NAME}。`;
+  if (error instanceof AssistantClientError && error.code === "FEATURE_DISABLED")
+    return publicErrorMessage("FEATURE_DISABLED");
   if (error instanceof AssistantClientError && error.status === 410)
     return "这段对话已过期，请新建对话。";
   if (error instanceof AssistantClientError && error.status === 401)
