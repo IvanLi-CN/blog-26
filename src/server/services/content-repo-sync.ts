@@ -125,7 +125,11 @@ function findRowForRepoPath(path: string) {
 
 export async function loadContentRepoEntries(
   ids?: string[],
-  options: { tolerateMissingMedia?: boolean; enforceBatchLimit?: boolean } = {}
+  options: {
+    tolerateMissingMedia?: boolean;
+    enforceBatchLimit?: boolean;
+    recordIdentity?: boolean;
+  } = {}
 ): Promise<{ entries: ContentRepoEntry[]; missingMedia: Map<string, string[]> }> {
   const where = ids?.length ? inArray(posts.id, ids) : inArray(posts.type, ["post", "memo"]);
   const rows = db
@@ -173,7 +177,8 @@ export async function loadContentRepoEntries(
           "invalid",
           `Attachment changed outside the content library: ${path}`
         );
-      if (identity.status === "record") recordMediaIdentity(path, bytes);
+      if (identity.status === "record" && options.recordIdentity !== false)
+        recordMediaIdentity(path, bytes);
       media.push({ path, bytes, sha256: identity.sha256 });
     }
     if (missing.length) missingMedia.set(document.path, missing);
@@ -1212,6 +1217,7 @@ export async function checkContentRepo(
   try {
     const { entries, missingMedia } = await loadContentRepoEntries(input.ids, {
       tolerateMissingMedia: true,
+      recordIdentity: false,
     });
     const transport = createContentRepoTransport(config);
     const head = await transport.resolveHead();
