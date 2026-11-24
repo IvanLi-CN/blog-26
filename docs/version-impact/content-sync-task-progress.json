@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "fe047f84a00a25c9e4b41b0696658f9395314d21",
+  "base_sha": "c4811c4d",
   "covered_files": {
     "GLOSSARY.md": "0dcd49723b395893ad650c52fe5d9b1358ad9b93",
     "apps/admin/src/components/content-task-progress.stories.tsx": "1441d98ba3650583da16b56ec5629064f5a63068",
@@ -168,7 +168,8 @@
         "4.2.19",
         "4.2.20",
         "4.2.21",
-        "4.2.22"
+        "4.2.22",
+        "4.2.23"
       ],
       "evidence": [
         {
@@ -249,7 +250,8 @@
         "4.2.19",
         "4.2.20",
         "4.2.21",
-        "4.2.22"
+        "4.2.22",
+        "4.2.23"
       ],
       "upgrade_from_versions": [
         "2.7.0",
@@ -318,7 +320,8 @@
         "4.2.19",
         "4.2.20",
         "4.2.21",
-        "4.2.22"
+        "4.2.22",
+        "4.2.23"
       ],
       "evidence": [
         {
