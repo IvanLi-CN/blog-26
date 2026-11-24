@@ -257,7 +257,9 @@
 
 ## Visual Evidence
 
-- None
+- ![内容仓库任务进度（桌面）](./assets/content-task-progress-desktop.png)
+- ![内容仓库任务进度（窄屏）](./assets/content-task-progress-mobile.png)
+- ![内容合并批量选择（桌面）](./assets/content-merge-batch-desktop.png)
 
 ## References
 
