@@ -40,12 +40,18 @@ function changedMediaPaths(entry: ContentRepoEntry, baseline: ContentRepoBaselin
   return changed.sort();
 }
 
+const CONTENT_DOCUMENT_PATTERN = /^(?:blog|Memos)\/.+\.md$/u;
+
+function isContentDocumentPath(path: string) {
+  return CONTENT_DOCUMENT_PATTERN.test(path);
+}
+
 export function computeSyncStates(input: ContentSyncStateInput): ContentSyncStateItem[] {
   const byPath = new Map(input.entries.map((entry) => [entry.document.path, entry]));
   const paths = new Set<string>([
     ...byPath.keys(),
     ...input.baselines.keys(),
-    ...input.remote.keys(),
+    ...[...input.remote.keys()].filter(isContentDocumentPath),
   ]);
   const items: ContentSyncStateItem[] = [];
 

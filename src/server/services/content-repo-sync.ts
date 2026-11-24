@@ -157,7 +157,11 @@ function findRowForRepoPath(path: string) {
 
 export async function loadContentRepoEntries(
   ids?: string[],
-  options: { tolerateMissingMedia?: boolean; readOnly?: boolean; unbounded?: boolean } = {}
+  options: {
+    tolerateMissingMedia?: boolean;
+    enforceBatchLimit?: boolean;
+    recordIdentity?: boolean;
+  } = {}
 ): Promise<{ entries: ContentRepoEntry[]; missingMedia: Map<string, string[]> }> {
   const where = ids?.length ? inArray(posts.id, ids) : inArray(posts.type, ["post", "memo"]);
   const rows = db
@@ -166,7 +170,7 @@ export async function loadContentRepoEntries(
     .where(where)
     .all()
     .filter((row) => row.type === "post" || row.type === "memo");
-  if (!options.unbounded && rows.length > CONTENT_REPO_MAX_BATCH_CONTENTS)
+  if (options.enforceBatchLimit && rows.length > CONTENT_REPO_MAX_BATCH_CONTENTS)
     throw new ContentRepoError(
       "invalid",
       `A push batch is limited to ${CONTENT_REPO_MAX_BATCH_CONTENTS} contents`
@@ -205,7 +209,8 @@ export async function loadContentRepoEntries(
           "invalid",
           `Attachment changed outside the content library: ${path}`
         );
-      if (identity.status === "record" && !options.readOnly) recordMediaIdentity(path, bytes);
+      if (identity.status === "record" && options.recordIdentity !== false)
+        recordMediaIdentity(path, bytes);
       media.push({ path, bytes, sha256: identity.sha256 });
     }
     if (missing.length) missingMedia.set(document.path, missing);
@@ -497,7 +502,7 @@ async function runPushTask(
   ids: string[] | undefined
 ): Promise<ContentRepoPushOutcome> {
   try {
-    const { entries } = await loadContentRepoEntries(ids, { unbounded: !ids });
+    const { entries } = await loadContentRepoEntries(ids, { enforceBatchLimit: Boolean(ids) });
     const ordered = [...entries].sort((left, right) =>
       left.document.path.localeCompare(right.document.path)
     );
@@ -898,8 +903,7 @@ async function runPullTask(
     await updateContentTask(task.id, { phase: "checking" });
     const { entries, missingMedia } = await loadContentRepoEntries(undefined, {
       tolerateMissingMedia: true,
-      readOnly: true,
-      unbounded: true,
+      recordIdentity: false,
     });
     const baselines = loadContentRepoBaselines();
     const transport = createContentRepoTransport(config);
@@ -1409,8 +1413,7 @@ export interface ContentRepoAdoptOutcome {
 async function inspectContentRepo(config: ContentRepoConfig) {
   const { entries, missingMedia } = await loadContentRepoEntries(undefined, {
     tolerateMissingMedia: true,
-    readOnly: true,
-    unbounded: true,
+    recordIdentity: false,
   });
   const baselines = loadContentRepoBaselines();
   const transport = createContentRepoTransport(config);
@@ -1659,8 +1662,7 @@ async function runMergeTask(
     await updateContentTask(task.id, { phase: "checking" });
     const { entries, missingMedia } = await loadContentRepoEntries(undefined, {
       tolerateMissingMedia: true,
-      readOnly: true,
-      unbounded: true,
+      recordIdentity: false,
     });
     const baselines = loadContentRepoBaselines();
     const transport = createContentRepoTransport(config);
@@ -1936,8 +1938,7 @@ export async function checkContentRepo(
     // Check is read-only: loading must not record or repair media identity.
     const { entries, missingMedia } = await loadContentRepoEntries(input.ids, {
       tolerateMissingMedia: true,
-      readOnly: true,
-      unbounded: !input.ids?.length,
+      recordIdentity: false,
     });
     const transport = createContentRepoTransport(config);
     const head = await transport.resolveHead();

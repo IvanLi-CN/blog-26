@@ -159,6 +159,21 @@ describe("content sync states", () => {
     expect(items[0]?.missingMedia).toEqual(["blog/assets/gone.png"]);
   });
 
+  test("does not report attachments or README as remote content", () => {
+    const items = computeSyncStates({
+      entries: [],
+      baselines: new Map(),
+      remote: new Map([
+        ["README.md", "readme-sha"],
+        ["blog/assets/cover.png", "cover-sha"],
+        ["Memos/assets/a.webp", "memo-asset-sha"],
+        ["blog/new.md", "new-sha"],
+      ]),
+    });
+    expect(items.map((item) => item.path)).toEqual(["blog/new.md"]);
+    expect(items[0]?.state).toBe("remote-new");
+  });
+
   test("counts states across contents", () => {
     const counts = summarizeSyncStates(
       computeSyncStates({
