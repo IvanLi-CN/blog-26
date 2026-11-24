@@ -876,6 +876,8 @@
   display: inline-flex;
   align-items: center;
   line-height: 1;
+  /* CJK glyph ink sits above the em-box centre; nudge it to the optical centre. */
+  transform: translateY(0.08em);
 }
 
 .knowledge-assistant-failure-detail {
