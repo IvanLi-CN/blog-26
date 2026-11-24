@@ -4,14 +4,15 @@ import type {
   AssistantMessage,
   FrontendAuthState,
 } from "@/lib/assistant-contracts";
+import type { AssistantGenerationJobView } from "@/lib/assistant-generation-failure";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
 
 export type AssistantSnapshot = {
   conversation: AssistantConversation;
   messages: AssistantMessage[];
-  generationJobs: AssistantGenerationJob[];
-  activeGenerationJob: AssistantGenerationJob | null;
+  generationJobs: AssistantGenerationJobView[];
+  activeGenerationJob: AssistantGenerationJobView | null;
   eventSequence?: number;
 };
 

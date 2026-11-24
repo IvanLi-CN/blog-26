@@ -1,8 +1,13 @@
 import { z } from "zod";
-import type { AssistantGenerationJob, FrontendPrincipal } from "@/lib/assistant-contracts";
+import type { FrontendPrincipal } from "@/lib/assistant-contracts";
+import {
+  type AssistantGenerationJobView,
+  presentAssistantGenerationJob,
+} from "@/lib/assistant-generation-failure";
 import { initializeDB } from "@/lib/db";
 import { getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
 import { appendPublicCorsHeaders, hasTrustedPublicOrigin } from "@/lib/public-cors";
+import { buildPublicErrorBody, sanitizePublicErrorBody } from "@/lib/public-error-presets";
 import {
   assertAssistantServiceEnabled,
   SiteFeatureDisabledError,
@@ -57,8 +62,9 @@ function response(
   }
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store, private");
+  headers.append("vary", "Cookie, Authorization");
   appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
-  return new Response(JSON.stringify(data), { status, headers });
+  return new Response(JSON.stringify(sanitizePublicErrorBody(data, status)), { status, headers });
 }
 
 function methodNotAllowed(request: Request) {
@@ -176,7 +182,7 @@ function streamResponse(
             const currentPrincipal = await getFrontendPrincipalFromRequest(request);
             if (!currentPrincipal || currentPrincipal.id !== principal.id) break;
             try {
-              const snapshot = await service.snapshot(principal, conversationId);
+              const snapshot = await service.snapshot(currentPrincipal, conversationId);
               if (closed) break;
               const serialized = JSON.stringify(snapshot);
               if (!closed && serialized !== previous) {
@@ -192,10 +198,9 @@ function streamResponse(
             } catch (error) {
               const mapped = routeError(error);
               if (mapped.status === 410 || mapped.status === 404) {
+                const failure = buildPublicErrorBody(mapped, mapped.message);
                 controller.enqueue(
-                  encoder.encode(
-                    `event: error\ndata: ${JSON.stringify({ code: mapped.code, error: mapped.message })}\n\n`
-                  )
+                  encoder.encode(`event: error\ndata: ${JSON.stringify(failure)}\n\n`)
                 );
               }
               break;
@@ -215,27 +220,29 @@ function streamResponse(
     },
   });
   const headers = new Headers({
-    "cache-control": "no-cache, no-store",
+    "cache-control": "private, no-store",
     connection: "keep-alive",
     "content-type": "text/event-stream; charset=utf-8",
+    vary: "Cookie, Authorization",
     "x-accel-buffering": "no",
   });
   appendPublicCorsHeaders(headers, request, PUBLIC_API_ALLOWED_METHODS);
   return new Response(stream, { status: 200, headers });
 }
 
-function normalizeGenerationJob(job: AssistantGenerationJob | null) {
-  return job
-    ? {
-        id: job.id,
-        status: job.status,
-        attempt: job.attempt,
-        cancelRequested: job.cancelRequested,
-        startedAt: job.startedAt,
-        finishedAt: job.finishedAt,
-        errorCode: job.errorCode,
-      }
-    : null;
+function normalizeGenerationJob(job: AssistantGenerationJobView | null, canDiagnose: boolean) {
+  if (!job) return null;
+  const view = job.failure ? job : presentAssistantGenerationJob(job, canDiagnose);
+  return {
+    id: view.id,
+    status: view.status,
+    attempt: view.attempt,
+    cancelRequested: view.cancelRequested,
+    startedAt: view.startedAt,
+    finishedAt: view.finishedAt,
+    errorCode: view.errorCode,
+    failure: view.failure,
+  };
 }
 
 async function submitAssistantRequest(
@@ -418,7 +425,10 @@ export async function handleAssistantRequest(
       });
       return response(
         request,
-        { ...result, generationJob: normalizeGenerationJob(result.generationJob) },
+        {
+          ...result,
+          generationJob: normalizeGenerationJob(result.generationJob, principal.isAdmin),
+        },
         200,
         undefined,
         resHeaders
@@ -453,7 +463,10 @@ export async function handleAssistantRequest(
       const result = await service.stop(principal, { conversationId: stopConversationId });
       return response(
         request,
-        { ...result, generationJob: normalizeGenerationJob(result.generationJob) },
+        {
+          ...result,
+          generationJob: normalizeGenerationJob(result.generationJob, principal.isAdmin),
+        },
         200,
         undefined,
         resHeaders
@@ -469,7 +482,10 @@ export async function handleAssistantRequest(
       });
       return response(
         request,
-        { ...result, generationJob: normalizeGenerationJob(result.generationJob) },
+        {
+          ...result,
+          generationJob: normalizeGenerationJob(result.generationJob, principal.isAdmin),
+        },
         200,
         undefined,
         resHeaders

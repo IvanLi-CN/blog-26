@@ -293,7 +293,7 @@ describe("clipping lifecycle and canonical content", () => {
       await service.idle();
       const after = await projectClippingMemo(data.memoId, data.store, true);
       expect(after?.reading.status).toBe("failed");
-      expect(after?.reading.error).toContain("LLM");
+      expect(after?.reading.error).toBe("该功能当前未开放。");
       expect(after?.reading.usingPreviousVersion).toBe(true);
       expect(after?.content).toBe(before?.content);
       expect(after?.reading.versionId).toBe(before?.reading.versionId);

@@ -263,7 +263,7 @@ describe("HTTP compatibility APIs", () => {
     await resetContentSourceManager();
   }, 10_000);
 
-  it("preserves target 404 codes without labeling generic public 404s", async () => {
+  it("returns a preset 404 body for both missing targets and missing routes", async () => {
     if (!db) throw new Error("Database has not been initialised");
     await db
       .update(commentMigrationState)
@@ -277,14 +277,17 @@ describe("HTTP compatibility APIs", () => {
       "/comments"
     );
     expect(targetResponse.status).toBe(404);
-    expect(await targetResponse.json()).toMatchObject({ code: "NOT_FOUND" });
+    expect(await targetResponse.json()).toMatchObject({
+      code: "NOT_FOUND",
+      error: "目标内容不存在或已不可用。",
+    });
 
     const routeResponse = await handlePublicApiRequest(
       buildRequest("/api/public/missing-route"),
       "/missing-route"
     );
     expect(routeResponse.status).toBe(404);
-    expect(await routeResponse.json()).not.toHaveProperty("code");
+    expect(await routeResponse.json()).toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("protects project status overview and exposes the shared 42-entry catalog", async () => {
@@ -1910,7 +1913,7 @@ public: false
     );
 
     expect(response.status).toBe(403);
-    expect(await readJson(response)).toMatchObject({ error: "请求来源不受信任" });
+    expect(await readJson(response)).toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("binds GitHub through the admin callback and identifies the reader session", async () => {
@@ -3941,7 +3944,7 @@ public: false
     );
 
     expect(response.status).toBe(400);
-    expect(await readJson(response)).toEqual(expect.objectContaining({ code: "BAD_REQUEST" }));
+    expect(await readJson(response)).toEqual(expect.objectContaining({ code: "INVALID_REQUEST" }));
   });
 
   it("shares FTS list filtering while preserving public and administrator visibility", async () => {

@@ -76,7 +76,7 @@ describe("public search SSE transport", () => {
       "/search/stream"
     );
     expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ code: "BAD_REQUEST" });
+    expect(await response.json()).toMatchObject({ code: "INVALID_REQUEST" });
   });
 
   test("ignores malformed legacy Playbook selectors", async () => {
@@ -101,8 +101,9 @@ describe("public search SSE transport", () => {
     const body = await response.text();
     expect(body).toContain("event: started");
     expect(body).toContain('"code":"SERVICE_UNAVAILABLE"');
-    expect(body).toContain('"error":"search-unavailable"');
+    expect(body).toContain('"error":"服务暂不可用，请稍后重试。"');
     expect(body).not.toContain("playbook-edition");
+    expect(body).not.toContain("search-unavailable");
   });
 
   test("JSON search keeps legacy selector compatibility without validating it", async () => {

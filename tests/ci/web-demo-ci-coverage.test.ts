@@ -15,6 +15,7 @@ const ownViewportTitles = [
   "uses the main public navigation on mobile without adding extra entries",
   "opens the mobile conversation list as a modal sheet above the chat surface",
   "keeps the guest mobile surface focused on chat instead of an inline list",
+  "keeps the reader failure card full-width with a 44px retry target",
   "keeps detail and related media watermarked separately",
   "mobile mode controls remain keyboard accessible without horizontal overflow",
 ];

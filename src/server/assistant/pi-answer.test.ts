@@ -278,6 +278,34 @@ test("a site search miss and web failure do not prevent Pi from answering reliab
   }
 });
 
+test("retains the provider HTTP status without the upstream response text", async () => {
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch: () =>
+      Response.json({ error: { message: "private upstream diagnostic" } }, { status: 401 }),
+  });
+  try {
+    await expect(
+      generatePiAnswer(
+        {
+          execution: await execution("请回答这个问题"),
+          isAdmin: false,
+          signal: new AbortController().signal,
+          onDelta: async () => true,
+        },
+        null,
+        { resolveModel: modelConfig(server.port), webConfig }
+      )
+    ).rejects.toMatchObject({
+      code: "assistant-provider-http-401",
+      message: "模型生成失败，请重试；已保存的文章和对话仍然保留。",
+    });
+  } finally {
+    server.stop(true);
+  }
+});
+
 test("private retrieval cannot be exported through model-generated web queries", async () => {
   let requests = 0;
   const server = Bun.serve({

@@ -6,6 +6,7 @@ import type { AssistantJobExecution, FrontendPrincipal } from "@/lib/assistant-c
 import { extractMemoTitle } from "@/lib/content-sources/utils";
 import { db } from "@/lib/db";
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
+import { publicErrorMessage } from "@/lib/public-error-presets";
 import { frontendUsers, memoClippings, memoClippingVersions, posts } from "@/lib/schema";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import {
@@ -158,9 +159,11 @@ async function saveIndex(manifest: ClippingManifest, projection: Projection) {
 }
 
 function publicError(error: unknown) {
-  return error instanceof ClippingFetchError || error instanceof AgentConfigurationError
-    ? error.message
-    : "文章处理未完成，请重试；作者原稿和已成功的阅读版本仍然保留。";
+  // Stored failure text is read by every audience of the memo, so it can never
+  // carry an upstream message. The original error still goes to the logs.
+  if (error instanceof ClippingFetchError) return publicErrorMessage("INVALID_REQUEST");
+  if (error instanceof AgentConfigurationError) return publicErrorMessage("FEATURE_DISABLED");
+  return "文章处理未完成，请重试；作者原稿和已成功的阅读版本仍然保留。";
 }
 
 /** The sole runtime owner reconciles canonical authored files and publishes fenced materials. */

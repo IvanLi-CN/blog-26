@@ -9,6 +9,10 @@ import type {
   FrontendPrincipal,
   SubmitAssistantTurnInput,
 } from "@/lib/assistant-contracts";
+import {
+  type AssistantGenerationJobView,
+  presentAssistantGenerationJob,
+} from "@/lib/assistant-generation-failure";
 import { AssistantStorageError, createAssistantStorage } from "@/lib/assistant-storage";
 import { db, initializeDB } from "@/lib/db";
 import { posts } from "@/lib/schema";
@@ -32,8 +36,8 @@ export class AssistantServiceError extends Error {
 export type AssistantSnapshot = {
   conversation: AssistantConversation;
   messages: AssistantMessage[];
-  generationJobs: AssistantGenerationJob[];
-  activeGenerationJob: AssistantGenerationJob | null;
+  generationJobs: AssistantGenerationJobView[];
+  activeGenerationJob: AssistantGenerationJobView | null;
   eventSequence: number;
 };
 
@@ -263,8 +267,9 @@ export class AssistantService {
     }
     const messages =
       (await this.storage.getConversationMessages(conversationId, principal.id)) ?? [];
-    const generationJobs =
-      (await this.storage.listGenerationJobs(conversationId, principal.id)) ?? [];
+    const generationJobs = (
+      (await this.storage.listGenerationJobs(conversationId, principal.id)) ?? []
+    ).map((job) => presentAssistantGenerationJob(job, principal.isAdmin));
     return {
       conversation: (await attachClippingSlugs([conversation]))[0] ?? conversation,
       messages,
@@ -290,14 +295,20 @@ export class AssistantService {
     const existing = await this.storage.getGenerationJob(turnId, principal.id);
     if (!existing) throw new AssistantServiceError("not-found", "Assistant turn not found");
     if (existing.status !== "queued" && existing.status !== "running")
-      return { stopped: false, generationJob: existing };
+      return {
+        stopped: false,
+        generationJob: presentAssistantGenerationJob(existing, principal.isAdmin),
+      };
     const generationJob = await this.storage.stopGeneration(turnId, principal.id, Date.now());
     if (!generationJob) throw new AssistantServiceError("not-found", "Assistant turn not found");
     const stopped =
       (generationJob.status === "running" && generationJob.cancelRequested) ||
       (generationJob.status === "cancelled" && generationJob.errorCode === "cancelled-by-user");
     if (stopped) this.runtime.cancelGeneration(generationJob.id);
-    return { stopped, generationJob };
+    return {
+      stopped,
+      generationJob: presentAssistantGenerationJob(generationJob, principal.isAdmin),
+    };
   }
 
   async delete(principal: FrontendPrincipal, conversationId: string) {

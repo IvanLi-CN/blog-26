@@ -71,6 +71,7 @@ export const WarningState: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId("frontmatter-diagnostics-warning")).toBeVisible();
     await userEvent.hover(canvas.getByTestId("frontmatter-diagnostics-warning"));
+    await expect(canvas.getByTestId("frontmatter-diagnostic-list")).toBeVisible();
     await expect(
       canvas.getByText("未知字段 “mysteryField” 会被保留，但不在首版 frontmatter schema 内。")
     ).toBeVisible();
@@ -114,9 +115,13 @@ excerpt: |-
     ).toBe(2);
     await userEvent.hover(canvas.getByTestId("frontmatter-diagnostics-error"));
     await expect(canvas.getByText("tags 必须写成数组：")).toBeVisible();
-    await expect(canvas.getByText("- React")).toBeVisible();
-    await expect(canvas.getByText("- Hooks")).toBeVisible();
+    await expect(canvas.getByText(/- React/u)).toBeVisible();
+    await expect(canvas.getByText(/- Hooks/u)).toBeVisible();
     await expect(canvas.getByText("publishDate 必须是可解析的日期文本。")).toBeVisible();
+
+    const tooltip = within(document.body).getByRole("tooltip");
+    await expect(tooltip).toHaveTextContent("完整诊断在块下方");
+    await expect(canvas.getByTestId("frontmatter-diagnostic-copy")).toBeVisible();
   },
 };
 

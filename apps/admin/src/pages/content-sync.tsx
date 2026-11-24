@@ -269,7 +269,7 @@ export function PlaybookSyncStatusDetails({
           </div>
         </dl>
         {playbook.semantic?.lastError && (
-          <p className="break-words text-sm text-danger">{playbook.semantic.lastError}</p>
+          <p className="break-words text-sm text-destructive">{playbook.semantic.lastError}</p>
         )}
       </section>
 
@@ -283,7 +283,7 @@ export function PlaybookSyncStatusDetails({
           <span className="text-muted-foreground">
             {task.phase} · {task.processed}/{task.total} · 失败 {task.failed}
           </span>
-          {task.error && <span className="break-words text-danger">{task.error}</span>}
+          {task.error && <span className="break-words text-destructive">{task.error}</span>}
         </div>
       )}
     </div>
@@ -749,7 +749,7 @@ export function ContentSyncPage() {
                     {data.rag.details
                       .filter((row) => row.error)
                       .map((row) => (
-                        <p key={row.id} className="break-words text-danger">
+                        <p key={row.id} className="break-words text-destructive">
                           {row.slug}：{row.error}
                         </p>
                       ))}
@@ -817,7 +817,7 @@ export function ContentSyncPage() {
               <p className="mt-2 text-xs text-muted-foreground">
                 {formatDateTime(task.startedAt)} · {task.origin}
               </p>
-              {task.error && <p className="mt-2 text-sm text-danger">{task.error}</p>}
+              {task.error && <p className="mt-2 text-sm text-destructive">{task.error}</p>}
               <Disclosure className="mt-2 text-xs text-muted-foreground" summary="任务身份">
                 <p className="mt-2 break-all font-mono">{task.id}</p>
               </Disclosure>

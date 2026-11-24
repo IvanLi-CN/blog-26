@@ -12,6 +12,7 @@ import { db } from "@/lib/db";
 import { ensureAdminFrontendUser, getFrontendPrincipalFromRequest } from "@/lib/frontend-auth";
 import { recognizeMemoClipping } from "@/lib/memo-clipping";
 import { resolveRequestOrigin } from "@/lib/public-cors";
+import { sanitizePublicErrorBody } from "@/lib/public-error-presets";
 import { posts } from "@/lib/schema";
 import { AssistantServiceError, type AssistantSnapshot } from "@/server/assistant/service";
 import type { TRPCContext } from "@/server/context";
@@ -34,7 +35,7 @@ const MAX_ACTIVE_CLIPPING_EVENT_STREAMS = 4;
 const activeClippingEventStreams = new Map<string, number>();
 
 function response(data: unknown, status = 200) {
-  return Response.json(data, {
+  return Response.json(sanitizePublicErrorBody(data, status), {
     status,
     headers: { "cache-control": "no-store", vary: "Cookie, Authorization" },
   });

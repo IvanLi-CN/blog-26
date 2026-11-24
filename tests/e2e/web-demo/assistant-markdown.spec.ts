@@ -479,7 +479,7 @@ for (const scene of ["failed", "stopped", "final"]) {
       scene === "failed" ? "failed" : scene === "stopped" ? "cancelled" : "completed"
     );
     if (scene === "failed")
-      await expect(page.getByRole("button", { name: "重试", exact: true })).toBeVisible();
+      await expect(page.getByTestId("assistant-generation-failure")).toBeVisible();
     expect(await counts(page)).toEqual({ submits: 0, stops: 0 });
   });
 }

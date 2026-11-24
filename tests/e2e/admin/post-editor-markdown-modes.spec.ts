@@ -944,8 +944,8 @@ publishDate: not-a-date
     await page.getByRole("button", { name: "WYSIWYG" }).click();
     const errorMarker = page.getByTestId("frontmatter-diagnostics-error");
     await expect(errorMarker).toBeVisible();
-    await expect(page.getByText("tags 必须写成数组：")).toHaveCount(0);
-    await expect(page.getByText("publishDate 必须是可解析的日期文本。")).toHaveCount(0);
+    // The list renders field and summary; the raw YAML detail stays collapsed.
+    await expect(page.getByText("- React")).toBeHidden();
     await expect(
       page.locator('[data-testid="frontmatter-block"] [data-frontmatter-diagnostic-line]')
     ).toHaveCount(2);
@@ -995,17 +995,24 @@ publishDate: not-a-date
 
     await errorMarker.hover();
     const tooltip = page.getByRole("tooltip");
-    await expect(tooltip).toContainText("tags 必须写成数组：");
-    await expect(tooltip).toContainText("- React");
-    await expect(tooltip).toContainText("- Hooks");
-    await expect(tooltip).toContainText("publishDate 必须是可解析的日期文本。");
+    const tooltipBox = await tooltip.boundingBox();
+    expect(tooltipBox?.width ?? 0).toBeGreaterThanOrEqual(300);
+    await expect(tooltip).toContainText("tags");
+    await expect(tooltip).toContainText("publishDate");
+    await expect(tooltip).toContainText("完整诊断在块下方");
+
+    const diagnosticList = page.getByTestId("frontmatter-diagnostic-list");
+    await expect(diagnosticList).toContainText("tags 必须写成数组：");
+    await expect(diagnosticList).toContainText("- React");
+    await expect(diagnosticList).toContainText("- Hooks");
+    await expect(diagnosticList).toContainText("publishDate 必须是可解析的日期文本。");
+    await expect(page.getByTestId("frontmatter-diagnostic-copy")).toBeVisible();
+
     await page
       .locator('[data-testid="frontmatter-block"] [data-frontmatter-diagnostic-line-end="error"]')
       .first()
       .hover();
-    await expect(page.getByTestId("frontmatter-diagnostic-tooltip")).toContainText(
-      "tags 必须写成数组："
-    );
+    await expect(page.getByTestId("frontmatter-diagnostic-tooltip")).toContainText("tags");
 
     await page.getByTestId("editor-save").click();
     await expect(

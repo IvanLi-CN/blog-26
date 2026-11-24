@@ -267,7 +267,7 @@ export function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
       leadingControls={
         publicPage ? (
           <div
-            className="inline-flex items-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-950"
+            className="inline-flex items-center gap-2 rounded-full border border-warning/30 bg-warning/12 px-3 py-1.5 text-xs text-warning"
             data-testid="admin-preview-public-state"
           >
             <CircleSlash className="size-3.5" />

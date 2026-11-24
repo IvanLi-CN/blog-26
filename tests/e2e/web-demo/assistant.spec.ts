@@ -30,7 +30,7 @@ test.describe("Knowledge Assistant Web Demo", () => {
     await expect(page.getByText("站点功能配置已保存。")).toBeVisible();
 
     await page.goto("/chat?d_persona=user&d_delay=normal");
-    await expect(page.getByTestId("assistant-request-error")).toContainText("站点助手功能未启用");
+    await expect(page.getByTestId("assistant-request-error")).toContainText("该功能当前未开放。");
   });
 
   test("creates a distinct conversation after the first message", async ({ page }) => {
@@ -290,6 +290,58 @@ test.describe("Knowledge Assistant Web Demo", () => {
         () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
       )
     ).toBe(true);
+  });
+
+  test("renders the assistant failure card wide in the floating desktop panel", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1100, height: 780 });
+    await page.goto("/?d_persona=admin&d_scene=assistant-failure&d_theme=dark&d_motion=reduce");
+    await hideInspector(page);
+    await page.getByTestId("assistant-fab").click();
+
+    const panel = page.getByTestId("assistant-panel");
+    const card = panel.getByTestId("assistant-generation-failure");
+    await expect(card).toBeVisible();
+    await expect(card).toContainText("知识对话暂时不可用，请稍后重试。");
+    await expect(panel.locator(".knowledge-assistant-turn").first()).not.toContainText(
+      "已完成本轮回答"
+    );
+    await expect(panel.getByTestId("assistant-message-assistant")).toHaveCount(0);
+    await card.getByText("查看错误详情").click();
+    await expect(card).toContainText("模型服务返回 HTTP 503。");
+    await expect(card).toContainText("assistant-provider-http-503");
+
+    const cardBox = await card.boundingBox();
+    const turnBox = await card.locator("..").boundingBox();
+    expect(cardBox).not.toBeNull();
+    expect(turnBox).not.toBeNull();
+    expect(cardBox?.width ?? 0).toBeGreaterThanOrEqual((turnBox?.width ?? 0) - 2);
+    await expect(card.getByRole("button", { name: "重试" })).toHaveCSS("min-height", "36px");
+  });
+
+  test("keeps the reader failure card full-width with a 44px retry target", {
+    tag: "@own-viewport",
+  }, async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await page.goto("/?d_persona=user&d_scene=assistant-failure&d_theme=dark&d_motion=reduce");
+    await hideInspector(page);
+    await page.getByTestId("assistant-fab").click();
+
+    const panel = page.getByTestId("assistant-panel");
+    const card = panel.getByTestId("assistant-generation-failure");
+    await expect(card).toBeVisible();
+    await expect(card).toContainText("知识对话暂时不可用，请稍后重试。");
+    await expect(card).not.toContainText("assistant-provider-http-503");
+    await expect(card.locator("details")).toHaveCount(0);
+
+    const cardBox = await card.boundingBox();
+    const turnBox = await card.locator("..").boundingBox();
+    expect(cardBox).not.toBeNull();
+    expect(turnBox).not.toBeNull();
+    expect(cardBox?.width ?? 0).toBeGreaterThanOrEqual((turnBox?.width ?? 0) - 2);
+    await expect(card.getByRole("button", { name: "重试" })).toHaveCSS("min-height", "44px");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(393);
   });
 
   test("keeps the guest route read-only and preserves a pre-login draft", async ({ page }) => {

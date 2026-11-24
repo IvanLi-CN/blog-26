@@ -23,8 +23,8 @@ import {
   keymap,
   WidgetType,
 } from "@codemirror/view";
-import { FileJson2, TriangleAlert } from "lucide-react";
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronRight, FileJson2, TriangleAlert } from "lucide-react";
+import { type CSSProperties, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type {
   FrontmatterDiagnostic,
@@ -36,7 +36,10 @@ import {
   splitFrontmatterDiagnosticMessage,
   validateFrontmatterText,
 } from "@/lib/frontmatter-document";
-import { Button } from "~/components/ui";
+import { Button, Disclosure } from "~/components/ui";
+
+const DIAGNOSTIC_CARD_WIDTH = 384;
+const DIAGNOSTIC_LIST_VISIBLE_LIMIT = 3;
 
 type FrontmatterBlockProps = {
   value: string;
@@ -52,11 +55,13 @@ type InlineDiagnosticTooltipState = {
   severity: "error" | "warning";
   style: CSSProperties;
   title: string;
+  align: "start" | "end";
 };
 
 type InlineDiagnosticHoverDetail = {
   indexes: number[];
   severity: "error" | "warning";
+  target?: HTMLElement;
   rect: {
     top: number;
     left: number;
@@ -415,6 +420,7 @@ class DiagnosticLineMarkerWidget extends WidgetType {
           detail: {
             indexes: [...this.diagnosticIndexes],
             severity: this.severity,
+            target: marker,
             rect: {
               top: rect.top,
               left: rect.left,
@@ -592,17 +598,20 @@ function buildDiagnosticTooltipStyle(
 ) {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const maxWidth = Math.min(352, Math.max(220, viewportWidth - 24));
+  // A diagnostic card is read, not skimmed as a bubble: the width stays stable
+  // regardless of message length so the reading position never jumps.
+  const width = Math.min(DIAGNOSTIC_CARD_WIDTH, Math.max(240, viewportWidth - 32));
   const showAbove = rect.bottom + 170 > viewportHeight && rect.top > 140;
   const align = options?.align ?? "start";
-  const preferredLeft = align === "end" ? rect.right - maxWidth : rect.left;
-  const left = Math.max(12, Math.min(preferredLeft, viewportWidth - maxWidth - 12));
+  const preferredLeft = align === "end" ? rect.right - width : rect.left;
+  const left = Math.max(12, Math.min(preferredLeft, viewportWidth - width - 12));
 
   return {
     position: "fixed" as const,
     top: showAbove ? rect.top - 10 : rect.bottom + 10,
     left,
-    maxWidth: `${maxWidth}px`,
+    width: `${width}px`,
+    maxWidth: `calc(100vw - 2rem)`,
     transform: showAbove ? "translateY(-100%)" : undefined,
   };
 }
@@ -617,8 +626,9 @@ function buildInlineTooltipState(
   return {
     diagnostics,
     severity: getInlineTooltipSeverity(diagnostics),
-    title: diagnostics.length > 1 ? "错误详情" : "行内错误",
+    title: diagnostics.length > 1 ? "诊断摘要" : "行内诊断",
     style: buildDiagnosticTooltipStyle(rect),
+    align: "start",
   };
 }
 
@@ -633,8 +643,9 @@ function buildSummaryTooltipState(
   return {
     diagnostics,
     severity,
-    title: severity === "error" ? "错误详情" : "警告详情",
+    title: severity === "error" ? "诊断摘要" : "警告摘要",
     style: buildDiagnosticTooltipStyle(rect, { align: "end" }),
+    align: "end",
   };
 }
 
@@ -647,60 +658,204 @@ function buildInlineTooltipStateFromDetail(
   return {
     diagnostics,
     severity: detail.severity,
-    title: diagnostics.length > 1 ? "错误详情" : "行内错误",
+    title: diagnostics.length > 1 ? "诊断摘要" : "行内诊断",
     style: buildDiagnosticTooltipStyle(detail.rect),
+    align: "start",
   };
 }
 
-function DiagnosticMessage({ message }: { message: string }) {
-  const { summary, detail } = splitFrontmatterDiagnosticMessage(message);
+function diagnosticFieldLabel(diagnostic: FrontmatterDiagnostic) {
+  return diagnostic.field ? diagnostic.field : "根级";
+}
 
-  return (
-    <div className="space-y-1.5">
-      <div className="text-pretty text-muted-foreground">{summary}</div>
-      {detail ? (
-        <pre className="overflow-x-auto rounded-md border border-border/60 bg-muted/28 px-2.5 py-2 font-mono text-[11px] leading-5 text-foreground/88 whitespace-pre-wrap">
-          {detail}
-        </pre>
-      ) : null}
-    </div>
-  );
+/** Diagnostic messages usually repeat their own field name; the badge already says it. */
+function diagnosticSummary(diagnostic: FrontmatterDiagnostic) {
+  const { summary } = splitFrontmatterDiagnosticMessage(diagnostic.message);
+  const field = diagnostic.field;
+  if (!field) return summary;
+  for (const prefix of [`${field}：`, `${field}:`, `${field} `]) {
+    if (summary.startsWith(prefix)) return summary.slice(prefix.length).trimStart();
+  }
+  return summary;
+}
+
+function formatDiagnosticForClipboard(diagnostic: FrontmatterDiagnostic) {
+  const summary = diagnosticSummary(diagnostic);
+  const { detail } = splitFrontmatterDiagnosticMessage(diagnostic.message);
+  return detail
+    ? `${diagnosticFieldLabel(diagnostic)}: ${summary}\n${detail}`
+    : `${diagnosticFieldLabel(diagnostic)}: ${summary}`;
 }
 
 function InlineDiagnosticTooltip({ tooltip }: { tooltip: InlineDiagnosticTooltipState | null }) {
   if (!tooltip || typeof document === "undefined") return null;
 
-  const toneClass =
-    tooltip.severity === "error"
-      ? "border-destructive/35 shadow-[0_18px_40px_-28px_color-mix(in_oklch,var(--destructive)_55%,transparent)]"
-      : "border-amber-400/35 shadow-[0_18px_40px_-28px_color-mix(in_oklch,var(--warning)_40%,transparent)]";
+  const isError = tooltip.severity === "error";
+  const toneClass = isError
+    ? "border-destructive/45 border-l-destructive bg-destructive/8 shadow-[0_18px_40px_-28px_color-mix(in_oklch,var(--destructive)_55%,transparent)]"
+    : "border-warning/40 border-l-warning bg-warning/8 shadow-[0_18px_40px_-28px_color-mix(in_oklch,var(--warning)_45%,transparent)]";
 
   return createPortal(
     <div
       role="tooltip"
       data-testid="frontmatter-diagnostic-tooltip"
-      className={`pointer-events-none z-[70] rounded-[1rem] border bg-card/96 px-3 py-2 text-[11px] leading-5 text-foreground shadow-xl backdrop-blur-sm ${toneClass}`}
+      className={`pointer-events-none z-[70] rounded-[1rem] border border-l-[3px] bg-card/96 px-3 py-2 text-[11px] leading-5 text-foreground shadow-xl backdrop-blur-sm ${toneClass}`}
       style={tooltip.style}
     >
       <div className="mb-1.5 flex items-center gap-2">
         <TriangleAlert
-          className={`size-3.5 shrink-0 ${tooltip.severity === "error" ? "text-destructive" : "text-amber-500 dark:text-amber-300"}`}
+          className={`size-3.5 shrink-0 ${isError ? "text-destructive" : "text-warning"}`}
           aria-hidden="true"
         />
-        <span className="font-medium text-foreground">{tooltip.title}</span>
+        <span className={`font-medium ${isError ? "text-destructive" : "text-warning"}`}>
+          {tooltip.title}
+        </span>
+        <span className="ml-auto tabular-nums text-muted-foreground">
+          {tooltip.diagnostics.length}
+        </span>
       </div>
-      <div className="space-y-1.5">
-        {tooltip.diagnostics.map((diagnostic, index) => (
-          <div
-            key={getDiagnosticKey(diagnostic)}
-            className={index === 0 ? "" : "border-t border-border/60 pt-1.5"}
-          >
-            <DiagnosticMessage message={diagnostic.message} />
+      <div className="space-y-1">
+        {tooltip.diagnostics.slice(0, 3).map((diagnostic) => (
+          <div key={getDiagnosticKey(diagnostic)} className="flex min-w-0 gap-2">
+            <span className="shrink-0 font-mono text-[10px] leading-5 text-muted-foreground">
+              {diagnosticFieldLabel(diagnostic)}
+            </span>
+            <span className="truncate text-pretty text-muted-foreground">
+              {diagnosticSummary(diagnostic)}
+            </span>
           </div>
         ))}
       </div>
+      <div className="mt-1.5 border-t border-border/50 pt-1.5 text-muted-foreground">
+        完整诊断在块下方
+      </div>
     </div>,
     document.body
+  );
+}
+
+function DiagnosticList({
+  diagnostics,
+  listId,
+}: {
+  diagnostics: FrontmatterDiagnostic[];
+  listId: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+  if (diagnostics.length === 0) return null;
+
+  const errorCount = diagnostics.filter((diagnostic) => diagnostic.severity === "error").length;
+  const warningCount = diagnostics.length - errorCount;
+  const collapsed = !expanded && diagnostics.length > DIAGNOSTIC_LIST_VISIBLE_LIMIT;
+  const visible = collapsed ? diagnostics.slice(0, DIAGNOSTIC_LIST_VISIBLE_LIMIT) : diagnostics;
+  const hasErrors = errorCount > 0;
+
+  const copyAll = async () => {
+    const text = diagnostics.map(formatDiagnosticForClipboard).join("\n\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <section
+      id={listId}
+      data-testid="frontmatter-diagnostic-list"
+      aria-label="Frontmatter 诊断"
+      aria-live="polite"
+      className={`mt-3 rounded-[1.1rem] border border-l-[3px] px-3 py-2.5 text-xs leading-5 ${
+        hasErrors
+          ? "border-destructive/45 border-l-destructive bg-destructive/8"
+          : "border-warning/40 border-l-warning bg-warning/8"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <TriangleAlert
+          className={`size-4 shrink-0 ${hasErrors ? "text-destructive" : "text-warning"}`}
+          aria-hidden="true"
+        />
+        <h3 className={`text-sm font-medium ${hasErrors ? "text-destructive" : "text-warning"}`}>
+          {errorCount > 0 ? `${errorCount} 个错误` : ""}
+          {errorCount > 0 && warningCount > 0 ? "，" : ""}
+          {warningCount > 0 ? `${warningCount} 个警告` : ""}
+        </h3>
+        <Button
+          type="button"
+          variant="bare"
+          size="sm"
+          className="ml-auto h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+          onClick={() => void copyAll()}
+          data-testid="frontmatter-diagnostic-copy"
+        >
+          {copied ? "已复制" : "复制全部"}
+        </Button>
+      </div>
+
+      <ul className="mt-2 space-y-2">
+        {visible.map((diagnostic) => {
+          const isError = diagnostic.severity === "error";
+          const summary = diagnosticSummary(diagnostic);
+          const { detail } = splitFrontmatterDiagnosticMessage(diagnostic.message);
+          return (
+            <li
+              key={getDiagnosticKey(diagnostic)}
+              className="flex min-w-0 gap-2"
+              data-diagnostic-severity={diagnostic.severity}
+            >
+              <span
+                className={`mt-[3px] size-1.5 shrink-0 rounded-full ${isError ? "bg-destructive" : "bg-warning"}`}
+              >
+                <span className="sr-only">{isError ? "错误" : "警告"}</span>
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <code className="rounded bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground/90">
+                    {diagnosticFieldLabel(diagnostic)}
+                  </code>
+                  <span className="text-pretty text-muted-foreground"> {summary}</span>
+                </div>
+                {detail ? (
+                  <Disclosure
+                    className="group mt-1"
+                    summaryClassName="text-[11px]"
+                    summary={
+                      <span className="inline-flex items-center gap-1">
+                        <ChevronRight
+                          className="size-3 transition-transform group-open:rotate-90"
+                          aria-hidden="true"
+                        />
+                        原始错误文本
+                      </span>
+                    }
+                  >
+                    <pre className="overflow-x-auto rounded-md border border-border/60 bg-background/70 px-2.5 py-2 font-mono text-[11px] leading-5 text-foreground/88 whitespace-pre-wrap">
+                      {detail}
+                    </pre>
+                  </Disclosure>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {collapsed ? (
+        <Button
+          type="button"
+          variant="bare"
+          size="sm"
+          className="mt-2 h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+          onClick={() => setExpanded(true)}
+          data-testid="frontmatter-diagnostic-expand"
+        >
+          展开其余 {diagnostics.length - DIAGNOSTIC_LIST_VISIBLE_LIMIT} 条
+        </Button>
+      ) : null}
+    </section>
   );
 }
 
@@ -708,10 +863,12 @@ function DiagnosticMarker({
   severity,
   diagnostics,
   onHoverChange,
+  onReveal,
 }: {
   severity: "error" | "warning";
   diagnostics: FrontmatterDiagnostic[];
   onHoverChange: (target: HTMLElement | null, severity: "error" | "warning") => void;
+  onReveal: () => void;
 }) {
   if (diagnostics.length === 0) return null;
 
@@ -726,7 +883,7 @@ function DiagnosticMarker({
       className={`h-7 rounded-full! px-2.5 text-[11px] ${
         isError
           ? "border-destructive/35 bg-destructive/10 text-destructive hover:bg-destructive/15"
-          : "border-amber-400/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:text-amber-300"
+          : "border-warning/40 bg-warning/12 text-warning hover:bg-warning/18"
       }`}
       aria-label={`${diagnostics.length} 个${label}`}
       data-testid={`frontmatter-diagnostics-${severity}`}
@@ -734,6 +891,7 @@ function DiagnosticMarker({
       onMouseLeave={() => onHoverChange(null, severity)}
       onFocus={(event) => onHoverChange(event.currentTarget, severity)}
       onBlur={() => onHoverChange(null, severity)}
+      onClick={onReveal}
     >
       <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
       <span>{diagnostics.length}</span>
@@ -763,6 +921,7 @@ export function FrontmatterBlock({
   const accessibilityCompartment = useRef(new Compartment()).current;
   const theme = useMemo(() => buildYamlTheme(), []);
   const [inlineTooltip, setInlineTooltip] = useState<InlineDiagnosticTooltipState | null>(null);
+  const diagnosticListId = useId();
 
   const effectiveDiagnostics = useMemo(
     () => diagnostics ?? validateFrontmatterText(value).diagnostics,
@@ -972,7 +1131,7 @@ export function FrontmatterBlock({
 
     const handleInlineDiagnosticHover = (event: Event) => {
       const customEvent = event as CustomEvent<InlineDiagnosticHoverDetail>;
-      hoveredDiagnosticTargetRef.current = null;
+      hoveredDiagnosticTargetRef.current = customEvent.detail.target ?? null;
       const diagnostics = customEvent.detail.indexes
         .map((index) => effectiveDiagnostics[index])
         .filter((diagnostic): diagnostic is FrontmatterDiagnostic => Boolean(diagnostic));
@@ -1035,8 +1194,24 @@ export function FrontmatterBlock({
     if (!inlineTooltip) return;
 
     const handleViewportChange = () => {
-      hoveredDiagnosticTargetRef.current = null;
-      setInlineTooltip(null);
+      const target = hoveredDiagnosticTargetRef.current;
+      // Scrolling must not swallow a diagnostic mid-read: follow the anchor and
+      // only dismiss once it has actually left the viewport.
+      if (!target) {
+        setInlineTooltip(null);
+        return;
+      }
+      const rect = target.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight || rect.width === 0) {
+        hoveredDiagnosticTargetRef.current = null;
+        setInlineTooltip(null);
+        return;
+      }
+      setInlineTooltip((previous) =>
+        previous
+          ? { ...previous, style: buildDiagnosticTooltipStyle(rect, { align: previous.align }) }
+          : previous
+      );
     };
 
     window.addEventListener("scroll", handleViewportChange, true);
@@ -1049,15 +1224,24 @@ export function FrontmatterBlock({
   }, [inlineTooltip]);
 
   const handleSummaryHoverChange = (target: HTMLElement | null, severity: "error" | "warning") => {
-    hoveredDiagnosticTargetRef.current = null;
-
     if (!target) {
+      hoveredDiagnosticTargetRef.current = null;
       setInlineTooltip(null);
       return;
     }
 
+    hoveredDiagnosticTargetRef.current = target;
+
     const nextDiagnostics = severity === "error" ? errorDiagnostics : warningDiagnostics;
     setInlineTooltip(buildSummaryTooltipState(target, severity, nextDiagnostics));
+  };
+
+  const revealDiagnosticList = (severity: "error" | "warning") => {
+    const list = document.getElementById(diagnosticListId);
+    if (!list) return;
+    const firstOfSeverity = list.querySelector(`[data-diagnostic-severity="${severity}"]`);
+    const target = firstOfSeverity instanceof HTMLElement ? firstOfSeverity : list;
+    target.scrollIntoView({ block: "nearest", behavior: "smooth" });
   };
 
   return (
@@ -1080,11 +1264,13 @@ export function FrontmatterBlock({
                 severity="error"
                 diagnostics={errorDiagnostics}
                 onHoverChange={handleSummaryHoverChange}
+                onReveal={() => revealDiagnosticList("error")}
               />
               <DiagnosticMarker
                 severity="warning"
                 diagnostics={warningDiagnostics}
                 onHoverChange={handleSummaryHoverChange}
+                onReveal={() => revealDiagnosticList("warning")}
               />
             </div>
           ) : null}
@@ -1101,6 +1287,9 @@ export function FrontmatterBlock({
           <div className="border-t border-border/45 px-4 py-2 font-mono text-xs text-muted-foreground/88">
             ---
           </div>
+        </div>
+        <div className="px-4 pb-4" data-testid="frontmatter-diagnostic-region">
+          <DiagnosticList diagnostics={effectiveDiagnostics} listId={diagnosticListId} />
         </div>
       </section>
       <InlineDiagnosticTooltip tooltip={inlineTooltip} />

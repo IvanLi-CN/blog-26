@@ -5,22 +5,15 @@ import type {
   AssistantJobExecution,
   AssistantMessageStorage,
 } from "@/lib/assistant-contracts";
+import { isAssistantFailureCode } from "@/lib/assistant-generation-failure";
 import { type AssistantDatabase, createAssistantStorage } from "@/lib/assistant-storage";
 import { initializeDB } from "@/lib/db";
+import { AgentAnswerError } from "@/server/clipping/agent-runtime";
 import { generatePiAnswer } from "./pi-answer";
 
 const DEFAULT_LEASE_MS = 45_000;
 const DEFAULT_PUMP_DELAY_MS = 25;
 const DEFAULT_EXPIRY_SWEEP_MS = 60_000;
-const SAFE_GENERATION_ERROR_CODES = new Set([
-  "assistant-clipping-context-unavailable",
-  "assistant-provider-empty-output",
-  "assistant-provider-output-too-large",
-  "assistant-provider-unconfigured",
-  "invalid-job",
-  "worker-lease-expired",
-  "worker-restarted",
-]);
 
 export type AssistantCitationInput = Omit<AssistantCitation, "id" | "messageId" | "createdAt">;
 
@@ -331,8 +324,9 @@ export class AssistantRuntime {
 }
 
 function errorCode(error: unknown) {
-  if (error instanceof Error && SAFE_GENERATION_ERROR_CODES.has(error.message))
-    return error.message;
+  const code =
+    error instanceof AgentAnswerError ? error.code : error instanceof Error ? error.message : null;
+  if (code && isAssistantFailureCode(code)) return code;
   return "generation-failed";
 }
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { revokePrincipalPresentation } from "@/components/common/conversation/presentation-state";
 import type { FrontendAuthState } from "@/lib/assistant-contracts";
+import { normalizePublicErrorCode, publicErrorMessage } from "@/lib/public-error-presets";
 import { toPublicApiUrl } from "@/lib/public-runtime-url";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
 import { subscribeWebDemoRequestChanges } from "@/lib/web-demo-runtime";
@@ -34,7 +35,7 @@ async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promis
     const message =
       typeof record?.error === "string"
         ? record.error
-        : `Request failed with status ${response.status}`;
+        : publicErrorMessage(normalizePublicErrorCode(null, response.status));
     throw new CommentRequestError(message, {
       status: response.status,
       code: typeof record?.code === "string" ? record.code : `HTTP_${response.status}`,

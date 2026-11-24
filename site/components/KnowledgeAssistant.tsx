@@ -20,6 +20,11 @@ import type {
   FrontendAuthState,
 } from "@/lib/assistant-contracts";
 import {
+  type AssistantGenerationFailure,
+  DEFAULT_ASSISTANT_FAILURE,
+} from "@/lib/assistant-generation-failure";
+import { publicErrorMessage } from "@/lib/public-error-presets";
+import {
   getWebDemoRuntimeState,
   getWebDemoShareUrl,
   isWebDemoBuildEnabled,
@@ -253,11 +258,13 @@ function AssistantGenerationProcess({
   steps?: AssistantProcessStep[];
 }) {
   const [expanded, setExpanded] = useState(status === "pending" || status === "streaming");
+  const failed = status === "failed";
   const active = status === "pending" || status === "streaming";
   const activeStep = steps.find((step) => step.status === "running") ?? steps.at(-1);
   const progressLabel = activeStep?.label ?? "正在根据当前对话整理可读的回答";
+  const completedLabel = failed ? "本轮未记录过程步骤。" : "已完成本轮回答";
   const title = active ? progressLabel : "思考过程";
-  const hasDetails = steps.length > 0 || !active || citations.length > 0 || status === "failed";
+  const hasDetails = steps.length > 0 || !active || citations.length > 0 || failed;
 
   return (
     <div className="knowledge-assistant-process" data-testid="assistant-generation-process">
@@ -291,10 +298,9 @@ function AssistantGenerationProcess({
               ))}
             </ol>
           ) : (
-            <p>{active ? "当前思考已进入回答整理阶段" : "已完成本轮回答"}</p>
+            <p>{active ? "当前思考已进入回答整理阶段" : completedLabel}</p>
           )}
           {citations.length ? <p>已整理 {citations.length} 个可定位来源。</p> : null}
-          {status === "failed" ? <p>过程未完整结束，已有内容仍可继续阅读。</p> : null}
         </div>
       ) : null}
     </div>
@@ -313,11 +319,16 @@ function errorMessage(error: unknown) {
   }
   if (error instanceof AssistantClientError && error.code === "RECONNECTING")
     return `正在重新连接${ASSISTANT_DISPLAY_NAME}。`;
+  if (error instanceof AssistantClientError && error.code === "FEATURE_DISABLED")
+    return publicErrorMessage("FEATURE_DISABLED");
   if (error instanceof AssistantClientError && error.status === 410)
     return "这段对话已过期，请新建对话。";
   if (error instanceof AssistantClientError && error.status === 401)
     return "登录状态已失效，请重新登录。";
-  return error instanceof Error ? error.message : "助手暂时不可用，请重试。";
+  // The response text is a server-side preset, but the UI never trusts it as a
+  // last resort. An unmapped failure reads as "temporarily unavailable" here
+  // because this alert already says the assistant itself is unavailable.
+  return publicErrorMessage("SERVICE_UNAVAILABLE");
 }
 
 function AssistantErrorAlert({
@@ -683,6 +694,53 @@ function ConversationList({
   );
 }
 
+function AssistantFailureNotice({
+  failure,
+  onRetry,
+}: {
+  failure?: AssistantGenerationFailure;
+  onRetry?: () => void;
+}) {
+  return (
+    <Alert
+      variant="destructive"
+      className="knowledge-assistant-failure"
+      data-testid="assistant-generation-failure"
+    >
+      <Icon
+        name="tabler:alert-circle"
+        className="mt-0.5 h-5 w-5 text-[color:var(--nature-danger)]"
+        aria-hidden="true"
+      />
+      <AlertTitle className="text-[color:color-mix(in_srgb,var(--nature-danger)_78%,var(--nature-text))]">
+        回答生成失败
+      </AlertTitle>
+      <AlertDescription>{failure?.message ?? DEFAULT_ASSISTANT_FAILURE}</AlertDescription>
+      {onRetry ? (
+        <AlertAction>
+          <Button
+            type="button"
+            variant="outline"
+            size="compact"
+            className="knowledge-assistant-failure-retry"
+            onClick={onRetry}
+          >
+            <Icon name="tabler:refresh" className="h-4 w-4" aria-hidden="true" />
+            <span className="knowledge-assistant-failure-retry-label">重试</span>
+          </Button>
+        </AlertAction>
+      ) : null}
+      {failure?.diagnostic ? (
+        <details className="knowledge-assistant-failure-detail">
+          <summary>查看错误详情</summary>
+          <p>{failure.diagnostic.message}</p>
+          <code>{failure.diagnostic.code}</code>
+        </details>
+      ) : null}
+    </Alert>
+  );
+}
+
 function MessageStream({
   stateKey,
   snapshot,
@@ -741,6 +799,13 @@ function MessageStream({
     }
     if (followTail.current) host.scrollTop = host.scrollHeight;
   }, [snapshot, stateKey, scrollHost]);
+  const failures = useMemo(() => {
+    const byMessage = new Map<string, AssistantGenerationFailure>();
+    for (const job of snapshot?.generationJobs ?? []) {
+      if (job.assistantMessageId && job.failure) byMessage.set(job.assistantMessageId, job.failure);
+    }
+    return byMessage;
+  }, [snapshot?.generationJobs]);
   const latestGenerationJob = snapshot?.generationJobs.at(-1) ?? null;
   const stoppedWithoutContent = Boolean(
     latestGenerationJob?.status === "cancelled" &&
@@ -778,72 +843,76 @@ function MessageStream({
                     message.status === "cancelled"
                   )
               )
-              .map((message) => (
-                <div className="knowledge-assistant-turn" key={message.id}>
-                  {message.role === "assistant" &&
-                  (message.status === "pending" ||
-                    message.status === "streaming" ||
-                    message.status === "completed" ||
-                    message.status === "failed") ? (
-                    <AssistantGenerationProcess
-                      status={message.status}
-                      citations={message.citations}
-                      steps={message.processSteps}
-                    />
-                  ) : null}
+              .map((message) => {
+                const failed = message.role === "assistant" && message.status === "failed";
+                const hasContent = Boolean(message.content.trim());
+                return (
                   <div
-                    className={`knowledge-assistant-message knowledge-assistant-message--${message.role}${message.role === "assistant" && !message.content.trim() ? " knowledge-assistant-message--process-only" : ""}`}
+                    className="knowledge-assistant-turn"
+                    key={message.id}
                     data-message-id={message.id}
-                    data-message-role={message.role}
-                    data-presentation-id={presentationId}
-                    data-testid={`assistant-message-${message.role}`}
                   >
-                    {message.content.trim() || message.role === "user" ? (
-                      <AssistantMessageContent
-                        className="knowledge-assistant-message-content"
-                        messageId={message.id}
-                        presentationId={presentationId}
-                        role={message.role as "user" | "assistant"}
-                        content={message.content}
+                    {message.role === "assistant" &&
+                    (message.status === "pending" ||
+                      message.status === "streaming" ||
+                      message.status === "completed" ||
+                      message.status === "failed") ? (
+                      <AssistantGenerationProcess
                         status={message.status}
-                        renderMarkdown={ConversationMarkdown}
+                        citations={message.citations}
+                        steps={message.processSteps}
                       />
                     ) : null}
-                    {message.role === "assistant" && message.status === "cancelled" ? (
-                      <p className="knowledge-assistant-status-note" role="status">
-                        已停止生成
-                      </p>
-                    ) : null}
-                    {message.role === "assistant" && message.status === "failed" ? (
-                      <p className="knowledge-assistant-status-note" role="status">
-                        生成失败，可重试
-                      </p>
-                    ) : null}
-                    {message.status === "failed" && onRetry ? (
-                      <button
-                        type="button"
-                        className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-md border border-[color:var(--nature-line-strong)] px-2 text-xs font-semibold"
-                        onClick={() => onRetry(message)}
+                    {(!failed || hasContent || message.citations.length > 0) && (
+                      <div
+                        className={`knowledge-assistant-message knowledge-assistant-message--${message.role}${message.role === "assistant" && !hasContent ? " knowledge-assistant-message--process-only" : ""}`}
+                        data-message-role={message.role}
+                        data-presentation-id={presentationId}
+                        data-testid={`assistant-message-${message.role}`}
                       >
-                        <Icon name="tabler:refresh" className="h-3.5 w-3.5" />
-                        重试
-                      </button>
-                    ) : null}
-                    {message.citations.length ? (
-                      <ul className="knowledge-assistant-citations" aria-label="回答来源">
-                        {message.citations.map((citation: AssistantCitation) => (
-                          <li key={citation.id}>
-                            <a href={citation.href} target="_blank" rel="noreferrer">
-                              {citation.title}
-                              {citation.location ? ` · ${citation.location}` : ""}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
+                        {hasContent || message.role === "user" ? (
+                          <AssistantMessageContent
+                            className="knowledge-assistant-message-content"
+                            messageId={message.id}
+                            presentationId={presentationId}
+                            role={message.role as "user" | "assistant"}
+                            content={message.content}
+                            status={message.status}
+                            renderMarkdown={ConversationMarkdown}
+                          />
+                        ) : null}
+                        {message.role === "assistant" && message.status === "cancelled" ? (
+                          <p className="knowledge-assistant-status-note" role="status">
+                            已停止生成
+                          </p>
+                        ) : null}
+                        {message.citations.length ? (
+                          <ul className="knowledge-assistant-citations" aria-label="回答来源">
+                            {message.citations.map((citation: AssistantCitation) => (
+                              <li key={citation.id}>
+                                <a href={citation.href} target="_blank" rel="noreferrer">
+                                  {citation.title}
+                                  {citation.location ? ` · ${citation.location}` : ""}
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    )}
+                    {failed ? (
+                      <AssistantFailureNotice
+                        failure={failures.get(message.id)}
+                        onRetry={
+                          onRetry && findRetryUserMessage(snapshot, message)
+                            ? () => onRetry(message)
+                            : undefined
+                        }
+                      />
                     ) : null}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             {stoppedWithoutContent ? (
               <p
                 className="knowledge-assistant-status-note knowledge-assistant-status-note--standalone"
