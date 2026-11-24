@@ -26,7 +26,6 @@ export interface ContentRecord {
 
 export interface ContentClippingFrontmatter {
   targetUrl: string;
-  capturedAt?: string;
 }
 
 export interface CanonicalDocument {
@@ -40,7 +39,7 @@ export interface CanonicalDocument {
 const MARKDOWN_TARGET_PATTERN = /\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/gu;
 const EXTERNAL_TARGET_PATTERN = /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/iu;
 const MEDIA_EXTENSION_PATTERN =
-  /\.(?:png|jpe?g|webp|gif|avif|heic|heif|bmp|tiff?|svg|pdf|mp4|webm|mov|m4v|mp3|wav|m4a|ogg|flac|zip|7z|tar|gz|wasm)$/iu;
+  /\.(?:png|jpe?g|webp|gif|avif|heic|heif|bmp|tiff?|svg|pdf|mp4|webm|mov|m4v|mp3|wav|m4a|ogg|flac|zip|7z|tar|gz|wasm|xlsx|xls|docx|doc|pptx|ppt|csv|ods|odt|odp|rtf|epub)$/iu;
 
 /**
  * A relative Markdown target is an attachment only when it names a media file.

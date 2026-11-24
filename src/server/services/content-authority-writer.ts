@@ -120,9 +120,7 @@ export function toContentRecord(row: ContentRow): ContentRecord {
 /** Canonical repository projection of a memo's clipping reference. */
 export function memoClippingFrontmatter(contentId: string): ContentClippingFrontmatter | null {
   const clipping = db.select().from(memoClippings).where(eq(memoClippings.memoId, contentId)).get();
-  return clipping?.targetUrl
-    ? { targetUrl: clipping.targetUrl, capturedAt: new Date(clipping.updatedAt).toISOString() }
-    : null;
+  return clipping?.targetUrl ? { targetUrl: clipping.targetUrl } : null;
 }
 
 function patchManifest(raw: string | null | undefined, patch: Record<string, unknown>): string {
