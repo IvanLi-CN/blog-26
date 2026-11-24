@@ -816,7 +816,7 @@ function DiagnosticList({
                   <code className="rounded bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground/90">
                     {diagnosticFieldLabel(diagnostic)}
                   </code>
-                  <span className="text-pretty text-muted-foreground">{summary}</span>
+                  <span className="text-pretty text-muted-foreground"> {summary}</span>
                 </div>
                 {detail ? (
                   <Disclosure
