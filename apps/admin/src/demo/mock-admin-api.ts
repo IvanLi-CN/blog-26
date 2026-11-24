@@ -445,6 +445,7 @@ const initialDemoComments = comments.map((comment) => ({ ...comment }));
 let commentsResetWindow: Window | null = null;
 const DEMO_RAG_TASK_ID = "550e8400-e29b-41d4-a716-446655440000";
 const DEMO_PLAYBOOK_TASK_ID = "550e8400-e29b-41d4-a716-446655440001";
+const DEMO_CONTENT_TASK_ID = "550e8400-e29b-41d4-a716-446655440003";
 let demoIndexCancelled = false;
 let demoIndexStarted = false;
 let demoPlaybookSyncCancelled = false;
@@ -2173,24 +2174,15 @@ async function handleAdminRequest(
     }
     if (method === "POST" && path === "/api/admin/content-repo/merge") {
       recordWebDemoMutation("尝试自动合并", "冲突未裁决（模拟）");
-      return json(
-        {
-          status: "conflicts",
-          ...demoRepo,
-          merged: [],
-          conflicts: [{ path: demoItems[1].path, fields: ["title"], bodyConflicts: 1 }],
-          skipped: [],
-        },
-        200
-      );
+      return json({ status: "started", operation: "merge", taskId: DEMO_CONTENT_TASK_ID }, 202);
     }
     if (method === "POST" && path === "/api/admin/content-repo/push") {
       recordWebDemoMutation("推送内容", "写入仓库（模拟）");
-      return json({ status: "pushed", ...demoRepo, merged: [demoItems[0].path], skipped: [] }, 200);
+      return json({ status: "started", operation: "push", taskId: DEMO_CONTENT_TASK_ID }, 202);
     }
     if (method === "POST" && path === "/api/admin/content-repo/pull") {
       recordWebDemoMutation("拉取内容", "写入内容库（模拟）");
-      return json({ status: "pulled", ...demoRepo, pulled: [], skipped: [] }, 200);
+      return json({ status: "started", operation: "pull", taskId: DEMO_CONTENT_TASK_ID }, 202);
     }
     if (method === "POST" && path === "/api/admin/content-repo/accept-remote") {
       recordWebDemoMutation("接受远端新增", "建立内容（模拟）");

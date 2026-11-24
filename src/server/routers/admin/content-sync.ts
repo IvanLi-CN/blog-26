@@ -5,6 +5,8 @@ import {
   contentSyncTotals,
   getContentTask,
   listContentTasks,
+  readContentTaskProgress,
+  toContentTaskSummary,
 } from "../../services/content-tasks";
 import { triggerRagIndex } from "../../services/rag-index";
 
@@ -70,7 +72,7 @@ export const adminContentSyncRouter = createTRPCRouter({
     .input(
       z
         .object({
-          source: z.enum(["all", "blog", "playbook"]).default("all"),
+          source: z.enum(["all", "blog", "playbook", "content-repo"]).default("all"),
           type: z
             .enum(["all", "post", "memo", "clipping", "topic", "experience", "policy"])
             .default("all"),
@@ -85,7 +87,14 @@ export const adminContentSyncRouter = createTRPCRouter({
           message: "Previous edition requires Playbook scope",
         });
       await ensureContentSourcesRegistered(getContentSourceManager());
-      return contentSyncStatus(input);
+      // `content-repo` is a task source, not a RAG scope: coverage stays global
+      // while the caller narrows tasks through getTasks.
+      if (!input) return contentSyncStatus();
+      const { source, ...scope } = input;
+      return contentSyncStatus({
+        ...scope,
+        source: source === "content-repo" ? "all" : source,
+      });
     }),
   triggerRagIndex: adminProcedure
     .input(
@@ -96,21 +105,32 @@ export const adminContentSyncRouter = createTRPCRouter({
     .input(
       z
         .object({
-          source: z.enum(["all", "local", "playbook"]).optional(),
+          source: z.enum(["all", "local", "playbook", "content-repo"]).optional(),
           kind: z.enum(["sync", "rag"]).optional(),
           offset: z.number().int().min(0).default(0),
           limit: z.number().int().min(1).max(100).default(20),
         })
         .optional()
     )
-    .query(({ input }) => listContentTasks(input)),
+    .query(async ({ input }) => {
+      const page = await listContentTasks(input);
+      return { ...page, items: page.items.map(toContentTaskSummary) };
+    }),
   getTask: adminProcedure
     .input(z.object({ taskId: z.string().uuid() }).optional())
     .query(async ({ input }) => {
       if (!input) throw new TRPCError({ code: "BAD_REQUEST", message: "Task ID is required" });
       const task = await getContentTask(input.taskId);
       if (!task) throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
-      return task;
+      return toContentTaskSummary(task);
+    }),
+  getTaskProgress: adminProcedure
+    .input(z.object({ taskId: z.string().uuid() }).optional())
+    .query(async ({ input }) => {
+      if (!input) throw new TRPCError({ code: "BAD_REQUEST", message: "Task ID is required" });
+      const progress = await readContentTaskProgress(input.taskId);
+      if (!progress) throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+      return progress;
     }),
   cancelTask: adminProcedure
     .input(z.object({ taskId: z.string().uuid() }).optional())

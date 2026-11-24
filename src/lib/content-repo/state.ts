@@ -10,6 +10,8 @@ export type ContentSyncState =
 
 export interface ContentSyncStateItem {
   path: string;
+  /** Content library id; never the repository path. */
+  contentId: string | null;
   kind: "post" | "memo";
   state: ContentSyncState;
   localHash: string | null;
@@ -58,6 +60,7 @@ export function computeSyncStates(input: ContentSyncStateInput): ContentSyncStat
         if (!remoteSha) continue;
         items.push({
           path,
+          contentId: null,
           kind: path.startsWith("Memos/") ? "memo" : "post",
           state: "remote-new",
           localHash: null,
@@ -71,6 +74,7 @@ export function computeSyncStates(input: ContentSyncStateInput): ContentSyncStat
       }
       items.push({
         path,
+        contentId: entry.contentId,
         kind: entry.document.kind,
         state: remoteSha ? "remote-new" : "to-push",
         localHash: entry.document.contentHash,
@@ -90,6 +94,7 @@ export function computeSyncStates(input: ContentSyncStateInput): ContentSyncStat
     if (!entry) {
       items.push({
         path,
+        contentId: baseline.contentId ?? null,
         kind: baseline.repoPath.startsWith("Memos/") ? "memo" : "post",
         state: remoteMissing ? "synced" : remoteChanged ? "merge-conflict" : "to-push",
         localHash: null,
@@ -119,6 +124,7 @@ export function computeSyncStates(input: ContentSyncStateInput): ContentSyncStat
 
     items.push({
       path,
+      contentId: entry.contentId ?? baseline.contentId ?? null,
       kind: entry.document.kind,
       state,
       localHash: entry.document.contentHash,

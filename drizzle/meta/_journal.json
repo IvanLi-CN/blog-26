@@ -260,6 +260,13 @@
       "when": 1793700000003,
       "tag": "0036_content_authority",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1793700000004,
+      "tag": "0037_content_task_progress",
+      "breakpoints": true
     }
   ]
 }

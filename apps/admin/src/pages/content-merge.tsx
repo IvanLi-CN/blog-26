@@ -735,7 +735,8 @@ export function ContentMergePage() {
       await refresh();
       if (status.data?.configured) {
         setNotice(`已保存到内容库，正在推送到仓库：${result.path}`);
-        push.mutate({ ids: [input.path] });
+        // Push by content id: the repository path is not a content id.
+        push.mutate({ ids: [result.contentId ?? input.path] });
         return;
       }
       setNotice(`已保存到内容库（内容仓库未配置，未推送）：${result.path}`);
@@ -751,9 +752,9 @@ export function ContentMergePage() {
     mutationFn: (input: { ids?: string[] }) => adminApi.pushContentRepo(input),
     onSuccess: async (result, input) => {
       const path = input.ids?.[0] ?? "";
-      if (result.status === "pushed") setNotice(`已保存并推送到仓库：${path}`);
-      else if (result.status === "unchanged") setNotice(`已保存到内容库，仓库内容已一致：${path}`);
-      else setNotice(`已保存到内容库，推送未完成：${result.message ?? result.status}`);
+      if (result.status === "started")
+        setNotice(`已保存到内容库，推送已开始：${path}（任务 ${result.taskId ?? "-"}）`);
+      else setNotice(`已保存到内容库，推送未开始：${result.message ?? result.status}`);
       await refresh();
     },
     onError: (error) => setNotice(`已保存到内容库，推送失败：${getErrorMessage(error)}`),
@@ -932,8 +933,14 @@ export function ContentMergePage() {
               onCount={onCount}
               onSave={(path, text) => resolve.mutate({ path, text, remoteSha: row.item.remoteSha })}
               onAdopt={(path, media) => adoptMedia.mutate({ path, media })}
-              onMerge={(path) => merge.mutate({ ids: [path] })}
-              onPull={(path) => pull.mutate({ ids: [path] })}
+              onMerge={() => {
+                const contentId = row.item.contentId;
+                if (contentId) merge.mutate({ ids: [contentId] });
+              }}
+              onPull={() => {
+                const contentId = row.item.contentId;
+                if (contentId) pull.mutate({ ids: [contentId] });
+              }}
               onAccept={(path) => accept.mutate({ paths: [path] })}
               onRemove={(path) => remove.mutate({ paths: [path] })}
               busy={adoptMedia.isPending}

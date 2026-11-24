@@ -48,7 +48,11 @@ for (let index = 0; index < rows.length; index += limit) {
   if (!eligible.length) continue;
   const outcome = await pushContentRepo({ ids: eligible });
   console.log(`pushed ${outcome.status} ${outcome.commit ?? "-"} (${eligible.length} contents)`);
-  if (outcome.status === "failed" || outcome.status === "unconfigured") {
+  if (
+    outcome.status === "failed" ||
+    outcome.status === "unconfigured" ||
+    outcome.status === "busy"
+  ) {
     console.error(outcome.message ?? "Content repository is not configured");
     failed = true;
     break;
