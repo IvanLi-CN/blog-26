@@ -1,4 +1,5 @@
 import { initTRPC, TRPCError } from "@trpc/server";
+import { z } from "zod";
 import {
   createErrorRef,
   normalizePublicErrorCode,
@@ -11,8 +12,18 @@ export const t = initTRPC.context<Context>().create({
   // The raw endpoint is reachable from the public origin, so its error shape must
   // stay identical in every deployment: no stack, no zod dump, no internal path.
   isDev: false,
-  errorFormatter({ shape, error }) {
+  errorFormatter({ shape, error, ctx }) {
     const httpStatus = getHTTPStatusCodeFromError(error);
+    if (ctx?.isAdmin) {
+      return {
+        ...shape,
+        data: {
+          ...shape.data,
+          zodError: error.cause instanceof z.ZodError ? error.cause.flatten() : null,
+          httpStatus,
+        },
+      };
+    }
     const code = normalizePublicErrorCode(error.code, httpStatus);
     return {
       ...shape,
