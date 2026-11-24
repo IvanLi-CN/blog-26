@@ -61,6 +61,23 @@ describe("canonical content form", () => {
     expect(document.media).toEqual(["blog/assets/a.png", "blog/assets/b.png"]);
   });
 
+  test("keeps page links and malformed links out of the media list", () => {
+    const document = buildCanonicalDocument(
+      record({
+        body: [
+          "[first version](../usb-hub-for-electronic-lovers)",
+          "[driver](./(https:/github.com/IvanLi-CN/bq769x0-async-rs))",
+          "![cover](./assets/cover.png)",
+        ].join("\n"),
+        image: "./assets/cover.png",
+      })
+    );
+    const text = new TextDecoder().decode(document.bytes);
+    expect(text).toContain("[first version](../usb-hub-for-electronic-lovers)");
+    expect(text).toContain("[driver](./(https:/github.com/IvanLi-CN/bq769x0-async-rs))");
+    expect(document.media).toEqual(["blog/assets/cover.png"]);
+  });
+
   test("keeps the content path stable and rejects traversal", () => {
     expect(canonicalContentPath({ type: "post", slug: "hi", filePath: "" })).toBe("blog/hi.md");
     expect(canonicalContentPath({ type: "post", slug: "hi", filePath: "Hardware/旧笔记.md" })).toBe(
