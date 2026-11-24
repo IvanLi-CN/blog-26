@@ -17,6 +17,7 @@ const ownViewportTitles = [
   "keeps the guest mobile surface focused on chat instead of an inline list",
   "keeps the reader failure card full-width with a 44px retry target",
   "keeps detail and related media watermarked separately",
+  "keeps the task and batch surfaces within a narrow viewport",
   "mobile mode controls remain keyboard accessible without horizontal overflow",
 ];
 const list = async (configPath: string, files: string[], mobile = false) => {
