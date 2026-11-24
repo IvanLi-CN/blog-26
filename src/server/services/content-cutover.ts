@@ -199,9 +199,7 @@ function typeOf(root: "posts" | "memos" | "projects"): ContentType {
 
 function clippingFrontmatterFor(memoId: string) {
   const clipping = db.select().from(memoClippings).where(eq(memoClippings.memoId, memoId)).get();
-  return clipping?.targetUrl
-    ? { targetUrl: clipping.targetUrl, capturedAt: new Date(clipping.updatedAt).toISOString() }
-    : null;
+  return clipping?.targetUrl ? { targetUrl: clipping.targetUrl } : null;
 }
 
 const cutoverMarker = "database";

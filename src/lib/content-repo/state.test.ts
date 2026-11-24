@@ -174,6 +174,31 @@ describe("content sync states", () => {
     expect(items[0]?.state).toBe("remote-new");
   });
 
+  test("keeps a missing local copy synced while the remote blob is intact", () => {
+    const items = computeSyncStates({
+      entries: [entry("blog/a.md", "a")],
+      baselines: new Map([
+        [
+          "blog/a.md",
+          baseline({
+            media: {
+              "blog/assets/a.xlsx": { sha256: "sheet", remoteSha: "remote-sheet" },
+            },
+            remoteBlobs: { "blog/a.md": "remote-a", "blog/assets/a.xlsx": "remote-sheet" },
+          }),
+        ],
+      ]),
+      remote: new Map([
+        ["blog/a.md", "remote-a"],
+        ["blog/assets/a.xlsx", "remote-sheet"],
+      ]),
+      missingMedia: new Map([["blog/a.md", ["blog/assets/a.xlsx"]]]),
+    });
+    expect(items[0]?.state).toBe("synced");
+    expect(items[0]?.changedMedia).toEqual([]);
+    expect(items[0]?.missingMedia).toEqual(["blog/assets/a.xlsx"]);
+  });
+
   test("counts states across contents", () => {
     const counts = summarizeSyncStates(
       computeSyncStates({

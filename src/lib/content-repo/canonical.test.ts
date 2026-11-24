@@ -59,6 +59,9 @@ describe("canonical content form", () => {
     expect(text).toContain("![two](./assets/b.png)");
     expect(text).toContain("![web](https://x.test/c.png)");
     expect(document.media).toEqual(["blog/assets/a.png", "blog/assets/b.png"]);
+
+    const withSheet = buildCanonicalDocument(record({ body: "![x](./assets/calc.xlsx)" }));
+    expect(withSheet.media).toEqual(["blog/assets/calc.xlsx"]);
   });
 
   test("keeps page links and malformed links out of the media list", () => {
