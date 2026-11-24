@@ -27,14 +27,25 @@ export interface ContentSyncStateInput {
   missingMedia?: Map<string, string[]>;
 }
 
-function changedMediaPaths(entry: ContentRepoEntry, baseline: ContentRepoBaseline) {
+function changedMediaPaths(
+  entry: ContentRepoEntry,
+  baseline: ContentRepoBaseline,
+  remote: Map<string, string>,
+  missingMedia: string[]
+) {
   const changed: string[] = [];
   for (const file of entry.media) {
     const recorded = baseline.media[file.path];
     if (!recorded || recorded.sha256 !== file.sha256) changed.push(file.path);
   }
-  for (const path of Object.keys(baseline.media))
-    if (!entry.media.some((file) => file.path === path)) changed.push(path);
+  for (const path of Object.keys(baseline.media)) {
+    if (entry.media.some((file) => file.path === path)) continue;
+    // A locally absent attachment is not a local edit when the repository blob
+    // still matches the baseline; only its local copy is unavailable.
+    const remoteIntact = remote.get(path) === baseline.remoteBlobs[path];
+    if (missingMedia.includes(path) && remoteIntact) continue;
+    changed.push(path);
+  }
   return changed.sort();
 }
 
@@ -108,7 +119,7 @@ export function computeSyncStates(input: ContentSyncStateInput): ContentSyncStat
       continue;
     }
 
-    const changedMedia = changedMediaPaths(entry, baseline);
+    const changedMedia = changedMediaPaths(entry, baseline, input.remote, missingMedia);
     const localChanged =
       entry.document.contentHash !== baseline.contentHash || changedMedia.length > 0;
     const state: ContentSyncState = remoteMissing

@@ -1,11 +1,16 @@
 {
   "schema_version": 1,
   "kind": "version-impact-record",
-  "base_sha": "c647821108b15dcc5e41ea36bdb03afceb0f7686",
+  "base_sha": "fe047f84a00a25c9e4b41b0696658f9395314d21",
   "covered_files": {
-    "src/lib/content-repo/state.test.ts": "1bcf3a056f6e1d85ae474892540f9e7b02286682",
-    "src/lib/content-repo/state.ts": "049223645fa84ef97c5e6f53959f4cb4aa4a55e3",
-    "src/server/services/content-repo-sync.ts": "36285389372c128ba625e088f63ea1a75b62995d"
+    "docs/specs/content-git-sync/IMPLEMENTATION.md": "12a4dcfa6dc1b8966c7b517d7e5cc6577f595441",
+    "src/lib/content-repo/canonical.test.ts": "0d1822fda5e5f63b5a0cb089cf11d4874c763f7b",
+    "src/lib/content-repo/canonical.ts": "2d68217245d0bb602e1949d827a4cfa0662997e4",
+    "src/lib/content-repo/state.test.ts": "52cbd68dc3ccbeed271341e8c93d204189b63d77",
+    "src/lib/content-repo/state.ts": "a6a6755e4ac630f0cea430912b3b7c0b79f8c7d8",
+    "src/server/services/content-authority-writer.ts": "89d44188d6a93ab84a9524fd085b261560909e59",
+    "src/server/services/content-cutover.ts": "5d2f1e4bf70a6f7e869925ba33980dc77e0340c3",
+    "src/server/services/content-repo-sync.ts": "a50b32e923c0bd2a2798a9828d6904bc65c111b7"
   },
   "change": {
     "description": "Add the server-side content repository push foundation: canonical content form, API-only GitHub transport, push planning from sync baselines and an additive content_repo_baselines table.",
@@ -48,12 +53,12 @@
       "evidence": [
         {
           "path": "src/lib/content-repo/state.test.ts",
-          "blob": "1bcf3a056f6e1d85ae474892540f9e7b02286682",
+          "blob": "52cbd68dc3ccbeed271341e8c93d204189b63d77",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-scale.test.ts"
         },
         {
-          "path": "src/server/services/content-repo-scale.test.ts",
-          "blob": "3a1732dd398283a1f2aeca7cfb2c9ce0511bdf92",
+          "path": "src/lib/content-repo/canonical.test.ts",
+          "blob": "0d1822fda5e5f63b5a0cb089cf11d4874c763f7b",
           "command": "bun test src/lib/content-repo src/server/services/content-repo-scale.test.ts"
         }
       ]
@@ -129,7 +134,8 @@
         "4.2.18",
         "4.2.19",
         "4.2.20",
-        "4.2.21"
+        "4.2.21",
+        "4.2.22"
       ],
       "evidence": [
         {
@@ -209,7 +215,8 @@
         "4.2.18",
         "4.2.19",
         "4.2.20",
-        "4.2.21"
+        "4.2.21",
+        "4.2.22"
       ],
       "upgrade_from_versions": [
         "2.7.0",
@@ -277,7 +284,8 @@
         "4.2.18",
         "4.2.19",
         "4.2.20",
-        "4.2.21"
+        "4.2.21",
+        "4.2.22"
       ],
       "evidence": [
         {

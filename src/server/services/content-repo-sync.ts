@@ -101,9 +101,7 @@ function toContentRecord(row: typeof posts.$inferSelect): ContentRecord {
 /** Canonical memos carry the clipping reference; posts never do. */
 function clippingFrontmatterFor(contentId: string) {
   const clipping = db.select().from(memoClippings).where(eq(memoClippings.memoId, contentId)).get();
-  return clipping?.targetUrl
-    ? { targetUrl: clipping.targetUrl, capturedAt: new Date(clipping.updatedAt).toISOString() }
-    : null;
+  return clipping?.targetUrl ? { targetUrl: clipping.targetUrl } : null;
 }
 
 /** Resolve a library row from a repository path using the stored baseline first. */
