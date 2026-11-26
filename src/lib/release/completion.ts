@@ -31,7 +31,6 @@ export const qualitySchema = z
     schema_version: z.literal(1),
     policy: z
       .object({
-        baseline_policy: z.literal("explicit-waiver-required"),
         require_signed_commits: z.literal(true),
         branch_protection: z
           .object({
@@ -50,7 +49,6 @@ export const qualitySchema = z
     required_checks: z.array(z.string().min(1)).min(1),
     main_required_checks: z.array(z.string().min(1)).min(1),
     informational_checks: z.array(z.string()),
-    waivers: z.tuple([]),
     expected_pr_workflows: z.array(
       z.object({ workflow: z.string(), jobs: z.array(z.string()) }).strict()
     ),
@@ -554,5 +552,10 @@ export async function validateCandidatePolicy(
     observeMergedReleaseMerges(github, await readPolicyLedger(github, store)),
     head
   );
-  return `Verified ${assessment.impact} impact for ${Object.keys(assessment.changed).length} source changes`;
+  const contracts = assessment.classification.surfaces.map((surface) => surface.id);
+  return `Verified ${assessment.impact} impact for ${
+    Object.keys(assessment.changed).length
+  } source changes${
+    contracts.length ? ` across ${[...new Set(contracts)].join(", ")}` : " with no contract change"
+  }`;
 }

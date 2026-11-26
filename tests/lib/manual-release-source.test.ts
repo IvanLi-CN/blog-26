@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import contractJson from "../../.github/release-contract.json";
@@ -11,9 +11,10 @@ import {
   supportedVersions,
 } from "../../src/lib/release/ledger";
 import { contractSchema } from "../../src/lib/release/policy";
-import { semanticSourceBlobs } from "../../src/lib/release/source";
+import { semanticSourceBlobs, sourceAssessment } from "../../src/lib/release/source";
 
 describe("business evidence across VERSION-only releases", () => {
+  // These cases spawn dozens of git subprocesses per test and the suite shares one cwd.
   test("authenticated prereleases preserve business blobs and the formal baseline", () => {
     const root = mkdtempSync(join(tmpdir(), "release-source-"));
     const gitEnv = { ...process.env };
@@ -143,7 +144,7 @@ describe("business evidence across VERSION-only releases", () => {
         else process.env[key] = value;
       }
     }
-  });
+  }, 20_000);
 
   test("ignores a merge commit that carries the already-published version", () => {
     const root = mkdtempSync(join(tmpdir(), "release-source-merge-"));
@@ -216,7 +217,7 @@ describe("business evidence across VERSION-only releases", () => {
         else process.env[key] = value;
       }
     }
-  });
+  }, 20_000);
 
   test("ignores a registered release-preparation VERSION commit", () => {
     const root = mkdtempSync(join(tmpdir(), "release-source-preparation-"));
@@ -290,5 +291,79 @@ describe("business evidence across VERSION-only releases", () => {
         else process.env[key] = value;
       }
     }
-  });
+  }, 20_000);
+
+  test("source assessment derives impact and needs no classification file", () => {
+    const root = mkdtempSync(join(tmpdir(), "release-assess-"));
+    const gitEnv = { ...process.env };
+    for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"]) {
+      delete gitEnv[key];
+    }
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-c", "core.hooksPath=/dev/null", ...args], {
+        cwd: root,
+        env: gitEnv,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }).trim();
+    git("init");
+    git("config", "user.name", "Release Fixture");
+    git("config", "user.email", "fixture@example.test");
+    const commit = (message: string) => {
+      git("add", ".");
+      git("-c", "commit.gpgsign=false", "commit", "-m", message);
+      return git("rev-parse", "HEAD");
+    };
+    writeFileSync(join(root, "business.txt"), "baseline");
+    const base = commit("baseline");
+    const contract = contractSchema.parse({
+      ...contractJson,
+      bootstrap: { version: "2.7.0", sourceSha: base },
+    });
+    writeFileSync(join(root, "VERSION"), "2.7.0\n");
+    const ledger = initialLedger(contract);
+    const originalCwd = process.cwd();
+    const originalGitEnv = new Map(
+      ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"].map((key) => [
+        key,
+        process.env[key],
+      ])
+    );
+    try {
+      for (const key of originalGitEnv.keys()) delete process.env[key];
+      process.chdir(root);
+      writeFileSync(join(root, "docs.md"), "# Note");
+      const docsOnly = commit("docs: describe the runtime config");
+      const docsAssessment = sourceAssessment(ledger, docsOnly);
+      expect(docsAssessment.impact).toBe("patch");
+      expect(docsAssessment.classification.surfaces).toEqual([]);
+      expect(sourceAssessment(ledger, docsOnly).evidenceDigest).toBe(docsAssessment.evidenceDigest);
+
+      writeFileSync(join(root, "VERSION"), "2.7.0\n");
+      mkdirSync(join(root, "drizzle"), { recursive: true });
+      writeFileSync(
+        join(root, "drizzle", "0020_drop.sql"),
+        "ALTER TABLE posts DROP COLUMN legacy;"
+      );
+      const destructive = commit("fix: drop the legacy column");
+      const destructiveAssessment = sourceAssessment(ledger, destructive);
+      expect(destructiveAssessment.impact).toBe("minor");
+      expect(destructiveAssessment.classification.surfaces).toEqual([
+        { id: "persistent-state", paths: ["drizzle/0020_drop.sql"] },
+      ]);
+
+      writeFileSync(join(root, "VERSION"), "2.7.0\n");
+      writeFileSync(join(root, "next.md"), "# Next");
+      const raised = commit("feat: add surface\n\nRelease-Impact: major");
+      const raisedAssessment = sourceAssessment(ledger, raised);
+      expect(raisedAssessment.impact).toBe("major");
+      expect(raisedAssessment.evidenceDigest).not.toBe(destructiveAssessment.evidenceDigest);
+    } finally {
+      process.chdir(originalCwd);
+      for (const [key, value] of originalGitEnv) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  }, 20_000);
 });

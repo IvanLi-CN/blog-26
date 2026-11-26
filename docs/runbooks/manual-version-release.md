@@ -51,9 +51,13 @@ curl -fsSL -D - -o /dev/null \
 
 GitHub 适配器固定 REST API `2022-11-28`，按该字段合同核验 PR 与真实合并来源。升级 API 版本前必须先核验 PR 元数据与恢复所需字段；`2026-03-10` 已删除所有 PR 响应中的 `merge_commit_sha`，不得通过放松来源校验来兼容。[GitHub breaking changes](https://docs.github.com/en/rest/about-the-rest-api/breaking-changes)。
 
-`docs/version-impact/` 保存成员变更的 planned、current、verified 结论以及 API/state 的分开证据。记录绑定被评估文件的 Git blob；缺失、过期或未覆盖的变更会阻断发布。版本文件、PR 数量和提交描述都不是版本基线或分类证据。
+发布影响由 `src/lib/release/impact.ts` 从已发布基线与候选来源的差异直接推导，不需要任何人工维护的分类文件。推导结果是候选提交的确定函数：同一提交永远得到同一 `impact` 与 `evidenceDigest`，因此已预留的发布可以随时重新核验。
 
-记录的 `base_sha` 为可信已发布来源，`covered_files` 覆盖该来源之后所有待发布文件变化，删除文件用 null。证据条目记录仓库相对路径、Git blob 和实际验证命令。新增改动必须更新 current 并重新验证受影响结论；不得把未运行命令或缺失现场权限证据写成 verified。记录 JSON 本身不纳入其文件覆盖清单，避免自引用摘要。
+`contractSurfaces` 声明公开契约面（`drizzle/**`、`src/lib/schema.ts`、`src/server/public-api/**`、`src/server/routers/**`、`src/server/version-api.ts`、`src/lib/*contract*.ts`、`site/pages/api/**`）。文档、测试、样式和内部模块不在其中，它们无法改变已发布契约，因此推导为 `patch`。
+
+推导下界是 `patch`。破坏性迁移（`DROP TABLE|COLUMN`、`RENAME`、`ALTER COLUMN`、无默认值的 `NOT NULL` 新增列、删除已应用迁移）会把下界提升到 `minor`，因为旧版本不再能读取持久化状态。`major` 从不自动推导：它是业务决定，必须由提交正文的 `Release-Impact: major` 显式请求。
+
+提交正文中的一行 `Release-Impact: patch|minor|major` 是唯一的人工上调通道，且只能上调、不能下调。分类结果写入 `ledger` 的 `impact` 字段并决定版本号下界，因此版本基线可回溯到确切提交，而不依赖提交描述或 PR 数量。
 
 预发布不替换正式语义基线。期间登记过的 VERSION-only 差异必须通过签名、发布 PR 和确切父提交验证，随后从业务语义覆盖中单独核验；它不会使原业务文件的见证失效。未知 VERSION 修改仍阻断发布。
 

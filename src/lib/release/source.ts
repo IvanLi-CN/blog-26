@@ -1,19 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import {
-  publishedBaseline,
-  type ReleaseEntry,
-  type ReleaseLedger,
-  supportedVersions,
-} from "./ledger";
-import {
-  contractSchema,
-  digest,
-  type ImpactRecord,
-  impactRecordSchema,
-  shaSchema,
-  verifyImpactRecords,
-} from "./policy";
+import { classifySourceChanges, requestedImpact, sourceEvidenceDigest } from "./impact";
+import { publishedBaseline, type ReleaseEntry, type ReleaseLedger } from "./ledger";
+import { contractSchema, digest, shaSchema } from "./policy";
 
 export function gitOutput(args: string[], cwd = process.cwd()): string {
   return execFileSync("git", args, {
@@ -96,8 +85,8 @@ export function treeBlobs(sha: string): Record<string, string | null> {
     const [mode, type, blob] = line.slice(0, separator).split(" ");
     if (type !== "blob" || !blob) throw new Error("Release sources cannot contain submodules");
     const path = line.slice(separator + 1);
-    if (path.startsWith("docs/version-impact/") && mode !== "100644")
-      throw new Error("Impact records must be regular files");
+    if (mode !== "100644" && mode !== "100755" && mode !== "120000")
+      throw new Error(`Unsupported release source mode ${mode}: ${path}`);
     tree[path] = shaSchema.parse(blob);
   }
   return tree;
@@ -254,6 +243,13 @@ export function semanticSourceBlobs(
   return { changed, blobs };
 }
 
+/**
+ * Classify the semantic changes between the published baseline and `sourceSha`.
+ *
+ * The result is reproducible from the tree alone: the same commit always yields
+ * the same impact and evidence digest, so a reserved release can be re-verified
+ * without trusting any author-maintained file.
+ */
 export function sourceAssessment(
   ledger: ReleaseLedger,
   sourceSha: string,
@@ -261,19 +257,24 @@ export function sourceAssessment(
 ) {
   const baseline = publishedBaseline(ledger);
   const { changed, blobs } = semanticSourceBlobs(ledger, sourceSha, proveRelease);
-  const records: ImpactRecord[] = Object.keys(treeBlobs(sourceSha))
-    .filter((path) => /^docs\/version-impact\/[^/]+\.json$/.test(path))
-    .map((path) => impactRecordSchema.parse(JSON.parse(gitFile(sourceSha, path) || "null")));
-  const semanticChanges = Object.fromEntries(
-    Object.entries(changed).filter(([path]) => !/^docs\/version-impact\/[^/]+\.json$/.test(path))
+  const requested = requestedImpact(subjectMessages(baseline.sourceSha, sourceSha));
+  const classification = classifySourceChanges(
+    changed,
+    (path) => (blobs[path] === undefined ? undefined : gitFile(sourceSha, path)),
+    requested
   );
-  const verified = verifyImpactRecords(
-    records,
-    semanticChanges,
-    blobs,
-    baseline.sourceSha,
-    supportedVersions(ledger),
-    baseline.version
-  );
-  return { ...verified, baseline, records, changed: semanticChanges };
+  return {
+    impact: classification.impact,
+    evidenceDigest: sourceEvidenceDigest(baseline.sourceSha, changed, classification),
+    baseline,
+    changed,
+    classification,
+  };
+}
+
+function subjectMessages(base: string, head: string): string[] {
+  return gitOutput(["log", "--format=%B%x00", `${base}..${head}`])
+    .split("\u0000")
+    .map((message) => message.trim())
+    .filter(Boolean);
 }
