@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "kind": "version-impact-record",
+  "base_sha": "6b7796b690be121d5124dd6eb4e1a7cc8db1b104",
+  "covered_files": {
+    "docs/solutions/admin/llm-settings-runtime-config.md": "cbbb429c99e9fe3c1b05220a7d0e0c1c240a78ab",
+    "src/server/services/llm-settings.test.ts": "92729e9cb9f4b996ab1b7971d2c439d92a0b2afa",
+    "src/server/services/llm-settings.ts": "0b1a3852d9d29ab2c5143da9303673116a37cbbf"
+  },
+  "change": {
+    "description": "Scope the admin embedding reindex hint to embedding rows whose post still exists, so orphaned vectors left behind by deleted posts stop reporting a resync that the live index does not need.",
+    "release_unit_description": "static frontend and full-feature Docker image",
+    "affected_contracts": ["public-api"]
+  },
+  "classification": {
+    "planned": {
+      "impact": "patch",
+      "reasoning": "Only the derived advisory flag on the admin LLM settings payload changes. Response shape, types, routes, persisted settings, and the embedding rows themselves stay as they are.",
+      "assessed_at": "2026-11-26T15:10:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/llm-settings.ts",
+          "blob": "0b1a3852d9d29ab2c5143da9303673116a37cbbf",
+          "command": "getIndexedEmbeddingModelState joins posts so min/max(updated_at) only covers live vectors"
+        },
+        {
+          "path": "src/lib/schema.ts",
+          "blob": "0b0e189cac88ebeec49b04c4e5b3bcc9f7efa0a6",
+          "command": "post_embeddings declares no reference to posts, so deleting a post leaves its vectors in place"
+        }
+      ]
+    },
+    "current": {
+      "impact": "patch",
+      "reasoning": "The candidate stays limited to the index-state query, one regression test for orphaned vectors, and the runtime-config solution note that records the live-vector scoping rule.",
+      "assessed_at": "2026-11-26T15:10:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/llm-settings.test.ts",
+          "blob": "92729e9cb9f4b996ab1b7971d2c439d92a0b2afa",
+          "command": "bun test --isolate src/server/services/llm-settings.test.ts"
+        },
+        {
+          "path": "docs/solutions/admin/llm-settings-runtime-config.md",
+          "blob": "cbbb429c99e9fe3c1b05220a7d0e0c1c240a78ab",
+          "command": "bun run check"
+        }
+      ],
+      "scope_drift": {
+        "detected": false,
+        "description": "No route, response schema, database migration, or public site file changed; the candidate is one query scope fix plus its evidence."
+      }
+    },
+    "verified": {
+      "impact": "patch",
+      "reasoning": "The focused service suite passes with the new orphan-vector case, and the project check keeps the admin UI boundary and semantic token gates green. Against the production index the live vectors all postdate the last embedding provider change, so the advisory flag clears there.",
+      "assessed_at": "2026-11-26T15:10:00+08:00",
+      "evidence": [
+        {
+          "path": "src/server/services/llm-settings.test.ts",
+          "blob": "92729e9cb9f4b996ab1b7971d2c439d92a0b2afa",
+          "command": "bun test --isolate src/server/services/llm-settings.test.ts: 14 tests, 61 expectations pass"
+        },
+        {
+          "path": "src/server/services/llm-settings.ts",
+          "blob": "0b1a3852d9d29ab2c5143da9303673116a37cbbf",
+          "command": "bun run check: biome, admin UI boundary (67 files), and semantic tokens (27 tokens) pass"
+        }
+      ]
+    }
+  },
+  "compatibility_evidence": {
+    "public_api": {
+      "impact": "patch",
+      "change": "compatible",
+      "supported_consumer_versions": [
+        "4.0.2",
+        "4.1.0",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.1.6",
+        "4.1.7",
+        "4.1.9",
+        "4.1.10",
+        "4.1.11",
+        "4.2.0",
+        "4.2.1",
+        "4.2.2",
+        "4.2.6",
+        "4.2.8",
+        "4.2.9",
+        "4.2.10",
+        "4.2.11",
+        "4.2.12",
+        "4.2.13",
+        "4.2.14",
+        "4.2.15",
+        "4.2.16",
+        "4.2.17",
+        "4.2.18",
+        "4.2.19",
+        "4.2.20",
+        "4.2.21",
+        "4.2.22",
+        "4.2.23",
+        "4.2.24",
+        "4.2.25"
+      ],
+      "evidence": [
+        {
+          "path": "src/server/services/llm-settings.ts",
+          "blob": "0b1a3852d9d29ab2c5143da9303673116a37cbbf",
+          "command": "AdminLlmSettingsPayload keeps embeddingReindexRequired, embeddingReindexSuggested, currentIndexedModel, currentResolvedModel, and embeddingConfigUpdatedAt unchanged"
+        },
+        {
+          "path": "apps/admin/src/pages/llm-settings.tsx",
+          "blob": "8482dc3aca7025b449d2b788fb9a1081e6080c75",
+          "command": "The admin page still branches on the same hint fields; only the suggested flag's computed value changes"
+        }
+      ]
+    },
+    "persistent_state": {
+      "impact": "patch",
+      "applicable": false,
+      "state_description": "No schema, migration, content format, browser storage, or cache layout changes. post_embeddings and llm_settings rows keep their existing shape; only the read scope of an advisory query narrows.",
+      "readable_by_prior_versions": [],
+      "upgrade_from_versions": [],
+      "evidence": [
+        {
+          "path": "src/lib/schema.ts",
+          "blob": "0b0e189cac88ebeec49b04c4e5b3bcc9f7efa0a6",
+          "command": "post_embeddings and llm_settings definitions are untouched"
+        }
+      ]
+    }
+  }
+}
