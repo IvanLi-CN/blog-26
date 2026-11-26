@@ -186,6 +186,94 @@ describe("llm settings service", () => {
     expect(payload.hints.currentResolvedModel).toBe("BAAI/bge-m3");
   });
 
+  it("ignores embeddings whose post no longer exists when evaluating reindex status", async () => {
+    if (!db) throw new Error("Database has not been initialised");
+
+    const now = Date.now();
+    await db.insert(posts).values({
+      id: "live-post",
+      slug: "live-post",
+      type: "post",
+      title: "Live Post",
+      excerpt: "live excerpt",
+      body: "live body",
+      publishDate: now - 10_000,
+      updateDate: now - 10_000,
+      draft: false,
+      public: true,
+      category: "demo",
+      tags: JSON.stringify(["demo"]),
+      author: "tester",
+      metadata: JSON.stringify({}),
+      dataSource: "database",
+      contentHash: "live-content-hash",
+      lastModified: now - 10_000,
+      source: "local",
+      filePath: "live-post.md",
+    });
+
+    await updateAdminLlmSettings({
+      chat: {
+        model: "",
+        baseUrl: "https://chat.example.test",
+        apiKeyInput: "chat-secret-value",
+      },
+      embedding: {
+        model: "BAAI/bge-m3",
+        useCustomProvider: false,
+        baseUrlMode: "inherit",
+        baseUrl: "",
+        apiKeyMode: "inherit",
+        apiKeyInput: "",
+      },
+      rerank: {
+        model: "",
+        useCustomProvider: false,
+        baseUrlMode: "inherit",
+        baseUrl: "",
+        apiKeyMode: "inherit",
+        apiKeyInput: "",
+      },
+    });
+
+    await db.insert(postEmbeddings).values([
+      {
+        id: "orphan-embedding",
+        postId: "deleted-post",
+        slug: "deleted-post",
+        type: "post",
+        modelName: "BAAI/bge-m3",
+        dim: 1,
+        contentHash: "deleted-content-hash",
+        chunkIndex: -1,
+        vector: new Uint8Array([0]),
+        errorMessage: null,
+        createdAt: now - 500_000,
+        updatedAt: now - 500_000,
+      },
+      {
+        id: "live-embedding",
+        postId: "live-post",
+        slug: "live-post",
+        type: "post",
+        modelName: "BAAI/bge-m3",
+        dim: 1,
+        contentHash: "live-content-hash",
+        chunkIndex: -1,
+        vector: new Uint8Array([0]),
+        errorMessage: null,
+        createdAt: now + 60_000,
+        updatedAt: now + 60_000,
+      },
+    ]);
+
+    const payload = await getAdminLlmSettingsPayload();
+    expect(payload.hints.embeddingReindexRequired).toBe(false);
+    expect(payload.hints.embeddingReindexSuggested).toBe(false);
+    expect(payload.hints.currentIndexedModel).toBe("BAAI/bge-m3");
+    expect(payload.hints.embeddingConfigUpdatedAt).not.toBeNull();
+  });
+
   it("prefers the resolved embedding model when evaluating reindex status", async () => {
     if (!db) throw new Error("Database has not been initialised");
 

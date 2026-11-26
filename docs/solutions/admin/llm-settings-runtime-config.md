@@ -46,6 +46,7 @@ The project previously let each AI-related module read environment variables dir
    - rerank base URL / key: follow the default chain unless `useCustomProvider=true`
 4. Route all AI call sites through the shared resolver instead of import-time env snapshots.
 5. Compute embedding reindex notices from the resolved embedding tier plus existing `post_embeddings` metadata so inherited parent changes stay visible: model mismatches require revectorization, while same-model provider changes produce an advisory resync warning.
+   - Scope that metadata to rows whose `post_id` still resolves to a `posts` row. `post_embeddings` has no foreign key to `posts`, so deleting a post leaves its vectors behind; counting them lets a stale orphan drag `min(updated_at)` before the last provider change and report a resync that the live index does not need.
 6. Keep the browser UX compact instead of exposing separate “mode” dropdowns or effective-value summary cards:
    - inputs use the active model/base URL as placeholders
    - API keys render as same-length masked placeholders

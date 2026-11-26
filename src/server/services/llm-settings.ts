@@ -16,7 +16,7 @@ import {
   llmSettingsRecordSchema,
   type ResolvedTierSummary,
 } from "@/lib/llm-settings";
-import { llmSettings, postEmbeddings } from "@/lib/schema";
+import { llmSettings, postEmbeddings, posts } from "@/lib/schema";
 
 const DEFAULT_ROW_ID = "default";
 const DEFAULT_CHAT_MODEL = "gpt-4o-mini";
@@ -546,6 +546,7 @@ async function getIndexedEmbeddingModelState(preferredModel?: string | null) {
       oldestUpdatedAt: sql<number>`min(${postEmbeddings.updatedAt})`,
     })
     .from(postEmbeddings)
+    .innerJoin(posts, eq(posts.id, postEmbeddings.postId))
     .groupBy(postEmbeddings.modelName)
     .orderBy(desc(sql`max(${postEmbeddings.updatedAt})`), desc(sql`count(*)`));
 
