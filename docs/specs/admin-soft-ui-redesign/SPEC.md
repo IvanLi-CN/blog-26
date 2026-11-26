@@ -152,6 +152,18 @@ Shared capture contexts:
 
 ![Admin UI library editor tabs](./assets/admin-ui-library-editor-tabs.png)
 
+### Switch control geometry and ink
+
+- Source type `storybook_canvas`, target program `mock-only`, capture scope `element`, evidence surface `component`, margin policy `require_margin`, viewport strategy `storybook-viewport`, requested viewport `default`, sensitive exclusion `N/A`, stories `Admin/Switch Control/AllStates` and `Admin/Switch Control/LightTheme`.
+- Track geometry comes from one set of custom properties: `40px × 20px` (`2.00` ratio) with a `16px` thumb on fine-pointer desktop, `44px × 24px` with a `20px` thumb otherwise. Thumb offsets derive from the track width, so both ends keep a `2px` inset in every state instead of drifting.
+- The off track uses the shared `--input` surface with an inset `--border` ring, and the checked track uses the `--primary` fill without that ring.
+- The thumb follows the control's ink: `--foreground` off, `--primary-foreground` on. Keeping one constant thumb color across states measured `2.02:1` against the dark-theme `--primary` track, so the handle dissolved into the fill; the state-dependent ink is intentional and the stories label it.
+- Measured margins are `24px` on all sides for both stories against `required_margin=16px`; target-to-surface containment holds.
+
+![Admin switch states dark](./assets/admin-switch-states-dark.png)
+
+![Admin switch states light](./assets/admin-switch-states-light.png)
+
 ### Route Baseline
 
 These screenshots show the shipped Soft UI direction across major routes, themes, and viewport classes.
