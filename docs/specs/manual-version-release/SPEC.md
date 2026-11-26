@@ -62,7 +62,11 @@
 
 业务分支通过多层正常合并携带已登记发布版本时，来源检查 MUST 只沿根目录 `VERSION` 为普通文件且 blob 不变的合入祖先边追溯，绑定确切已登记发布 merge SHA 与版本值，并调用原有发布来源认证。已废弃但已合并、尚未绑定 merge SHA 的准备记录 MUST 经原 PR 认证确切合并提交后才可识别。仅版本值相等、提交消息、无登记的版本改写或改写后恢复 MUST NOT 作为发布来源证明；认证缺失或失败仍停止检查。此规则不创建或重开发布身份，不改变发布来源与产物。
 
-语义证据过期指可信基线、待发布变更范围、文件或验证见证 blob、公开 API 或持久状态兼容性假设发生变化，原 verified 结论不再覆盖当前来源。评估时间用于审计，不设置仅按经过天数失效的期限。
+发布影响 MUST 由可信正式基线与候选来源之间的实际差异推导，MUST NOT 依赖人工维护的分类文件。推导 MUST 是候选提交与策略版本的确定函数，使同一来源重算得到同一 `impact` 与 `evidenceDigest`；预留与合并 MUST 对同一来源得到一致结果。
+
+推导 MUST 只区分可机械判定的结论：不在 `contractSurfaces` 内的文档、测试、样式与内部模块推导为 `patch`；破坏性迁移（`DROP TABLE|COLUMN`、`RENAME`、`ALTER COLUMN`、无默认值的 `NOT NULL` 新增列、删除已应用迁移）推导下界为 `minor`。`major` MUST NOT 被自动推导，MUST 由提交正文的 `Release-Impact: major` 显式请求。
+
+`Release-Impact:` 是唯一的人工上调通道，MUST NOT 用于下调机械推导的下界；MUST 只接受 `patch|minor|major` 三个值。任何上调都要在登记 `impact` 与最终版本号上可回溯到确切提交。
 
 ### REQ-MVR-009
 
@@ -150,7 +154,7 @@ Product Release run 本身只有两类 abandon：没有任何 frozen artifact �
 
 ### VER-MVR-006
 
-- Method: 运行版本策略、语义证据和登记并发固定样例测试。
+- Method: 运行版本策略、影响推导和登记并发固定样例测试。
 - covers: `REQ-MVR-008`, `REQ-MVR-009`
 - Pass condition: 最高 verified 影响决定核心版本的必要升级，完整版本按 SemVer 顺序向前；例如从 2.7.0 的 minor 目标允许 2.8.0-alpha.1，却拒绝 2.7.1-alpha.1。回溯、不足升级、证据过期、伪造准备及并发冲突被拒绝，废弃版本不复用，预发布成功不替换正式语义基线。
 

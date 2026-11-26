@@ -78,11 +78,11 @@
 - SSE delivers persistent snapshots and partial output; reconnect reads the snapshot again. Server identity and permissions are checked for every private event. Full articles are fetched only for detail, not list payloads.
 - The opt-in `scripts/clipping-empirical.ts` runner uses a private acceptance directory. `--extract-only` saves a private source artifact without calling a model; `--probe` checks the actual page and provider; the full run requires `CANDIDATE_SHA` and records the source hash, segment coverage, configured model, and cited answer. Do not publish its private working database or credentials.
 
-- Ordinary implementation PR merges no longer publish a product automatically under the manual-release contract. This feature does not modify `VERSION` or initiate the manual release workflow. Current API/state impact evidence is recorded in `docs/version-impact/memo-clipping.json`; superseded overlapping file coverage is removed from the preceding manual-release assessment.
+- Ordinary implementation PR merges no longer publish a product automatically under the manual-release contract. This feature does not modify `VERSION` or initiate the manual release workflow. Release impact is derived from the baseline diff by `src/lib/release/impact.ts`; migrations `0011_memo_clipping.sql` and `0012_search_modes.sql` are additive, so the derived floor stays `patch` and any higher impact must be requested with a `Release-Impact:` commit trailer.
 
 ## Remaining Gates
 
-- T8 binds the full local check set, assistant E2E, dual-origin identity, migration/privacy checks, Web Demo build and visual evidence to the exact candidate SHA in `docs/version-impact/site-assistant-t8.json`. Remote PR CI/E2E and formal Tier 4 review remain required for PR readiness.
+- T8 binds the full local check set, assistant E2E, dual-origin identity, migration/privacy checks, Web Demo build and visual evidence to the candidate SHA recorded in the `## Verification` section of this file. Remote PR CI/E2E and formal Tier 4 review remain required for PR readiness.
 - Live-provider acceptance is deferred and unverified. Do not invoke the opt-in provider runner without separate explicit owner authorization.
 - Real GitHub OAuth, production migration/backfill, deployment and post-deploy cache/cookie checks remain release gates; they are not implied by deterministic tests or Web Demo fixtures.
 

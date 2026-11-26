@@ -2,7 +2,7 @@
 
 ## Lifecycle / Compatibility
 
-- 本主题仍为 `active`，当前实现状态为 `implemented`；需求、实现覆盖和验收事实分别以 [SPEC.md](./SPEC.md)、[IMPLEMENTATION.md](./IMPLEMENTATION.md) 与 T8 version-impact record 为准。
+- 本主题仍为 `active`，当前实现状态为 `implemented`；需求与实现覆盖以 [SPEC.md](./SPEC.md)、[IMPLEMENTATION.md](./IMPLEMENTATION.md) 为准，验收结论见 IMPLEMENTATION 的 `## Verification Coverage` 与对应 PR。
 - 统一助手在同一前台 principal 下承载一般对话和剪藏关联对话。静态公开内容、动态 Console、后台管理员身份和 GitHub reader identity 仍是不同边界；后台登录不会替代前台 session，管理员也不能由此读取其他用户的私人对话。
 - T1–T7 的数据库迁移为 forward-only；T3/T7 的历史讨论 backfill 是独立的 resumable operation，旧安装在 migration gate 未完成前不暴露统一 clipping chat。生产数据未由本地验收读取或变更。
 
@@ -15,7 +15,7 @@
 
 ## T8 Acceptance Boundary
 
-- T8 只收敛当前候选的 checks、assistant/API/E2E、迁移/兼容/隐私证据、Web Demo 视觉证据和文档 hash；所有 evidence 绑定实际 head SHA。
+- T8 只收敛当前候选的 checks、assistant/API/E2E、迁移/兼容/隐私证据和 Web Demo 视觉证据；候选 head SHA 随对应 PR 记录，不单独维护逐文件证据文件。
 - 知识助手的内联请求失败提示采用 shadcn/ui Alert 组合；重试操作使用紧凑视觉尺寸，在同排时右端对齐，空间不足换行后仍保持右端对齐，不改变普通控件的 44px 触控约束。
 - 确定性测试与 Web Demo 不证明真实模型回答质量、GitHub OAuth 配置、双生产 origin cookie/cache 行为、生产 backfill 或部署结果。上述项目仍是发布门禁，不能以本地 green suite 代替。
 - `docs/runbooks/site-assistant-discussion-migration.md` 是迁移的操作入口：先 DDL，再 dry-run/apply/resume，最后按独立条件执行 cleanup；任何旧运行时回滚都不能被解释为自动 down-migration。

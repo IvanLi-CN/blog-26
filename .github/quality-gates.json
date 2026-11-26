@@ -1,7 +1,6 @@
 {
   "schema_version": 1,
   "policy": {
-    "baseline_policy": "explicit-waiver-required",
     "require_signed_commits": true,
     "branch_protection": {
       "protected_branches": ["main"],
@@ -46,7 +45,6 @@
     "Frozen Product Smoke (2.8.0-beta.1)",
     "Frozen Product Smoke (2.8.0-rc.1+Candidate.001)"
   ],
-  "waivers": [],
   "expected_pr_workflows": [
     {
       "workflow": "CI/CD Pipeline",

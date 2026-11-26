@@ -1,10 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
+  classifySourceChanges,
+  destructiveMigration,
+  raiseImpact,
+  requestedImpact,
+  sourceEvidenceDigest,
+} from "../../src/lib/release/impact";
+import {
   allocateVersion,
   compareVersions,
-  type ImpactRecord,
   validateStateUpgrade,
-  verifyImpactRecords,
 } from "../../src/lib/release/policy";
 import { policyFingerprint } from "../../src/lib/release/source";
 import { imageVersionTag, parseVersion } from "../../src/lib/release/version";
@@ -12,54 +17,153 @@ import { imageVersionTag, parseVersion } from "../../src/lib/release/version";
 const base = "a".repeat(40);
 const code = "b".repeat(40);
 const proof = "c".repeat(40);
-function record(): ImpactRecord {
-  const assessment = {
-    impact: "patch" as const,
-    reasoning: "The public and durable contracts are unchanged.",
-    assessed_at: "2026-10-07T00:00:00Z",
-    evidence: [{ path: "tests/api.test.ts", blob: proof, command: "bun test tests/api.test.ts" }],
-  };
-  return {
-    schema_version: 1,
-    kind: "version-impact-record",
-    base_sha: base,
-    covered_files: { "src/api.ts": code },
-    change: {
-      description: "Internal fix",
-      release_unit_description: "static frontend and full-feature Docker image",
-      affected_contracts: ["public-api", "persistent-state"],
-    },
-    classification: {
-      planned: assessment,
-      current: { ...assessment, scope_drift: { detected: false, description: "none" } },
-      verified: assessment,
-    },
-    compatibility_evidence: {
-      public_api: {
-        impact: "patch",
-        change: "unchanged",
-        supported_consumer_versions: ["2.7.0"],
-        evidence: assessment.evidence,
-      },
-      persistent_state: {
-        impact: "patch",
-        applicable: true,
-        state_description: "SQLite and local content",
-        readable_by_prior_versions: ["2.7.0"],
-        upgrade_from_versions: ["2.7.0"],
-        evidence: assessment.evidence,
-      },
-    },
-  };
-}
-const changed = { "src/api.ts": code };
-const blobs = { ...changed, "tests/api.test.ts": proof };
-const verify = (
-  records: ImpactRecord[],
-  diff: Record<string, string | null> = changed,
-  tree = blobs,
-  supported = ["2.7.0"]
-) => verifyImpactRecords(records, diff, tree, base, supported, "2.7.0");
+
+const files: Record<string, string> = {
+  "drizzle/0038_drop_legacy_column.sql": "ALTER TABLE posts DROP COLUMN legacy;",
+  "drizzle/0039_add_column.sql": "ALTER TABLE posts ADD COLUMN draft INTEGER;",
+  "drizzle/0040_default_column.sql":
+    "ALTER TABLE posts ADD COLUMN role text DEFAULT 'reader' NOT NULL;",
+  "src/server/public-api/router.ts": "export const routes = [];",
+  "src/lib/schema.ts": "export const schema = {};",
+  "src/server/services/llm-settings.ts": "export function hint() {}",
+  "docs/solutions/admin/llm-settings-runtime-config.md": "# Config",
+  "apps/admin/src/styles.css": ".x { color: red }",
+};
+const read = (path: string) => files[path];
+const diff = (...paths: string[]) => Object.fromEntries(paths.map((path) => [path, code]));
+const removed = (...paths: string[]) => Object.fromEntries(paths.map((path) => [path, null]));
+
+describe("derived release impact", () => {
+  test("documentation, tests, styles, and internal modules stay patch", () => {
+    const result = classifySourceChanges(
+      diff(
+        "docs/solutions/admin/llm-settings-runtime-config.md",
+        "apps/admin/src/styles.css",
+        "src/server/services/llm-settings.ts"
+      ),
+      read
+    );
+    expect(result.impact).toBe("patch");
+    expect(result.surfaces).toEqual([]);
+  });
+
+  test("a contract surface is reported even when the impact stays patch", () => {
+    const result = classifySourceChanges(diff("src/server/public-api/router.ts"), read);
+    expect(result.impact).toBe("patch");
+    expect(result.surfaces).toEqual([
+      { id: "public-api", paths: ["src/server/public-api/router.ts"] },
+    ]);
+  });
+
+  test("an additive migration stays patch; a destructive one raises to minor", () => {
+    expect(classifySourceChanges(diff("drizzle/0039_add_column.sql"), read).impact).toBe("patch");
+    const destructive = classifySourceChanges(diff("drizzle/0038_drop_legacy_column.sql"), read);
+    expect(destructive.impact).toBe("minor");
+    expect(destructive.surfaces).toEqual([
+      { id: "persistent-state", paths: ["drizzle/0038_drop_legacy_column.sql"] },
+    ]);
+  });
+
+  test("a deleted migration raises to minor because persisted rows lose their writer", () => {
+    const result = classifySourceChanges(removed("drizzle/0039_add_column.sql"), read);
+    expect(result.impact).toBe("minor");
+    expect(result.reasons).toContain(
+      "drizzle/0039_add_column.sql: an applied migration was deleted"
+    );
+  });
+
+  test("a deleted public contract surface raises to minor; a deleted document does not", () => {
+    expect(classifySourceChanges(removed("src/server/public-api/router.ts"), read).impact).toBe(
+      "minor"
+    );
+    expect(
+      classifySourceChanges(removed("docs/solutions/admin/llm-settings-runtime-config.md"), read)
+        .impact
+    ).toBe("patch");
+  });
+
+  test("several paths collapse into one surface without losing either path", () => {
+    const result = classifySourceChanges(
+      diff("drizzle/0039_add_column.sql", "src/lib/schema.ts"),
+      read
+    );
+    expect(result.surfaces).toEqual([
+      { id: "persistent-state", paths: ["drizzle/0039_add_column.sql", "src/lib/schema.ts"] },
+    ]);
+  });
+
+  test("destructive DDL is detected from statement shape, not from comments", () => {
+    expect(destructiveMigration("ALTER TABLE t DROP COLUMN c;")).toBe(true);
+    expect(destructiveMigration("ALTER TABLE t RENAME TO u;")).toBe(true);
+    expect(destructiveMigration("DROP TABLE t;")).toBe(true);
+    expect(destructiveMigration("ALTER TABLE t ADD COLUMN c TEXT NOT NULL;")).toBe(true);
+    // drizzle-kit emits DEFAULT before NOT NULL; both orders carry a default.
+    expect(destructiveMigration("ALTER TABLE t ADD COLUMN c text DEFAULT 'x' NOT NULL;")).toBe(
+      false
+    );
+    expect(destructiveMigration("ALTER TABLE t ADD COLUMN c TEXT NOT NULL DEFAULT '';")).toBe(
+      false
+    );
+    expect(
+      destructiveMigration("ALTER TABLE t ADD COLUMN a TEXT NOT NULL, ADD COLUMN b TEXT;")
+    ).toBe(true);
+    expect(destructiveMigration("/* DROP COLUMN todo */\nALTER TABLE t ADD COLUMN c TEXT;")).toBe(
+      false
+    );
+    expect(destructiveMigration("ALTER TABLE t ADD COLUMN c TEXT;")).toBe(false);
+    expect(
+      destructiveMigration("-- DROP COLUMN is not executed here\nCREATE TABLE t (id TEXT);")
+    ).toBe(false);
+    expect(destructiveMigration("CREATE INDEX idx ON t (c);")).toBe(false);
+  });
+
+  test("a requested impact only ever raises the derived floor", () => {
+    expect(requestedImpact(["fix: adjust hint"])).toBe("patch");
+    expect(requestedImpact(["feat: add surface\n\nRelease-Impact: minor"])).toBe("minor");
+    expect(requestedImpact(["chore: x\n\nRelease-Impact: major"])).toBe("major");
+    expect(requestedImpact(["chore: x", "fix: y\n\nRelease-Impact: minor"])).toBe("minor");
+    expect(raiseImpact("minor", "patch")).toBe("minor");
+    expect(raiseImpact("patch", "major")).toBe("major");
+    // A requested patch cannot lower a destructive migration.
+    const forced = classifySourceChanges(
+      diff("drizzle/0038_drop_legacy_column.sql"),
+      read,
+      "patch"
+    );
+    expect(forced.impact).toBe("minor");
+  });
+
+  test("the evidence digest is reproducible from the tree and changes with the diff", () => {
+    const one = classifySourceChanges(diff("src/server/services/llm-settings.ts"), read);
+    const same = classifySourceChanges(diff("src/server/services/llm-settings.ts"), read);
+    const other = classifySourceChanges(
+      diff("src/server/services/llm-settings.ts", "apps/admin/src/styles.css"),
+      read
+    );
+    expect(sourceEvidenceDigest(base, diff("src/server/services/llm-settings.ts"), one)).toBe(
+      sourceEvidenceDigest(base, diff("src/server/services/llm-settings.ts"), same)
+    );
+    expect(sourceEvidenceDigest(base, diff("src/server/services/llm-settings.ts"), one)).not.toBe(
+      sourceEvidenceDigest(base, diff("apps/admin/src/styles.css"), other)
+    );
+    expect(sourceEvidenceDigest(base, diff("apps/admin/src/styles.css"), other)).not.toBe(
+      sourceEvidenceDigest("d".repeat(40), diff("apps/admin/src/styles.css"), other)
+    );
+    // The digest must bind blob values, not just paths: equal paths with different
+    // content is exactly what a re-verification has to distinguish.
+    expect(sourceEvidenceDigest(base, diff("src/server/services/llm-settings.ts"), one)).not.toBe(
+      sourceEvidenceDigest(base, { "src/server/services/llm-settings.ts": proof }, one)
+    );
+    // It must also bind the derived contract surfaces.
+    const surface = classifySourceChanges(diff("src/server/public-api/router.ts"), read);
+    expect(sourceEvidenceDigest(base, diff("src/server/public-api/router.ts"), surface)).not.toBe(
+      sourceEvidenceDigest(base, diff("src/server/public-api/router.ts"), {
+        ...surface,
+        surfaces: [],
+      })
+    );
+  });
+});
 
 describe("product SemVer policy", () => {
   test("a reservation binds policy implementation while VERSION-only preparation preserves it", () => {
@@ -149,38 +253,6 @@ describe("product SemVer policy", () => {
   test("numeric ordering does not round large SemVer components", () => {
     expect(compareVersions("2.10.0", "2.9.999")).toBe(1);
     expect(compareVersions("9007199254740993.0.0", "9007199254740992.0.0")).toBe(1);
-  });
-  test("evidence covers changed source blobs and cannot be reused after scope drift", () => {
-    expect(verify([record()]).impact).toBe("patch");
-    expect(() => verify([])).toThrow("Unclassified");
-    expect(() => verify([record()], { "src/new.ts": code })).toThrow("Unclassified");
-    expect(() => verify([record()], changed, { ...blobs, "tests/api.test.ts": base })).toThrow(
-      "Stale evidence"
-    );
-    expect(() => verify([record()], changed, { ...blobs, "src/api.ts": base })).toThrow(
-      "Scope drift"
-    );
-    const pending = record();
-    pending.classification.verified = null;
-    expect(() => verify([pending])).toThrow("Verified");
-  });
-  test("API and state contracts are independently classified and verified", () => {
-    const value = record();
-    value.compatibility_evidence.public_api.change = "breaking";
-    expect(() => verify([value])).toThrow("Breaking public API");
-    value.compatibility_evidence.public_api.change = "compatible";
-    value.compatibility_evidence.persistent_state.readable_by_prior_versions = [];
-    expect(() => verify([value])).toThrow("Patch state");
-    value.compatibility_evidence.persistent_state.impact = "minor";
-    if (!value.classification.verified) throw new Error("Missing fixture");
-    value.classification.verified.impact = "minor";
-    value.classification.current.impact = "minor";
-    expect(verify([value]).impact).toBe("minor");
-    expect(() => verify([value], changed, blobs, ["2.6.0", "2.7.0"])).toThrow("consumer");
-    value.compatibility_evidence.public_api.supported_consumer_versions.push("2.6.0");
-    expect(() => verify([value], changed, blobs, ["2.6.0", "2.7.0"])).toThrow(
-      "earlier supported Minor state"
-    );
   });
   test("state upgrades cannot jump over a Major", () => {
     expect(() => validateStateUpgrade("2.7.0", "3.0.0")).not.toThrow();

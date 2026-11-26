@@ -4,7 +4,6 @@
   "branch": "main",
   "ledgerBranch": "release-ledger",
   "versionPolicy": "product-semver-v1",
-  "impactRecordDirectory": "docs/version-impact",
   "bootstrap": {
     "version": "2.7.0",
     "sourceSha": "ea9fcea19ab9546a9c1b4456d54500866f567540"

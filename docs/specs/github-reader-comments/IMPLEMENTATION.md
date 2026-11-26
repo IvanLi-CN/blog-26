@@ -37,9 +37,9 @@
 ## Verification
 
 - `bun run check` 通过，包含 Biome 和 `check:admin-ui`；仓库既有 Biome warnings 保持原状。`bun run db:migrations:validate`、`git diff --check` 和 Spec 合同检查通过。
-- 历史基线曾记录 1396 tests passed；T8 当前 VM 全量运行记录 1567 passed、6 个与本主题无关的基线/环境失败，不能宣称全仓库全绿。定向 OAuth、评论、HTTP compatibility、Web Demo runtime/fetch 测试和官方路由绑定场景的结果及当前 SHA 以 Site Assistant T8 impact record 为准。
+- 历史基线曾记录 1396 tests passed；T8 当前 VM 全量运行记录 1567 passed、6 个与本主题无关的基线/环境失败，不能宣称全仓库全绿。定向 OAuth、评论、HTTP compatibility、Web Demo runtime/fetch 测试和官方路由绑定场景的结果及当前 SHA 见本文件与对应 PR。
 - 迁移证据在隔离 SQLite 中完成：新旧数据库均验证 binding/comment migration、唯一约束、角色默认值、OAuth purpose 字段、审计记录和 token 不落库；历史评论不自动认领，解绑不改变已有管理员评论。
-- `bun run web-demo:build`、官方路由 Web Demo 浏览器证据和视觉证据通过：覆盖有效空评论、目标不可用、网络失败、空/失效头像、普通读者审核、绑定/未绑定管理员直接公开、公开作者标记、解绑历史保留、软删除恢复、Inspector 状态分享、评论与 Console AI tabs、共享助手入口、响应式断点和无横向溢出；当前候选的 exact command/SHA 事实登记在 Site Assistant T8 impact record。
+- `bun run web-demo:build`、官方路由 Web Demo 浏览器证据和视觉证据通过：覆盖有效空评论、目标不可用、网络失败、空/失效头像、普通读者审核、绑定/未绑定管理员直接公开、公开作者标记、解绑历史保留、软删除恢复、Inspector 状态分享、评论与 Console AI tabs、共享助手入口、响应式断点和无横向溢出；当前候选的 exact command/SHA 事实见对应 PR。
 - 当前定向证据已覆盖评论承载层、头像回退、显式目标状态、迁移约束、OAuth fixture 成功/失败生命周期、REST/tRPC 管理员作者角色、绑定/解绑管理台和历史恢复语义；这些证据仍不能替代真实 GitHub 授权和生产 dual-origin 验收。
 - 真实 GitHub 登录、外部应用注册、生产 OAuth 密钥、实际双 origin 浏览器授权和生产数据迁移尚未执行；配置缺失时 A3 仍为 unavailable，不能将本地 OAuth fixture 通过视为真实授权验收。
 - 全仓库 `tsc --noEmit` 仍会报告基线 admin alias、旧测试夹具和已有服务类型错误；本次改动文件没有新增过滤后的 TypeScript 错误。生产运行面仍属于 release gate。
