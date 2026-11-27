@@ -106,7 +106,7 @@ The admin needs a durable control plane for LLM configuration with safe secret h
 5. Rerank settings affect enhanced search reranking defaults.
 6. API keys remain masked in API responses and the UI, with replace/clear semantics working as documented.
 7. The model picker dialog supports capability badge filtering, search, and selection from fallback data without network access; upstream fetch states distinguish loading, not-yet-fetched, upstream-empty, filtered-empty, and error outcomes.
-8. Changing embedding settings surfaces a reindex notice without auto-triggering a job; model mismatches are treated as required reindexing, while provider-only changes surface an advisory resync warning.
+8. Changing embedding settings surfaces a reindex notice without auto-triggering a job; model mismatches are treated as required reindexing, while provider-only changes surface an advisory resync warning. The notice is computed only from content types that are actually indexed (`vectorizedContentTypes`); vectors belonging to any other type are not counted, because no indexer refreshes them and a single stale row would otherwise make the notice unclearable.
 9. Embedding and rerank hide independent provider fields while `高级设置` is off, preserve previously saved custom values, and require both `baseURL` and `API Key` when the switch is on.
 10. Tier test actions return visible progress and result feedback without leaving the page.
 11. Production gateway/admin container startup fails fast when `LLM_SETTINGS_MASTER_KEY` is missing and does not print raw environment variables or secret values to startup logs.

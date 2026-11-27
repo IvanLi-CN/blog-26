@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { type AiUsageContext, extractAiUsage, meterProviderCall } from "@/lib/ai-usage";
 import { db, initializeDB } from "@/lib/db";
 import {
@@ -16,7 +16,7 @@ import {
   llmSettingsRecordSchema,
   type ResolvedTierSummary,
 } from "@/lib/llm-settings";
-import { llmSettings, postEmbeddings, posts } from "@/lib/schema";
+import { llmSettings, postEmbeddings, posts, vectorizedContentTypes } from "@/lib/schema";
 
 const DEFAULT_ROW_ID = "default";
 const DEFAULT_CHAT_MODEL = "gpt-4o-mini";
@@ -547,6 +547,9 @@ async function getIndexedEmbeddingModelState(preferredModel?: string | null) {
     })
     .from(postEmbeddings)
     .innerJoin(posts, eq(posts.id, postEmbeddings.postId))
+    // Only content types that are actually indexed count here; a stale row in another type
+    // would drag `oldestUpdatedAt` below the provider change and raise a hint nobody can clear.
+    .where(inArray(posts.type, [...vectorizedContentTypes]))
     .groupBy(postEmbeddings.modelName)
     .orderBy(desc(sql`max(${postEmbeddings.updatedAt})`), desc(sql`count(*)`));
 

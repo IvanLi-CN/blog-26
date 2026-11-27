@@ -274,6 +274,13 @@
       "when": 1795675899451,
       "tag": "0038_post_embeddings_foreign_key",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "6",
+      "when": 1795769000000,
+      "tag": "0039_prune_unindexed_type_vectors",
+      "breakpoints": true
     }
   ]
 }

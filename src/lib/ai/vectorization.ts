@@ -2,7 +2,7 @@ import { eq, inArray } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db, initializeDB } from "../db";
-import { posts } from "../schema";
+import { posts, vectorizedContentTypes } from "../schema";
 import { syncEventManager } from "../sync-events";
 import { embeddingChunks } from "./embedding-target";
 import {
@@ -75,8 +75,8 @@ export async function vectorizeAll(params: {
     createdAt: Date.now(),
   });
 
-  // 只处理 post/memo 类型
-  const targetTypes = ["post", "memo"] as const;
+  // 只处理 post/memo 类型（见 vectorizedContentTypes）
+  const targetTypes = vectorizedContentTypes;
   const allPosts = await db
     .select({
       id: posts.id,

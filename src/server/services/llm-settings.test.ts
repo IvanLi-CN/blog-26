@@ -186,6 +186,98 @@ describe("llm settings service", () => {
     expect(payload.hints.currentResolvedModel).toBe("BAAI/bge-m3");
   });
 
+  it("ignores vectors of content types that are never indexed", async () => {
+    if (!db) throw new Error("Database has not been initialised");
+
+    const now = Date.now();
+    const postRow = (id: string, type: string) => ({
+      id,
+      slug: id,
+      type,
+      title: id,
+      excerpt: `${id} excerpt`,
+      body: `${id} body`,
+      publishDate: now - 10_000,
+      updateDate: now - 10_000,
+      draft: false,
+      public: true,
+      category: "demo",
+      tags: JSON.stringify(["demo"]),
+      author: "tester",
+      metadata: JSON.stringify({}),
+      dataSource: "database",
+      contentHash: `${id}-hash`,
+      lastModified: now - 10_000,
+      source: "local",
+      filePath: `${id}.md`,
+    });
+    await db
+      .insert(posts)
+      .values([postRow("live-post", "post"), postRow("legacy-project", "project")]);
+
+    await updateAdminLlmSettings({
+      chat: {
+        model: "",
+        baseUrl: "https://chat.example.test",
+        apiKeyInput: "chat-secret-value",
+      },
+      embedding: {
+        model: "BAAI/bge-m3",
+        useCustomProvider: false,
+        baseUrlMode: "inherit",
+        baseUrl: "",
+        apiKeyMode: "inherit",
+        apiKeyInput: "",
+      },
+      rerank: {
+        model: "",
+        useCustomProvider: false,
+        baseUrlMode: "inherit",
+        baseUrl: "",
+        apiKeyMode: "inherit",
+        apiKeyInput: "",
+      },
+    });
+
+    await db.insert(postEmbeddings).values([
+      {
+        id: "live-embedding",
+        postId: "live-post",
+        slug: "live-post",
+        type: "post",
+        modelName: "BAAI/bge-m3",
+        dim: 1,
+        contentHash: "live-post-hash",
+        chunkIndex: -1,
+        vector: new Uint8Array([0]),
+        errorMessage: null,
+        createdAt: now + 60_000,
+        updatedAt: now + 60_000,
+      },
+      {
+        // A `project` row is not searchable content; nothing re-embeds it, so counting it
+        // would pin `oldestUpdatedAt` before every provider change and make the hint
+        // impossible to clear.
+        id: "project-embedding",
+        postId: "legacy-project",
+        slug: "legacy-project",
+        type: "project",
+        modelName: "BAAI/bge-m3",
+        dim: 1,
+        contentHash: "legacy-project-hash",
+        chunkIndex: -1,
+        vector: new Uint8Array([0]),
+        errorMessage: null,
+        createdAt: now - 500_000,
+        updatedAt: now - 500_000,
+      },
+    ]);
+
+    const payload = await getAdminLlmSettingsPayload();
+    expect(payload.hints.currentIndexedModel).toBe("BAAI/bge-m3");
+    expect(payload.hints.embeddingReindexSuggested).toBe(false);
+  });
+
   it("reports no reindex hint when every vector postdates the provider change", async () => {
     if (!db) throw new Error("Database has not been initialised");
 

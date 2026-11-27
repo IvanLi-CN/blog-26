@@ -5,16 +5,17 @@ import path from "node:path";
 
 const DB_PATH = path.join(process.cwd(), "tmp/post-embeddings-foreign-key-test.sqlite");
 const MIGRATION = path.join(process.cwd(), "drizzle/0038_post_embeddings_foreign_key.sql");
+const PRUNE_MIGRATION = path.join(process.cwd(), "drizzle/0039_prune_unindexed_type_vectors.sql");
 
 type Fixture = {
-  seedPost(id: string): void;
+  seedPost(id: string, type?: string): void;
   seedEmbedding(id: string, postId: string, chunkIndex?: number): void;
   embeddingIds(): string[];
 };
 
-function statements(): string[] {
+function statements(file = MIGRATION): string[] {
   return fs
-    .readFileSync(MIGRATION, "utf8")
+    .readFileSync(file, "utf8")
     .split("--> statement-breakpoint")
     .map((sql) => sql.trim())
     .filter(Boolean);
@@ -24,7 +25,7 @@ function createFixture(): { sqlite: Database; fixture: Fixture } {
   const sqlite = new Database(DB_PATH);
   sqlite.exec("PRAGMA foreign_keys = ON");
   sqlite.exec(`
-    CREATE TABLE posts (id TEXT PRIMARY KEY NOT NULL, slug TEXT NOT NULL);
+    CREATE TABLE posts (id TEXT PRIMARY KEY NOT NULL, slug TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'post');
     CREATE TABLE post_embeddings (
       id TEXT PRIMARY KEY NOT NULL,
       post_id TEXT NOT NULL,
@@ -47,7 +48,8 @@ function createFixture(): { sqlite: Database; fixture: Fixture } {
   return {
     sqlite,
     fixture: {
-      seedPost: (id) => sqlite.exec(`INSERT INTO posts (id, slug) VALUES ('${id}', '${id}')`),
+      seedPost: (id, type = "post") =>
+        sqlite.exec(`INSERT INTO posts (id, slug, type) VALUES ('${id}', '${id}', '${type}')`),
       seedEmbedding: (id, postId, chunkIndex = -1) =>
         sqlite.exec(
           `INSERT INTO post_embeddings (id, post_id, slug, type, model_name, dim, content_hash, chunk_index, created_at, updated_at)
@@ -61,9 +63,9 @@ function createFixture(): { sqlite: Database; fixture: Fixture } {
   };
 }
 
-function applyMigration(sqlite: Database): void {
+function applyMigration(sqlite: Database, file = MIGRATION): void {
   sqlite.transaction(() => {
-    for (const sql of statements()) sqlite.exec(sql);
+    for (const sql of statements(file)) sqlite.exec(sql);
   })();
 }
 
@@ -170,6 +172,19 @@ describe("post_embeddings foreign key", () => {
     applyMigration(sqlite);
 
     expect(fixture.embeddingIds()).toEqual(["emb-double"]);
+  });
+
+  it("prunes vectors for content types that are never indexed", () => {
+    fixture.seedPost("post-a", "post");
+    fixture.seedPost("memo-a", "memo");
+    fixture.seedPost("project-a", "project");
+    fixture.seedEmbedding("emb-post", "post-a");
+    fixture.seedEmbedding("emb-memo", "memo-a");
+    fixture.seedEmbedding("emb-project", "project-a");
+
+    applyMigration(sqlite, PRUNE_MIGRATION);
+
+    expect(fixture.embeddingIds()).toEqual(["emb-memo", "emb-post"]);
   });
 
   it("drops vectors whose normalised id still has no post", () => {
