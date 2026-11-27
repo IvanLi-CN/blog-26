@@ -78,7 +78,9 @@ bun run web-demo:edgeone:package
 npx edgeone@1.6.34 makers deploy edgeone-web-demo-dist -n blog-demo -e production
 ```
 
-`web-demo:edgeone:package` stages the site, mounts the Admin SPA under `/admin/`, and writes the cache rules. It intentionally excludes `edge-functions/`: the Demo has no backend to proxy to, so an `/api/*` request is a plain static 404. The live deployment is `https://blog-demo.ivanli.cc`.
+`web-demo:edgeone:package` stages the site, mounts the Admin SPA under `/admin/`, and writes the cache rules. It intentionally excludes `edge-functions/`: the Demo has no backend to proxy to, so no `/api/*` request can reach one. The live deployment is `https://blog-demo.ivanli.cc`.
+
+`makers deploy` uploads files directly instead of running the platform build, so EdgeOne never applies the `404.html` fallback it generates for hosted builds: an unmatched path answers with `index.html` and status `200`. The client router renders the not-found view, so visitors see a 404 page, but the HTTP status is `200`. Verify a change to that behaviour against the live deployment, not against the local `generate-routes` output.
 
 ### Local development
 
