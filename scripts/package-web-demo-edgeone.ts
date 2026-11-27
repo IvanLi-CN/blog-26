@@ -73,8 +73,44 @@ async function stageSite() {
   await cp(adminDist, join(artifactDir, "admin"), { recursive: true });
 }
 
+/**
+ * Direct upload never runs the platform build, so EdgeOne decides the fallback
+ * itself. Its `@edgeone/is-spa` detector counts HTML files that reference scripts
+ * and finds exactly one here — the Admin shell — and then treats the whole Demo
+ * as an SPA, which makes it answer every unmatched path with `index.html` and a
+ * `200`, and ignore `404.html`.
+ *
+ * Two committed files settle that, both read from the upload instead of inferred:
+ * `needsFallback: false` overrides the detector (an explicit boolean wins over
+ * the heuristic), and the route table pins the Admin shell rewrite ahead of a
+ * real `404.html` fallback. `edgeone.json` cannot express either: direct upload
+ * keeps only its `redirects`, `rewrites`, and `headers`.
+ */
+async function writeEdgeoneRoutingFiles() {
+  await mkdir(join(artifactDir, ".edgeone"), { recursive: true });
+  await writeFile(join(artifactDir, ".edgeone-assets-config.json"), '{"needsFallback":false}\n');
+  const routes = {
+    version: 3,
+    routes: [
+      { handle: "filesystem" },
+      { src: "/.*", dest: "/404.html", "server-name": "file", status: 404 },
+    ],
+    conf: {
+      rewrites: [{ source: "/admin/*", destination: "/admin/index.html" }],
+    },
+  };
+  await writeFile(
+    join(artifactDir, ".edgeone", "routes.json"),
+    `${JSON.stringify(routes, null, 2)}\n`
+  );
+}
+
 async function writeedgeoneConfig() {
-  const staticFiles = await collectStaticFiles(artifactDir);
+  // The two routing files are platform input, not published assets: counting
+  // them would add a pointless header rule and spend one of the 30 allowed.
+  const staticFiles = (await collectStaticFiles(artifactDir)).filter(
+    (file) => file !== ".edgeone-assets-config.json" && !file.startsWith(".edgeone/")
+  );
   const cache = createEdgeoneCacheConfig("", staticFiles);
   const config = {
     ...cache,
@@ -108,6 +144,9 @@ async function main() {
 
   console.log("== stage static site ==");
   await stageSite();
+
+  console.log("== write EdgeOne routing files ==");
+  await writeEdgeoneRoutingFiles();
 
   console.log("== write edgeone.json ==");
   const config = await writeedgeoneConfig();
