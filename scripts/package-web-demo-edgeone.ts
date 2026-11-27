@@ -71,8 +71,6 @@ async function assertNoBackendReferences(root: string) {
 async function stageSite() {
   await cp(siteDist, artifactDir, { recursive: true });
   await cp(adminDist, join(artifactDir, "admin"), { recursive: true });
-  // Admin SPA fallback: any `/admin/*` document request resolves to its shell.
-  await cp(join(adminDist, "index.html"), join(artifactDir, "admin", "index.html"));
 }
 
 async function writeedgeoneConfig() {
@@ -80,7 +78,8 @@ async function writeedgeoneConfig() {
   const cache = createEdgeoneCacheConfig("", staticFiles);
   const config = {
     ...cache,
-    // The Admin SPA owns `/admin/*`; serve its shell for client-side routes.
+    // This rewrite is the Admin SPA fallback: a `/admin/*` document request that
+    // matches no built file is answered with the shell.
     rewrites: [{ source: "/admin/*", destination: "/admin/index.html" }],
   };
   await writeFile(join(artifactDir, "edgeone.json"), `${JSON.stringify(config, null, 2)}\n`);
