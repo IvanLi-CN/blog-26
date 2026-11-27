@@ -1,0 +1,92 @@
+name: Deploy Web Demo
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "site/**"
+      - "src/**"
+      - "apps/admin/**"
+      - "scripts/build-web-demo.ts"
+      - "scripts/package-web-demo-edgeone.ts"
+      - "scripts/prepare-edgeone-pwa-config.ts"
+      - ".github/workflows/web-demo-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: blog26-web-demo-edgeone
+  cancel-in-progress: false
+  queue: max
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Web Demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-ci-node
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Cache Bun & deps
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Restore project media cache
+        uses: ./.github/actions/setup-project-media
+
+      - name: Build Web Demo artifacts
+        run: bun run web-demo:build
+
+      - name: Package the EdgeOne artifact
+        run: bun run web-demo:edgeone:package
+
+      - name: Archive the artifact
+        run: (cd edgeone-web-demo-dist && zip -qry ../edgeone-web-demo.zip .)
+
+      - name: Deploy to EdgeOne
+        run: |
+          npx -y edgeone@1.6.34 makers deploy edgeone-web-demo.zip \
+            --name blog-demo \
+            --env production \
+            --token "$EDGEONE_API_TOKEN" \
+            --json
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+
+      - name: Verify the live 404 fallback
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' "https://blog-demo.ivanli.cc/mcp")
+          echo "GET /mcp -> $status"
+          test "$status" = "404"
+
+      - name: Upload the artifact for inspection
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: edgeone-web-demo
+          path: edgeone-web-demo.zip
+          retention-days: 7
