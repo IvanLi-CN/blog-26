@@ -56,3 +56,4 @@
 | 管理端错误面与 Frontmatter 诊断详情 | active | implemented | [admin-error-surface/SPEC.md](admin-error-surface/SPEC.md) | - | 常驻诊断列表、可预测宽度、四层错误色、字段定位、复制全部与语义色 token 一致性。 |
 | 访客可见错误的过滤与预设 | active | implemented | [public-error-visibility/SPEC.md](public-error-visibility/SPEC.md) | - | 封闭错误码、七类状态预设、`errorRef` 追溯，以及关闭 `/api/trpc/*` 调试信息暴露。 |
 | 主体绑定响应的缓存边界 | active | implemented | [principal-bound-response-cache/SPEC.md](principal-bound-response-cache/SPEC.md) | - | 生产网关默认私有、显式头优先，补齐 `vary` 与 `x-robots-tag`。 |
+| 内容向量随内容删除 | active | in progress | [embedding-orphan-cleanup/SPEC.md](embedding-orphan-cleanup/SPEC.md) | - | 外键级联维护向量归属；迁移先按归一化键清孤儿、去重，再归一化并重建单表。 |

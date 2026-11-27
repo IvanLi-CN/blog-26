@@ -598,11 +598,14 @@ export const vectorizedFiles = sqliteTable("vectorized_files", {
 
 // 独立向量表（方案B）：post_embeddings
 // 支持文档级（chunkIndex = -1）与 chunk 级索引
+// post_id 引用 posts.id 并级联删除（ADR 0045）；写入方必须保证所属 post 存在。
 export const postEmbeddings = sqliteTable(
   "post_embeddings",
   {
     id: text("id").primaryKey(),
-    postId: text("post_id").notNull(),
+    postId: text("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
     slug: text("slug").notNull(),
     type: text("type").notNull(), // post | memo | project
     modelName: text("model_name").notNull(),

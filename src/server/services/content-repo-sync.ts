@@ -51,6 +51,7 @@ import {
   contentTaskItems,
   contentTasks,
   memoClippings,
+  postEmbeddings,
   posts,
 } from "@/lib/schema";
 import {
@@ -1553,6 +1554,18 @@ export async function removeRemoteDeleted(
       if (wanted.size && !wanted.has(item.path)) continue;
       const row = findRowForRepoPath(item.path);
       if (!row) {
+        // The post row is already gone, so the cascading foreign key never fired for it.
+        // post_id holds posts.id, which is a content id and not necessarily the repository
+        // path, so clear every id this path could have been stored under (ADR 0045).
+        const staleIds = new Set([item.path, `/${item.path}`]);
+        const baselineContentId = context.baselines.get(item.path)?.contentId;
+        if (baselineContentId) {
+          staleIds.add(baselineContentId);
+          staleIds.add(`/${baselineContentId}`);
+        }
+        db.delete(postEmbeddings)
+          .where(inArray(postEmbeddings.postId, [...staleIds]))
+          .run();
         skipped.push({ path: item.path, reason: "missing-local-content" });
         continue;
       }

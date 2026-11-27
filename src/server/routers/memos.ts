@@ -51,7 +51,7 @@ import { isLocalContentEnabled, LOCAL_PATHS } from "../../config/paths";
 import { getContentSourceManager, LocalContentSource } from "../../lib/content-sources";
 import { generateMemoFilename, generateSlugFromPath } from "../../lib/content-sources/utils";
 import { db } from "../../lib/db";
-import { posts, systemShareSubmissions } from "../../lib/schema";
+import { postEmbeddings, posts, systemShareSubmissions } from "../../lib/schema";
 import { buildContentSearchCondition } from "../../lib/search/content-search";
 import { isSearchQueryWithinBudget } from "../../lib/search/query";
 import { toMsTimestamp } from "../../lib/utils";
@@ -99,8 +99,11 @@ export type MemoRow = typeof posts.$inferSelect;
 
 async function restoreMemoIndexRow(row: MemoRow): Promise<void> {
   await db.transaction(async (tx) => {
+    // Deleting the post cascades its vectors away, so carry them across the rewrite.
+    const vectors = await tx.select().from(postEmbeddings).where(eq(postEmbeddings.postId, row.id));
     await tx.delete(posts).where(eq(posts.id, row.id));
     await tx.insert(posts).values(row);
+    if (vectors.length) await tx.insert(postEmbeddings).values(vectors);
   });
   clearSearchCache();
 }

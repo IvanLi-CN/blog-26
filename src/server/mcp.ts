@@ -14,7 +14,7 @@ import { extractMemoTitle } from "@/lib/content-sources/utils";
 import { db, initializeDB } from "@/lib/db";
 import { formatMarkdownBody } from "@/lib/markdown-format";
 import { buildMemoRelativePath } from "@/lib/memo-paths";
-import { posts as postsTable } from "@/lib/schema";
+import { postEmbeddings as postEmbeddingsTable, posts as postsTable } from "@/lib/schema";
 import { buildContentSearchCondition } from "@/lib/search/content-search";
 import { isSearchQueryWithinBudget } from "@/lib/search/query";
 import {
@@ -363,8 +363,14 @@ async function deleteIndexedContentRow(id: string): Promise<void> {
 
 async function restoreIndexedContentRow(row: PostRow): Promise<void> {
   await db.transaction(async (tx) => {
+    // Deleting the post cascades its vectors away, so carry them across the rewrite.
+    const vectors = await tx
+      .select()
+      .from(postEmbeddingsTable)
+      .where(eq(postEmbeddingsTable.postId, row.id));
     await tx.delete(postsTable).where(eq(postsTable.id, row.id));
     await tx.insert(postsTable).values(row);
+    if (vectors.length) await tx.insert(postEmbeddingsTable).values(vectors);
   });
   clearSearchCache();
 }
