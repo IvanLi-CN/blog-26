@@ -7,15 +7,14 @@ import { collectStaticFiles, createEdgeoneCacheConfig } from "./prepare-edgeone-
 /**
  * Packages the static Web Demo for EdgeOne Makers direct upload.
  *
- * The public Demo and the Admin Demo are both static artifacts, so the upload is
- * the site root plus the repository's existing `edge-functions` proxy layer. No
- * server runtime is involved and no Node function is emitted.
+ * Both the public Demo and the Admin Demo are static artifacts. No server
+ * runtime, no proxy layer: the package must not contain `edge-functions/`, so an
+ * `/api/*` request ends as a plain static 404 instead of a dead proxy hop.
  */
 
 const repoRoot = resolve(import.meta.dir, "..");
 const siteDist = resolve(repoRoot, process.env.WEB_DEMO_SITE_DIST_DIR || "web-demo-site-dist");
 const adminDist = resolve(repoRoot, process.env.WEB_DEMO_ADMIN_DIST_DIR || "web-demo-admin-dist");
-const edgeFunctionsDir = join(repoRoot, "edge-functions");
 const artifactDir = resolve(
   repoRoot,
   process.env.WEB_DEMO_EDGEONE_ARTIFACT_DIR || "edgeone-web-demo-dist"
@@ -36,6 +35,34 @@ async function assertMissing(path: string, label: string) {
   const entry = await stat(path).catch(() => undefined);
   if (entry)
     throw new Error(`${label} must not be part of the static Demo: ${relative(repoRoot, path)}`);
+}
+
+/** Fails when shipped text references a backend route the Demo cannot serve. */
+async function assertNoBackendReferences(root: string) {
+  // Bare `/api/public/assets/` also appears as a client-side prefix check, which
+  // never issues a request. Only a concrete media path is a real dependency.
+  const patterns = [/\/api\/public\/assets\/(?:post|memo)\//gu, /metrics\.example\.test/gu];
+  const offenders: string[] = [];
+  for await (const entry of new Bun.Glob("**/*.{html,json,js,css,svg,xml,txt}").scan({
+    cwd: root,
+  })) {
+    // `_content/media-manifest.json` records source facade paths on purpose, and
+    // Playbook editions are immutable published artifacts.
+    if (entry === "_content/media-manifest.json" || entry.startsWith("_content/playbook/"))
+      continue;
+    const text = await Bun.file(join(root, entry)).text();
+    for (const pattern of patterns) {
+      pattern.lastIndex = 0;
+      const match = pattern.exec(text);
+      if (match) offenders.push(`${entry}: ${match[0]}`);
+    }
+    if (offenders.length > 20) break;
+  }
+  if (offenders.length > 0) {
+    throw new Error(
+      `The static Demo still references a backend route:\n  ${offenders.slice(0, 20).join("\n  ")}`
+    );
+  }
 }
 
 /** Copies the static site and mounts the Admin SPA under `/admin/`. */
@@ -74,7 +101,6 @@ async function main() {
   await assertDirectory(adminDist, "Web Demo admin site");
   await assertFile(join(siteDist, "index.html"), "Web Demo home document");
   await assertMissing(join(siteDist, "server"), "Web Demo server output");
-  await assertDirectory(edgeFunctionsDir, "EdgeOne edge functions");
 
   await rm(artifactDir, { recursive: true, force: true });
   await mkdir(artifactDir, { recursive: true });
@@ -82,11 +108,11 @@ async function main() {
   console.log("== stage static site ==");
   await stageSite();
 
-  console.log("== stage edge functions ==");
-  await cp(edgeFunctionsDir, join(artifactDir, "edge-functions"), { recursive: true });
-
   console.log("== write edgeone.json ==");
   const config = await writeedgeoneConfig();
+
+  await assertMissing(join(artifactDir, "edge-functions"), "Web Demo proxy layer");
+  await assertNoBackendReferences(artifactDir);
 
   const versionSource = await readFile(join(siteDist, "version.json"), "utf8").catch(() => "{}");
   const files = await countFiles(artifactDir);

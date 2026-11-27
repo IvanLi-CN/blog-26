@@ -86,9 +86,11 @@ export async function prepareWebDemoInputs() {
     CONSOLE_WEB_DEMO_BUILD: "false",
     PUBLIC_API_BASE_URL: "",
     PUBLIC_ASSISTANT_LAUNCHER_DEFAULT: "true",
-    PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: "https://metrics.example.test",
-    PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: "https://metrics.example.test",
-    PUBLIC_OCTO_RILL_METRICS_BASE_URL: "https://metrics.example.test",
+    // The Demo has no live metrics source: an empty base URL renders the
+    // deterministic poster/fallback state instead of requesting a fake host.
+    PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: "",
+    PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: "",
+    PUBLIC_OCTO_RILL_METRICS_BASE_URL: "",
   };
 
   await run("prepare deterministic local content", ["run", "migrate"], env);
@@ -131,6 +133,9 @@ async function main() {
   await run("generate build version", ["scripts/generate-version.ts"], process.env);
   const env = await prepareWebDemoInputs();
   await run("build public Web Demo", ["x", "astro", "build"], env);
+  // The public Demo is pure front end: every `/api/public/assets/*` reference
+  // becomes a real `_content/assets/*` file rendered from local content.
+  await run("package public Demo media", ["scripts/package-web-demo-media.ts"], env);
   await run("build Console Web Demo", ["x", "astro", "build"], {
     ...env,
     ASTRO_OUT_DIR: relative(repoRoot, consoleSiteDist),
@@ -149,6 +154,7 @@ async function main() {
     // The public Demo is a static artifact: it must ship pages and no server entry.
     assertFile(join(siteDist, "index.html")),
     assertMissing(join(siteDist, "server", "entry.mjs")),
+    assertDirectory(join(siteDist, "_content", "assets")),
     assertFile(join(consoleSiteDist, "server", "entry.mjs")),
     assertDirectory(join(consoleSiteDist, "client")),
     assertFile(join(adminDist, "index.html")),
