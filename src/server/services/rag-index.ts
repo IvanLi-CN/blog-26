@@ -12,6 +12,7 @@ import {
   ragIndexTargets,
   searchOutbox,
   searchSemanticEmbeddings,
+  vectorizedContentTypes,
 } from "@/lib/schema";
 import { isClippingSearchMemo } from "@/lib/search/content-search";
 import { authorizeContent, contentVersion, readSearchRows } from "./content-search-index";
@@ -118,7 +119,7 @@ export async function ragCatalog(scope: RagScope = {}) {
             ? ["post"]
             : type === "memo" || type === "clipping"
               ? ["memo"]
-              : ["post", "memo"]
+              : [...vectorizedContentTypes]
         )
       );
     for (const row of rows) {

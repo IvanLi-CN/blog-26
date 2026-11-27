@@ -29,6 +29,8 @@ The same settings route also hosts independent RAG/rewrite search policy and sav
 - Embedding and rerank keep independent model selection while inheriting base URL / API key by default.
 - Child-tier effective updates propagate through inheritance so reindex hints stay correct when parent settings change.
 - Embedding reindex hints distinguish between hard model mismatches and softer provider-config drift when the model stays the same.
+- Hint aggregates scope to `vectorizedContentTypes` from `src/lib/schema.ts`. `vectorizeAll` and the RAG catalog had each hard-coded `["post", "memo"]`; the hint query had no type filter, so vectors of unindexed types (for example `project`) pinned `oldestUpdatedAt` before every provider change and the notice could never be cleared. All three now read the shared constant.
+- Migration `0039` removes the vectors of types no indexer maintains, so the stale rows that motivated the shared constant are gone rather than merely ignored.
 
 ### Browser/admin contract
 

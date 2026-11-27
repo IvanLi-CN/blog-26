@@ -599,6 +599,14 @@ export const vectorizedFiles = sqliteTable("vectorized_files", {
 // 独立向量表（方案B）：post_embeddings
 // 支持文档级（chunkIndex = -1）与 chunk 级索引
 // post_id 引用 posts.id 并级联删除（ADR 0045）；写入方必须保证所属 post 存在。
+//
+// Content types that take part in semantic indexing. `project` is deliberately absent: it is
+// not searchable content, so no writer maintains its vectors. Every reader and writer of
+// `post_embeddings` must scope to this list, otherwise a stale row in an unindexed type skews
+// aggregate state such as the admin reindex hint.
+export const vectorizedContentTypes = ["post", "memo"] as const;
+export type VectorizedContentType = (typeof vectorizedContentTypes)[number];
+
 export const postEmbeddings = sqliteTable(
   "post_embeddings",
   {
