@@ -600,6 +600,7 @@ export async function runRagIndex(
     let processed = 0,
       failed = 0,
       dim = catalog.identity.configuredDim;
+    let skipped = 0;
     const bound = (
       await db
         .select()
@@ -668,7 +669,7 @@ export async function runRagIndex(
         dim ??= vector.length;
         if (controller?.signal.aborted || !(await targetStillCurrent(target, scope)))
           throw new DOMException("Target superseded", "AbortError");
-        db.transaction((tx) => {
+        const outcome = db.transaction((tx) => {
           const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
           const claim = tx
             .select()
@@ -694,6 +695,19 @@ export async function runRagIndex(
             .where(eq(ragIndexConfigs.fingerprint, target.fingerprint))
             .get();
           if (binding?.dim !== vector.length) throw new Error("Embedding dimension changed");
+          // post_embeddings.post_id carries a foreign key to posts, so a post removed between
+          // catalog construction and this write cannot own a vector. Skip it instead of failing
+          // the whole index task.
+          if (
+            target.source === "blog" &&
+            !tx.select({ id: posts.id }).from(posts).where(eq(posts.id, target.parentId)).get()
+          ) {
+            tx.update(ragIndexTargets)
+              .set({ status: "skipped", taskId: task.id, error: null, updatedAt: Date.now() })
+              .where(eq(ragIndexTargets.id, target.id))
+              .run();
+            return "skipped" as const;
+          }
           let vectorId: string;
           if (target.source === "blog") {
             const values = {
@@ -790,7 +804,9 @@ export async function runRagIndex(
             })
             .where(eq(ragIndexTargets.id, target.id))
             .run();
+          return "indexed" as const;
         });
+        if (outcome === "skipped") skipped++;
       } catch (error) {
         if (
           controller?.signal.aborted ||
@@ -830,7 +846,11 @@ export async function runRagIndex(
         failed++;
       }
       processed++;
-      await updateContentTask(task.id, { processed, failed }, task.ownerToken ?? undefined);
+      await updateContentTask(
+        task.id,
+        { processed, failed, skipped },
+        task.ownerToken ?? undefined
+      );
     }
     finishContentTask(
       task.id,

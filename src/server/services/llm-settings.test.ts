@@ -186,7 +186,7 @@ describe("llm settings service", () => {
     expect(payload.hints.currentResolvedModel).toBe("BAAI/bge-m3");
   });
 
-  it("ignores embeddings whose post no longer exists when evaluating reindex status", async () => {
+  it("ignores historical vectors older than the provider change when the model is unchanged", async () => {
     if (!db) throw new Error("Database has not been initialised");
 
     const now = Date.now();
@@ -236,36 +236,22 @@ describe("llm settings service", () => {
       },
     });
 
-    await db.insert(postEmbeddings).values([
-      {
-        id: "orphan-embedding",
-        postId: "deleted-post",
-        slug: "deleted-post",
-        type: "post",
-        modelName: "BAAI/bge-m3",
-        dim: 1,
-        contentHash: "deleted-content-hash",
-        chunkIndex: -1,
-        vector: new Uint8Array([0]),
-        errorMessage: null,
-        createdAt: now - 500_000,
-        updatedAt: now - 500_000,
-      },
-      {
-        id: "live-embedding",
-        postId: "live-post",
-        slug: "live-post",
-        type: "post",
-        modelName: "BAAI/bge-m3",
-        dim: 1,
-        contentHash: "live-content-hash",
-        chunkIndex: -1,
-        vector: new Uint8Array([0]),
-        errorMessage: null,
-        createdAt: now + 60_000,
-        updatedAt: now + 60_000,
-      },
-    ]);
+    // post_embeddings.post_id references posts.id, so a vector that outlives its post is
+    // impossible; the hint query is exercised against live rows only.
+    await db.insert(postEmbeddings).values({
+      id: "live-embedding",
+      postId: "live-post",
+      slug: "live-post",
+      type: "post",
+      modelName: "BAAI/bge-m3",
+      dim: 1,
+      contentHash: "live-content-hash",
+      chunkIndex: -1,
+      vector: new Uint8Array([0]),
+      errorMessage: null,
+      createdAt: now + 60_000,
+      updatedAt: now + 60_000,
+    });
 
     const payload = await getAdminLlmSettingsPayload();
     expect(payload.hints.embeddingReindexRequired).toBe(false);

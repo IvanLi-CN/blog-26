@@ -171,7 +171,7 @@ test("producer and coverage agree, reject corrupted vectors and revoked content"
   await db.update(posts).set({ public: false }).where(eq(posts.id, "content"));
   expect((await ragCoverage({ source: "blog" })).status.contents.total).toBe(0);
 });
-test("history vectors without provenance remain stale, isolated rows add no contents", async () => {
+test("history vectors without provenance remain stale and isolated rows are rejected", async () => {
   await db.insert(posts).values(fixture("legacy"));
   await db.insert(postEmbeddings).values({
     id: "old",
@@ -186,18 +186,22 @@ test("history vectors without provenance remain stale, isolated rows add no cont
     createdAt: 1,
     updatedAt: 1,
   });
-  await db.insert(postEmbeddings).values({
-    id: "orphan",
-    postId: "missing",
-    slug: "missing",
-    type: "post",
-    modelName: "synthetic",
-    dim: 2,
-    contentHash: "old",
-    vector: Buffer.from(new Float32Array([1, 0]).buffer),
-    createdAt: 1,
-    updatedAt: 1,
-  });
+  // post_embeddings.post_id references posts.id, so an isolated vector row cannot exist at all.
+  await expect(
+    (async () =>
+      db.insert(postEmbeddings).values({
+        id: "orphan",
+        postId: "missing",
+        slug: "missing",
+        type: "post",
+        modelName: "synthetic",
+        dim: 2,
+        contentHash: "old",
+        vector: Buffer.from(new Float32Array([1, 0]).buffer),
+        createdAt: 1,
+        updatedAt: 1,
+      }))()
+  ).rejects.toThrow(/FOREIGN KEY constraint failed/);
   expect((await ragCoverage({ source: "blog" })).status.contents).toMatchObject({
     total: 1,
     indexed: 0,
