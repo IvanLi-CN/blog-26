@@ -85,7 +85,9 @@ export function treeBlobs(sha: string): Record<string, string | null> {
     const [mode, type, blob] = line.slice(0, separator).split(" ");
     if (type !== "blob" || !blob) throw new Error("Release sources cannot contain submodules");
     const path = line.slice(separator + 1);
-    if (mode !== "100644" && mode !== "100755" && mode !== "120000")
+    // Symlinks are rejected: gitFile returns the link target rather than the bytes it
+    // resolves to, so a link named like a migration would dodge every content check.
+    if (mode !== "100644" && mode !== "100755")
       throw new Error(`Unsupported release source mode ${mode}: ${path}`);
     tree[path] = shaSchema.parse(blob);
   }
@@ -246,9 +248,10 @@ export function semanticSourceBlobs(
 /**
  * Classify the semantic changes between the published baseline and `sourceSha`.
  *
- * The result is reproducible from the tree alone: the same commit always yields
- * the same impact and evidence digest, so a reserved release can be re-verified
- * without trusting any author-maintained file.
+ * The result is reproducible from the published baseline, the candidate tree, and the
+ * commit messages inside `baseline..source`: re-deriving with the registered baseline
+ * always yields the same impact and evidence digest, so a reserved release can be
+ * re-verified without trusting any author-maintained file.
  */
 export function sourceAssessment(
   ledger: ReleaseLedger,

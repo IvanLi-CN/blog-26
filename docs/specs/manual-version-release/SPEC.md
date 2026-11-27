@@ -58,7 +58,7 @@
 
 ### REQ-MVR-008
 
-手动工作流 MUST 仅接受可选字符串 `version`，且仅从 main 发起。输入 MUST 支持留空、`stable`、`alpha`、`beta`、`rc` 和完整产品版本；MUST NOT 要求独立 `channel` 或 `target` 输入。最终产品版本 MUST 是完整 SemVer，快捷请求 MUST NOT 直接写入 VERSION、登记的版本、tag 或产物。正式语义基线 MUST 来自可信已发布正式产品版本及其来源，预发布 MUST NOT 取代此基线；待发布区间 MUST 覆盖基线之后的全部成员变更。自动或指定版本的主、次、补丁版本 MUST 至少达到最高 verified 影响要求的语义目标，完整版本 MUST 按 SemVer 顺序高于所有已占用版本。这两项约束 MUST 分别校验；与目标核心相同的预发布不能仅因低于该核心的正式版本而被拒绝。公开 API 与持久状态兼容性 MUST 分别保留 planned、current、verified 结论及与当前文件 blob 绑定的证据；证据缺失、过期或未覆盖时停止。
+手动工作流 MUST 仅接受可选字符串 `version`，且仅从 main 发起。输入 MUST 支持留空、`stable`、`alpha`、`beta`、`rc` 和完整产品版本；MUST NOT 要求独立 `channel` 或 `target` 输入。最终产品版本 MUST 是完整 SemVer，快捷请求 MUST NOT 直接写入 VERSION、登记的版本、tag 或产物。正式语义基线 MUST 来自可信已发布正式产品版本及其来源，预发布 MUST NOT 取代此基线；待发布区间 MUST 覆盖基线之后的全部成员变更。自动或指定版本的主、次、补丁版本 MUST 至少达到推导影响要求的语义目标，完整版本 MUST 按 SemVer 顺序高于所有已占用版本。这两项约束 MUST 分别校验；与目标核心相同的预发布不能仅因低于该核心的正式版本而被拒绝。`impact` 与 `evidenceDigest` MUST 由已登记基线与候选来源的实际差异重算；重算结果与登记不一致、基线不可达或来源无法解析时停止。
 
 业务分支通过多层正常合并携带已登记发布版本时，来源检查 MUST 只沿根目录 `VERSION` 为普通文件且 blob 不变的合入祖先边追溯，绑定确切已登记发布 merge SHA 与版本值，并调用原有发布来源认证。已废弃但已合并、尚未绑定 merge SHA 的准备记录 MUST 经原 PR 认证确切合并提交后才可识别。仅版本值相等、提交消息、无登记的版本改写或改写后恢复 MUST NOT 作为发布来源证明；认证缺失或失败仍停止检查。此规则不创建或重开发布身份，不改变发布来源与产物。
 
@@ -156,7 +156,7 @@ Product Release run 本身只有两类 abandon：没有任何 frozen artifact �
 
 - Method: 运行版本策略、影响推导和登记并发固定样例测试。
 - covers: `REQ-MVR-008`, `REQ-MVR-009`
-- Pass condition: 最高 verified 影响决定核心版本的必要升级，完整版本按 SemVer 顺序向前；例如从 2.7.0 的 minor 目标允许 2.8.0-alpha.1，却拒绝 2.7.1-alpha.1。回溯、不足升级、证据过期、伪造准备及并发冲突被拒绝，废弃版本不复用，预发布成功不替换正式语义基线。
+- Pass condition: 推导影响决定核心版本的必要升级，完整版本按 SemVer 顺序向前；例如从 2.7.0 的 minor 目标允许 2.8.0-alpha.1，却拒绝 2.7.1-alpha.1。回溯、不足升级、重算摘要不一致、伪造准备及并发冲突被拒绝，废弃版本不复用，预发布成功不替换正式语义基线。
 
 ### VER-MVR-007
 
@@ -178,9 +178,9 @@ Product Release run 本身只有两类 abandon：没有任何 frozen artifact �
 
 ### VER-MVR-011
 
-- Method: 使用可信正式基线 2.7.0 和 verified minor，检查自动 alpha、重复新 alpha、beta、rc、正式版、跳过阶段、废弃序号及较高语义目标样例。
+- Method: 使用可信正式基线 2.7.0 和推导 minor，检查自动 alpha、重复新 alpha、beta、rc、正式版、跳过阶段、废弃序号及较高语义目标样例。
 - covers: `REQ-MVR-015`
-- Pass condition: 正常请求产生 2.8.0-alpha.1、2.8.0-alpha.2、2.8.0-beta.1、2.8.0-rc.1、2.8.0；允许跳过阶段；同目标 beta 后 alpha 和 rc 后 beta 被拒绝；向前的显式 2.9.0-alpha.1 可以开启新目标，废弃序号不复用；verified major 将必要核心提升到 3.0.0。
+- Pass condition: 正常请求产生 2.8.0-alpha.1、2.8.0-alpha.2、2.8.0-beta.1、2.8.0-rc.1、2.8.0；允许跳过阶段；同目标 beta 后 alpha 和 rc 后 beta 被拒绝；向前的显式 2.9.0-alpha.1 可以开启新目标，废弃序号不复用；显式请求的 major 将必要核心提升到 3.0.0。
 
 ### VER-MVR-012
 

@@ -1,15 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import contractJson from "../../.github/release-contract.json";
-import {
-  initialLedger,
-  publishedBaseline,
-  reserveRelease,
-  supportedVersions,
-} from "../../src/lib/release/ledger";
+import { initialLedger, publishedBaseline, reserveRelease } from "../../src/lib/release/ledger";
 import { contractSchema } from "../../src/lib/release/policy";
 import { semanticSourceBlobs, sourceAssessment } from "../../src/lib/release/source";
 
@@ -82,7 +77,6 @@ describe("business evidence across VERSION-only releases", () => {
       expect(after.blobs.VERSION).toBe(before.blobs.VERSION);
       expect(proofs).toBe(1);
       expect(publishedBaseline(ledger)).toEqual(contract.bootstrap);
-      expect(supportedVersions(ledger)).toEqual(["2.7.0"]);
       const abandoned = {
         ...initial.ledger,
         entries: [
@@ -339,7 +333,8 @@ describe("business evidence across VERSION-only releases", () => {
       expect(docsAssessment.classification.surfaces).toEqual([]);
       expect(sourceAssessment(ledger, docsOnly).evidenceDigest).toBe(docsAssessment.evidenceDigest);
 
-      writeFileSync(join(root, "VERSION"), "2.7.0\n");
+      // The migration commit must not move VERSION; a silent change would shift the baseline.
+      expect(git("show", "HEAD:VERSION")).toBe("2.7.0");
       mkdirSync(join(root, "drizzle"), { recursive: true });
       writeFileSync(
         join(root, "drizzle", "0020_drop.sql"),
@@ -352,7 +347,7 @@ describe("business evidence across VERSION-only releases", () => {
         { id: "persistent-state", paths: ["drizzle/0020_drop.sql"] },
       ]);
 
-      writeFileSync(join(root, "VERSION"), "2.7.0\n");
+      expect(git("show", "HEAD:VERSION")).toBe("2.7.0");
       writeFileSync(join(root, "next.md"), "# Next");
       const raised = commit("feat: add surface\n\nRelease-Impact: major");
       const raisedAssessment = sourceAssessment(ledger, raised);
@@ -364,6 +359,7 @@ describe("business evidence across VERSION-only releases", () => {
         if (value === undefined) delete process.env[key];
         else process.env[key] = value;
       }
+      rmSync(root, { recursive: true, force: true });
     }
   }, 20_000);
 });

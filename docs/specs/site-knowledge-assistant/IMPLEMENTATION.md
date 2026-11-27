@@ -33,7 +33,7 @@
 
 ## Verification Coverage
 
-VER-SKA-001–008 均有对应确定性测试和正式路由 Web Demo 场景；最终候选的具体命令、计数、SHA 和 review/CI 结论记入本文件的 T8 观察结果与对应 PR。
+VER-SKA-001–008 均有对应确定性测试和正式路由 Web Demo 场景；本文件的 T8 观察结果记录具体命令与计数，候选 SHA 与 review/CI 结论以对应 PR 为准。
 
 - Required checks: `bun run check`、`bun run test:admin-ui`、`bun run db:migrations:validate`、`bun run test`、`bun run build`、`bun run web-demo:build`。
 - Assistant/API: frontend-auth、assistant storage/runtime/API、clipping adapter、quota/usage、migration-gate 和 public privacy tests。

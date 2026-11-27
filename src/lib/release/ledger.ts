@@ -264,19 +264,6 @@ export function publishedBaseline(ledger: ReleaseLedger): { version: string; sou
     );
 }
 
-export function supportedVersions(ledger: ReleaseLedger): string[] {
-  return [
-    ledger.bootstrap.version,
-    ...ledger.entries
-      .filter(
-        (entry) =>
-          !isPrerelease(entry.version) &&
-          ["published", "deployed", "complete"].includes(entry.stage)
-      )
-      .map((entry) => entry.version),
-  ];
-}
-
 export function reserveRelease(
   ledger: ReleaseLedger,
   request: {
