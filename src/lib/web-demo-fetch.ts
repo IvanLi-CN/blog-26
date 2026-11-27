@@ -1826,8 +1826,8 @@ async function getDemoPublicResponse(
   ensureDemoCommentResetListener();
   const body = readDemoRequestBody(init);
   const requestHeaders = new Headers(init?.headers);
-  // The Demo build's server supplies route-scoped fixture data after the
-  // common connection/delay/abort policy has admitted this actual read.
+  // The console answers route reads on demand; the static Demo reads the route
+  // JSON the build wrote next to each page, so this demo mock stays out of it.
   if (url.pathname === "/api/public/page" && method === "GET") return null;
   if (url.pathname === "/api/public/runtime-config") {
     if (method === "OPTIONS") {

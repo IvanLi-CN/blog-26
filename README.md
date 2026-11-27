@@ -68,6 +68,18 @@ bun run web-demo:preview
 
 The public Demo starts at `/memos/`; the admin Demo starts at `/admin/dashboard`. The shared Inspector exposes scene, persona, network, data, simulated actions, share state, and recent in-memory mutations.
 
+The public Demo is a pure static artifact: no server runtime and no backend API. The build prerenders every route, packages public media into `_content/assets/*`, and fails if the artifact regains a `server/` entry, a backend media reference, or a placeholder metrics host.
+
+### Deploy the public Demo
+
+```bash
+bun run web-demo:build
+bun run web-demo:edgeone:package
+npx edgeone@1.6.34 makers deploy edgeone-web-demo-dist -n blog-demo -e production
+```
+
+`web-demo:edgeone:package` stages the site, mounts the Admin SPA under `/admin/`, and writes the cache rules. It intentionally excludes `edge-functions/`: the Demo has no backend to proxy to, so an `/api/*` request is a plain static 404. The live deployment is `https://blog-demo.ivanli.cc`.
+
 ### Local development
 
 ```bash

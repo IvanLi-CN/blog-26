@@ -76,10 +76,18 @@ test("page evidence mode is selected at build time", async () => {
   expect(webDemoSiteScript).toContain("ASTRO_CACHE_DIR=.astro-web-demo-dev");
   expect(webDemoSiteScript).toContain("VITE_CACHE_DIR=node_modules/.vite-web-demo-dev");
   expect(webDemoSiteScript).toContain("ASTRO_OUT_DIR=web-demo-site-dev-dist");
-  expect(packageJson.scripts?.["web-demo:start"] ?? "").toContain("server/entry.mjs");
-  expect(astroConfig).toContain("const serverRuntime = consoleBuild || webDemoRuntime;");
+  // The public Demo is a static artifact: no Node server entry, and only the
+  // console keeps a server runtime.
+  expect(packageJson.scripts?.["web-demo:start"] ?? "").not.toContain("server/entry.mjs");
+  expect(packageJson.scripts?.["web-demo:start"] ?? "").toContain(
+    "bun scripts/preview-web-demo.ts"
+  );
+  expect(astroConfig).toContain("const serverRuntime = consoleBuild;");
+  // The console Demo is spawned directly by `scripts/preview-web-demo.ts`, so it
+  // keeps the standalone adapter; the live console stays middleware.
+  expect(astroConfig).toContain("const standaloneRuntime = consoleBuild && webDemoRuntime;");
+  expect(astroConfig).toContain('node({ mode: standaloneRuntime ? "standalone" : "middleware" })');
   expect(astroConfig).toContain('output: serverRuntime ? "server" : "static"');
-  expect(astroConfig).toContain('mode: webDemoRuntime ? "standalone" : "middleware"');
   expect(astroConfig).toContain('"**/web-demo-site-dist/**"');
   expect(astroConfig).toContain('"**/web-demo-admin-dist/**"');
 });

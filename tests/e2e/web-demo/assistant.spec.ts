@@ -166,7 +166,7 @@ test.describe("Knowledge Assistant Web Demo", () => {
       await page.getByRole("link", { name: "返回 Ivan's Blog 首页" }).click();
     }
     await expect(page).toHaveURL(/\/$/);
-    const cover = page.locator('img[src*="/api/public/assets/post/"]').first();
+    const cover = page.locator('img[src*="/_content/assets/post/"]').first();
     await expect(cover).toBeVisible();
     await expect
       .poll(() =>

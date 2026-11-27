@@ -143,3 +143,4 @@ web-demo-site-dev-dist/
 # Python bytecode from repository helper scripts
 __pycache__/
 *.pyc
+edgeone-web-demo-dist/

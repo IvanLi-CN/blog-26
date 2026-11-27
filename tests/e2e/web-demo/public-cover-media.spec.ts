@@ -119,7 +119,7 @@ test.describe("public cover media in Web Demo", () => {
     if (!imageSrc) throw new Error("expected Web Demo list cover src");
 
     expect(new URL(imageSrc, page.url()).pathname).toMatch(
-      /\/api\/public\/assets\/(post|memo)\/[^/]+\/[0-9a-f]+\/card\.webp$/
+      /\/(?:api\/public|_content)\/assets\/(post|memo)\/[^/]+\/[0-9a-f]+\/card\.webp$/
     );
     expect(imageSrc).not.toContain("/wm-");
     expect(await image.getAttribute("class")).toContain("object-cover");
@@ -171,7 +171,7 @@ test.describe("public cover media in Web Demo", () => {
     if (!imageSrc) throw new Error("expected Web Demo timeline cover src");
 
     expect(new URL(imageSrc, page.url()).pathname).toMatch(
-      /\/api\/public\/assets\/(post|memo)\/[^/]+\/[0-9a-f]+\/card\.webp$/
+      /\/(?:api\/public|_content)\/assets\/(post|memo)\/[^/]+\/[0-9a-f]+\/card\.webp$/
     );
     expect(imageSrc).not.toContain("/wm-");
     expect(await image.getAttribute("class")).toContain("object-cover");
@@ -193,7 +193,7 @@ test.describe("public cover media in Web Demo", () => {
     expect(detailCoverSrc).toBeTruthy();
     if (!detailCoverSrc) throw new Error("expected Web Demo detail cover src");
     expect(new URL(detailCoverSrc, page.url()).pathname).toMatch(
-      /\/api\/public\/assets\/post\/hello-world\/[0-9a-f]+\/wm-[ab]-v5\/cover\.webp$/
+      /\/(?:api\/public|_content)\/assets\/post\/hello-world\/[0-9a-f]+\/wm-[ab]-v5\/cover\.webp$/
     );
     expect(await detailCover.getAttribute("class")).toContain("object-contain");
     await expect
@@ -227,7 +227,7 @@ test.describe("public cover media in Web Demo", () => {
     expect(relatedSrc).toBeTruthy();
     if (!relatedSrc) throw new Error("expected Web Demo related cover src");
     expect(new URL(relatedSrc, page.url()).pathname).toMatch(
-      /\/api\/public\/assets\/post\/code-block-fixture\/[0-9a-f]+\/card\.webp$/
+      /\/(?:api\/public|_content)\/assets\/post\/code-block-fixture\/[0-9a-f]+\/card\.webp$/
     );
     expect(relatedSrc).not.toContain("/wm-");
     expect(await relatedImage.getAttribute("class")).toContain("object-cover");

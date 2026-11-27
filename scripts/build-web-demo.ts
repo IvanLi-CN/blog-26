@@ -47,6 +47,11 @@ async function assertFile(path: string) {
   if (!entry?.isFile()) throw new Error(`Web Demo build is missing ${relative(repoRoot, path)}`);
 }
 
+async function assertMissing(path: string) {
+  const entry = await stat(path).catch(() => undefined);
+  if (entry) throw new Error(`Static Web Demo must not include ${relative(repoRoot, path)}`);
+}
+
 async function assertDirectory(path: string) {
   const entry = await stat(path).catch(() => undefined);
   if (!entry?.isDirectory()) {
@@ -81,6 +86,9 @@ export async function prepareWebDemoInputs() {
     CONSOLE_WEB_DEMO_BUILD: "false",
     PUBLIC_API_BASE_URL: "",
     PUBLIC_ASSISTANT_LAUNCHER_DEFAULT: "true",
+    // `webDemoFetch` mocks `/api/public/metrics/v1/*` by path, so these only
+    // shape the visible endpoint. They must stay absolute: an empty base URL
+    // removes the panel entirely instead of letting the Demo mock answer.
     PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: "https://metrics.example.test",
     PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: "https://metrics.example.test",
     PUBLIC_OCTO_RILL_METRICS_BASE_URL: "https://metrics.example.test",
@@ -126,6 +134,14 @@ async function main() {
   await run("generate build version", ["scripts/generate-version.ts"], process.env);
   const env = await prepareWebDemoInputs();
   await run("build public Web Demo", ["x", "astro", "build"], env);
+  // A fixed-path endpoint cannot opt out of prerendering in a static build, so
+  // the non-console branch would publish a 200 "Not Found" asset at `/mcp`.
+  // Remove it after the build: a static host then answers 404, which is what a
+  // Demo without the MCP server should do.
+  await rm(join(siteDist, "mcp"), { force: true });
+  // The public Demo is pure front end: every `/api/public/assets/*` reference
+  // becomes a real `_content/assets/*` file rendered from local content.
+  await run("package public Demo media", ["scripts/package-web-demo-media.ts"], env);
   await run("build Console Web Demo", ["x", "astro", "build"], {
     ...env,
     ASTRO_OUT_DIR: relative(repoRoot, consoleSiteDist),
@@ -141,12 +157,18 @@ async function main() {
   );
 
   await Promise.all([
-    assertFile(join(siteDist, "server", "entry.mjs")),
+    // The public Demo is a static artifact: it must ship pages and no server entry.
+    assertFile(join(siteDist, "index.html")),
+    assertMissing(join(siteDist, "server", "entry.mjs")),
+    assertDirectory(join(siteDist, "_content", "assets")),
     assertFile(join(consoleSiteDist, "server", "entry.mjs")),
-    assertDirectory(join(siteDist, "client")),
     assertDirectory(join(consoleSiteDist, "client")),
     assertFile(join(adminDist, "index.html")),
   ]);
+  // A server-only endpoint that accidentally prerenders ships a 200 static
+  // "Not Found" body. Fail on the endpoints instead of publishing one.
+  for (const endpoint of ["mcp", "api", "api/public/page"])
+    await assertMissing(join(siteDist, endpoint), `server-only endpoint /${endpoint}`);
   console.log(
     `\nWeb Demo build ready: ${relative(repoRoot, siteDist)} + ${relative(repoRoot, consoleSiteDist)} + ${relative(repoRoot, adminDist)}`
   );
