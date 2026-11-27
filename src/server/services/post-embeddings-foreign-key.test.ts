@@ -150,6 +150,28 @@ describe("post_embeddings foreign key", () => {
     expect(fixture.embeddingIds()).toEqual(["emb-canonical"]);
   });
 
+  it("keeps a vector whose post id itself starts with a slash", () => {
+    fixture.seedPost("/memos/memo-1.md");
+    fixture.seedEmbedding("emb-slash-owner", "/memos/memo-1.md");
+
+    applyMigration(sqlite);
+
+    const row = sqlite
+      .query("SELECT post_id FROM post_embeddings WHERE id = 'emb-slash-owner'")
+      .get() as { post_id: string } | null;
+    expect(row?.post_id).toBe("/memos/memo-1.md");
+  });
+
+  it("collapses two slashed twins that normalise to the same key", () => {
+    fixture.seedPost("post-a");
+    fixture.seedEmbedding("emb-double", "//post-a", 0);
+    fixture.seedEmbedding("emb-single", "/post-a", 0);
+
+    applyMigration(sqlite);
+
+    expect(fixture.embeddingIds()).toEqual(["emb-double"]);
+  });
+
   it("drops vectors whose normalised id still has no post", () => {
     fixture.seedPost("post-a");
     fixture.seedEmbedding("emb-live", "/post-a");

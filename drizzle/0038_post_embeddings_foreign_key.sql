@@ -2,20 +2,31 @@
 -- `post_id` must equal `posts.id` verbatim for the constraint to hold, but legacy rows were
 -- written with a leading slash. Normalize before comparing: deleting on the raw value would
 -- discard valid vectors for posts that still exist.
-DELETE FROM `post_embeddings` WHERE ltrim(`post_id`, '/') NOT IN (SELECT `id` FROM `posts`);
+-- A row whose key equals a real posts.id verbatim is never an orphan, even when that id
+-- starts with a slash, so the guard tests the raw key as well as the normalised one.
+DELETE FROM `post_embeddings`
+WHERE `post_id` NOT IN (SELECT `id` FROM `posts`)
+  AND ltrim(`post_id`, '/') NOT IN (SELECT `id` FROM `posts`);
 --> statement-breakpoint
--- A slashed row and its canonical twin are the same vector. Keep the canonical row and drop
--- the duplicate; without this the normalize below collides with the unique index.
+-- Slashed rows that normalise onto the same key are the same vector. Keep one of them and drop
+-- the rest; without this the normalize below collides with the unique index. A row without a
+-- leading slash wins, otherwise the lowest rowid wins.
 DELETE FROM `post_embeddings`
 WHERE `post_id` LIKE '/%'
   AND EXISTS (
-    SELECT 1 FROM `post_embeddings` AS `canonical`
-    WHERE `canonical`.`post_id` = ltrim(`post_embeddings`.`post_id`, '/')
-      AND `canonical`.`model_name` = `post_embeddings`.`model_name`
-      AND `canonical`.`chunk_index` IS `post_embeddings`.`chunk_index`
+    SELECT 1 FROM `post_embeddings` AS `twin`
+    WHERE ltrim(`twin`.`post_id`, '/') = ltrim(`post_embeddings`.`post_id`, '/')
+      AND `twin`.`model_name` = `post_embeddings`.`model_name`
+      AND `twin`.`chunk_index` IS `post_embeddings`.`chunk_index`
+      AND (
+        `twin`.`post_id` NOT LIKE '/%'
+        OR (`twin`.`post_id` LIKE '/%' AND `twin`.`rowid` < `post_embeddings`.`rowid`)
+      )
   );
 --> statement-breakpoint
-UPDATE `post_embeddings` SET `post_id` = ltrim(`post_id`, '/') WHERE `post_id` LIKE '/%';
+-- Only rewrite keys that are not already a verbatim posts.id.
+UPDATE `post_embeddings` SET `post_id` = ltrim(`post_id`, '/')
+WHERE `post_id` LIKE '/%' AND `post_id` NOT IN (SELECT `id` FROM `posts`);
 --> statement-breakpoint
 CREATE TABLE `post_embeddings_new` (
 	`id` text PRIMARY KEY NOT NULL,

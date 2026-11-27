@@ -468,6 +468,16 @@ async function targetStillCurrent(target: RagTarget, scope: RagScope) {
       hashEmbeddingInput(buildEmbeddingInput(row)) === target.documentHash
   );
 }
+
+/**
+ * A blog target whose owning `posts` row disappeared cannot own a vector: the foreign key
+ * would reject the write. Distinguish that from ordinary supersession so the caller can skip
+ * the target instead of aborting the whole task.
+ */
+async function ownerPostMissing(target: RagTarget) {
+  if (target.source !== "blog") return false;
+  return !(await readSearchRows([target.parentId]))[0];
+}
 async function prepareEmbedding(
   fingerprint: string,
   input: string,
@@ -601,6 +611,33 @@ export async function runRagIndex(
       failed = 0,
       dim = catalog.identity.configuredDim;
     let skipped = 0;
+    // Mark the target skipped under the same ownership rules the write path uses, so a content
+    // deleted mid-run is recorded rather than aborting the whole task.
+    const skipOwnedMissing = (target: RagTarget) => {
+      db.transaction((tx) => {
+        const owner = tx.select().from(contentTasks).where(eq(contentTasks.id, task.id)).get();
+        if (
+          owner?.status !== "running" ||
+          owner.cancelRequested ||
+          owner.ownerToken !== task.ownerToken ||
+          !owner.leaseUntil ||
+          owner.leaseUntil <= Date.now()
+        )
+          throw new DOMException("Task no longer owns target", "AbortError");
+        const owned = tx
+          .select()
+          .from(ragIndexTargets)
+          .where(eq(ragIndexTargets.id, target.id))
+          .get();
+        if (owned?.taskId !== task.id)
+          throw new DOMException("Target no longer owned", "AbortError");
+        tx.update(ragIndexTargets)
+          .set({ status: "skipped", taskId: task.id, error: null, updatedAt: Date.now() })
+          .where(eq(ragIndexTargets.id, target.id))
+          .run();
+      });
+      skipped++;
+    };
     const bound = (
       await db
         .select()
@@ -646,6 +683,10 @@ export async function runRagIndex(
             .where(eq(ragIndexTargets.id, target.id))
             .run();
         });
+        if (await ownerPostMissing(target)) {
+          skipOwnedMissing(target);
+          continue;
+        }
         const vector = await prepareEmbedding(
           target.fingerprint,
           target.input,
@@ -667,6 +708,10 @@ export async function runRagIndex(
         if (!validEmbedding(blob, vector.length, dim))
           throw new Error("Embedding vector dimension or values invalid");
         dim ??= vector.length;
+        if (await ownerPostMissing(target)) {
+          skipOwnedMissing(target);
+          continue;
+        }
         if (controller?.signal.aborted || !(await targetStillCurrent(target, scope)))
           throw new DOMException("Target superseded", "AbortError");
         const outcome = db.transaction((tx) => {

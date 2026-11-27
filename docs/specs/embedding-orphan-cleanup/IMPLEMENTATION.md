@@ -34,6 +34,7 @@
 - 遗留斜杠键的写入源头未定位。斜杠行集中出现在一段早期时间窗口内，之后新写入均为标准键，说明写入方已修复或该路径已不再执行；迁移完成归一化后，未来若再写入斜杠键，外键会直接拒绝而非静默产生孤儿。
 - `src/server/services/content-cutover.ts` 的孤儿清理仍只删 `posts`，级联会接管，未单独改。
 - `admin/posts.ts`、`memos.ts`、`mcp.ts` 各删除路径同样由级联接管，未加显式语句。
+- 回滚助手曾先删 `posts` 再按原行插回，级联会顺带清掉向量。已改为在同一事务内先取出该 post 的向量、重写 `posts` 后再插回，避免回滚静默丢失检索覆盖。
 - 迁移尚未在任何部署库上执行；执行前须确认可用空间与备份策略。
 
 ## Test contract changes
@@ -49,9 +50,10 @@
 
 这个提示**这次是真的**：这些向量确实产生于旧 provider 配置之下。它们的 `content_hash` 与当前正文完全一致，模型也未变，所以检索仍可用；提示只是如实反映「有一批向量早于最近一次配置变更」。
 
-不采用的做法：删除这些行以让提示消失（等于用丢覆盖换安静），或篡改 `updated_at`（伪造数据）。若要消除提示，正确做法是执行一次增量向量化，由 `vectorizeAll` 重嵌对应文章的相关 chunk。
+不采用的做法：删除这些行以让提示消失（等于用丢覆盖换安静），或篡改 `updated_at`（伪造数据）。增量向量化无法消除提示：这些行的 `content_hash` 与当前正文一致，`getVectorizationStatus` 判定为 `indexed`，非全量运行时 `vectorizeAll` 会直接跳过，`updated_at` 不会推进。要消除提示须执行一次全量（`isFull: true`）重嵌，成本按全部内容计算。
 
 ## Rollout
 
-- 零停机：迁移重建单表，实测并发写延迟可控；不改 `journal_mode`。
+- 迁移在单个 drizzle 事务内完成，期间持有写锁；不改 `journal_mode`。
+- 并发写的前提：测量用的写入方设置了非默认 `busy_timeout`。仓库的 `src/lib/db.ts` 只设置 `PRAGMA foreign_keys = ON`，未设 `busy_timeout`，也未启用 WAL；按现行配置，迁移期间的另一写入方会立即收到 `database is locked`。若不允许停服，需在应用连接上设置 `busy_timeout` 后再实测。
 - 生效前提为 `PRAGMA foreign_keys = ON`（`src/lib/db.ts:31` 已开启）；外部 `sqlite3` 客户端默认关闭，绕过应用直连写入不受约束保护。

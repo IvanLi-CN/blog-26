@@ -6,7 +6,7 @@
 
 ## 1. Background
 
-`post_embeddings` 存放每篇文章与每条 memo 的 chunk 向量，以 `post_id` 指向 `posts.id`，但两表之间没有引用约束。所有删除路径只执行 `DELETE FROM posts`，向量行永久残留。
+`post_embeddings` 存放每篇文章与每条 memo 的 chunk 向量，以 `post_id` 指向 `posts.id`，但两表之间没有引用约束。多数删除路径只执行 `DELETE FROM posts`，向量行永久残留；按作用域删除的路径另有手工清理（见 REQ-VECDEL-005）。
 
 实测数据并非全是孤儿，而是三类并存：
 
@@ -26,7 +26,7 @@
 
 1. 文章或 memo 被删除时，其内容向量同步消失。
 2. 离开应用的删除路径不再需要逐处手写清理语句。
-3. 全过程零停机，不重建 `post_embeddings`，不改变 `journal_mode`。
+3. 迁移内重建 `post_embeddings` 以携带外键，不改变 `journal_mode`。
 4. 存量孤儿向量在迁移内一次性清理：删除真孤儿与被标准键覆盖的重复遗留行，保留并归一化唯一覆盖行。
 5. 结构关系可被发现：新读者能从 schema 与 ADR 找到约束从何而来。
 

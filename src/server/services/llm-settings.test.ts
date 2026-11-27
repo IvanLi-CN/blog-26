@@ -186,7 +186,7 @@ describe("llm settings service", () => {
     expect(payload.hints.currentResolvedModel).toBe("BAAI/bge-m3");
   });
 
-  it("ignores historical vectors older than the provider change when the model is unchanged", async () => {
+  it("reports no reindex hint when every vector postdates the provider change", async () => {
     if (!db) throw new Error("Database has not been initialised");
 
     const now = Date.now();

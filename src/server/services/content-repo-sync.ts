@@ -1555,9 +1555,16 @@ export async function removeRemoteDeleted(
       const row = findRowForRepoPath(item.path);
       if (!row) {
         // The post row is already gone, so the cascading foreign key never fired for it.
-        // Clear both the canonical and any legacy slash-prefixed key (ADR 0045).
+        // post_id holds posts.id, which is a content id and not necessarily the repository
+        // path, so clear every id this path could have been stored under (ADR 0045).
+        const staleIds = new Set([item.path, `/${item.path}`]);
+        const baselineContentId = context.baselines.get(item.path)?.contentId;
+        if (baselineContentId) {
+          staleIds.add(baselineContentId);
+          staleIds.add(`/${baselineContentId}`);
+        }
         db.delete(postEmbeddings)
-          .where(inArray(postEmbeddings.postId, [item.path, `/${item.path}`]))
+          .where(inArray(postEmbeddings.postId, [...staleIds]))
           .run();
         skipped.push({ path: item.path, reason: "missing-local-content" });
         continue;
