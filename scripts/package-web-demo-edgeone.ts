@@ -73,8 +73,67 @@ async function stageSite() {
   await cp(adminDist, join(artifactDir, "admin"), { recursive: true });
 }
 
+/**
+ * Direct upload never runs the platform build, so EdgeOne decides the fallback
+ * itself. Its `@edgeone/is-spa` detector counts HTML files that reference scripts
+ * and finds exactly one here — the Admin shell — and then treats the whole Demo
+ * as an SPA, which makes it answer every unmatched path with `index.html` and a
+ * `200`, and ignore `404.html`.
+ *
+ * Two committed files settle that, both read from the upload instead of inferred:
+ * `needsFallback: false` overrides the detector (an explicit boolean wins over
+ * the heuristic), and the route table pins the Admin shell rewrite ahead of a
+ * real `404.html` fallback. `edgeone.json` cannot express either: direct upload
+ * keeps only its `redirects`, `rewrites`, and `headers`.
+ */
+async function writeEdgeoneRoutingFiles() {
+  await mkdir(join(artifactDir, ".edgeone"), { recursive: true });
+  await writeFile(join(artifactDir, ".edgeone-assets-config.json"), '{"needsFallback":false}\n');
+  const routes = {
+    version: 3,
+    routes: [
+      { handle: "filesystem" },
+      { src: "/.*", dest: "/404.html", "server-name": "file", status: 404 },
+    ],
+    conf: {
+      rewrites: [{ source: "/admin/*", destination: "/admin/index.html" }],
+    },
+  };
+  await writeFile(
+    join(artifactDir, ".edgeone", "routes.json"),
+    `${JSON.stringify(routes, null, 2)}\n`
+  );
+}
+
+/** Re-reads both routing files, so a rename or a path change fails the package. */
+async function assertRoutingFiles() {
+  const assetsConfig = JSON.parse(
+    await readFile(join(artifactDir, ".edgeone-assets-config.json"), "utf8")
+  ) as { needsFallback?: boolean };
+  if (assetsConfig.needsFallback !== false) {
+    throw new Error("EdgeOne asset config must disable the SPA fallback heuristic");
+  }
+  const routes = JSON.parse(
+    await readFile(join(artifactDir, ".edgeone", "routes.json"), "utf8")
+  ) as {
+    routes?: { status?: number; dest?: string }[];
+    conf?: { rewrites?: { source?: string; destination?: string }[] };
+  };
+  if (routes.routes?.find((route) => route.status === 404)?.dest !== "/404.html") {
+    throw new Error("EdgeOne route table must end unmatched paths on /404.html with status 404");
+  }
+  const adminRewrite = routes.conf?.rewrites?.find((rewrite) => rewrite.source === "/admin/*");
+  if (adminRewrite?.destination !== "/admin/index.html") {
+    throw new Error("EdgeOne route table must keep the /admin/* shell rewrite");
+  }
+}
+
 async function writeedgeoneConfig() {
-  const staticFiles = await collectStaticFiles(artifactDir);
+  // The two routing files are platform input, not published assets: counting
+  // them would add a pointless header rule and spend one of the 30 allowed.
+  const staticFiles = (await collectStaticFiles(artifactDir)).filter(
+    (file) => file !== ".edgeone-assets-config.json" && !file.startsWith(".edgeone/")
+  );
   const cache = createEdgeoneCacheConfig("", staticFiles);
   const config = {
     ...cache,
@@ -109,6 +168,10 @@ async function main() {
   console.log("== stage static site ==");
   await stageSite();
 
+  console.log("== write EdgeOne routing files ==");
+  await writeEdgeoneRoutingFiles();
+  await assertRoutingFiles();
+
   console.log("== write edgeone.json ==");
   const config = await writeedgeoneConfig();
 
@@ -119,7 +182,7 @@ async function main() {
   const files = await countFiles(artifactDir);
   console.log(
     `\nEdgeOne Web Demo artifact ready: ${relative(repoRoot, artifactDir)} ` +
-      `(${files} files, ${config.headers.length} cache rules, site ${publicSiteUrl})`
+      `(${files} files, ${config.headers.length} cache rules, 404 fallback, site ${publicSiteUrl})`
   );
   console.log(`version.json: ${versionSource.trim()}`);
 }

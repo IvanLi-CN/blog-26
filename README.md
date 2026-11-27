@@ -75,12 +75,15 @@ The public Demo is a pure static artifact: no server runtime and no backend API.
 ```bash
 bun run web-demo:build
 bun run web-demo:edgeone:package
-npx edgeone@1.6.34 makers deploy edgeone-web-demo-dist -n blog-demo -e production
+(cd edgeone-web-demo-dist && zip -qry ../edgeone-web-demo.zip .)
+npx edgeone@1.6.34 makers deploy edgeone-web-demo.zip -n blog-demo -e production
 ```
 
 `web-demo:edgeone:package` stages the site, mounts the Admin SPA under `/admin/`, and writes the cache rules. It intentionally excludes `edge-functions/`: the Demo has no backend to proxy to, so no `/api/*` request can reach one. The live deployment is `https://blog-demo.ivanli.cc`.
 
-`makers deploy` uploads files directly instead of running the platform build, so EdgeOne never applies the `404.html` fallback it generates for hosted builds: an unmatched path answers with `index.html` and status `200`. The client router renders the not-found view, so visitors see a 404 page, but the HTTP status is `200`. Verify a change to that behaviour against the live deployment, not against the local `generate-routes` output.
+Deploy the ZIP, not the directory: the routing files the package writes live in dot paths (`.edgeone/`, `.edgeone-assets-config.json`), and uploading a directory drops them, which silently reverts the Demo to a soft `200` fallback. Always verify the fallback against the live deployment rather than the local `generate-routes` output.
+
+Direct upload never runs the platform build, so EdgeOne picks the fallback itself, and its SPA detector reads this artifact as an SPA: the Admin shell is the only HTML that references scripts, which makes every unmatched path answer `index.html` with a `200` and bypasses `404.html`. The package therefore writes `.edgeone-assets-config.json` with `needsFallback: false` — an explicit boolean overrides the detector — plus `.edgeone/routes.json`, which keeps the `/admin/*` shell rewrite and ends unmatched paths on `404.html` with `status: 404`.
 
 ### Local development
 
