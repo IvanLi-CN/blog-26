@@ -134,6 +134,11 @@ async function main() {
   await run("generate build version", ["scripts/generate-version.ts"], process.env);
   const env = await prepareWebDemoInputs();
   await run("build public Web Demo", ["x", "astro", "build"], env);
+  // A fixed-path endpoint cannot opt out of prerendering in a static build, so
+  // the non-console branch would publish a 200 "Not Found" asset at `/mcp`.
+  // Remove it after the build: a static host then answers 404, which is what a
+  // Demo without the MCP server should do.
+  await rm(join(siteDist, "mcp"), { force: true });
   // The public Demo is pure front end: every `/api/public/assets/*` reference
   // becomes a real `_content/assets/*` file rendered from local content.
   await run("package public Demo media", ["scripts/package-web-demo-media.ts"], env);
@@ -160,6 +165,10 @@ async function main() {
     assertDirectory(join(consoleSiteDist, "client")),
     assertFile(join(adminDist, "index.html")),
   ]);
+  // A server-only endpoint that accidentally prerenders ships a 200 static
+  // "Not Found" body. Fail on the endpoints instead of publishing one.
+  for (const endpoint of ["mcp", "api", "api/public/page"])
+    await assertMissing(join(siteDist, endpoint), `server-only endpoint /${endpoint}`);
   console.log(
     `\nWeb Demo build ready: ${relative(repoRoot, siteDist)} + ${relative(repoRoot, consoleSiteDist)} + ${relative(repoRoot, adminDist)}`
   );

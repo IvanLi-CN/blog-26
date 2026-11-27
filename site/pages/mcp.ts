@@ -1,5 +1,6 @@
-// Server-rendered for the console; the static build skips it because it has no
-// static paths.
+// Server-rendered for the console. A static build cannot opt a fixed-path
+// endpoint out of prerendering, so the demo build deletes the resulting
+// artifact; the non-console branch below only answers if it is reached.
 export const prerender = process.env.BLOG_BUILD_TARGET !== "console";
 
 export async function ALL({ request }: { request: Request }) {
