@@ -90,3 +90,20 @@ failure phase 固定为 `resolve`、`restore`、`freeze_inputs`、`retain_inputs
 仓库自动合并开关允许为单个 PR 启用自动合并，不会自动合并所有 PR，也不会绕过保护规则。实现 PR 合并不会发版；只有登记过的 VERSION-only PR 能进入产品发布链路。
 
 内容更新与产品发布共享 `blog26-edgeone-production` 锁，内容更新保留已部署 renderer 的产品版本。Docker 镜像发布到 registry 后，不自动更新服务器上的运行实例。
+
+## 修改发布代码前
+
+`policyFingerprint` 覆盖 `src/lib/release/**`、`scripts/product-release.ts`、发布相关工作流，以及 `.github/release-contract.json` 与 `.github/quality-gates.json`。改动其中任一文件都会改变指纹，因此一个已登记但尚未完成的发布无法在新的树上传过 `assertPolicyIdentity`。
+
+合并任何触及这些路径的 PR 之前，先确认没有在途发布：
+
+```bash
+git fetch origin release-ledger --quiet
+git show origin/release-ledger:ledger.json | jq -r '
+  [.entries[] | select(.stage != "complete" and .stage != "abandoned")]
+  | if length == 0 then "no in-flight release" else .[] | "\(.version) \(.stage) PR #\(.prNumber)" end'
+```
+
+输出 `no in-flight release` 才可以合并发布代码改动。否则先让该发布走到 `complete`，或由原发版人显式废弃，再合并；直接合并会让那次发布以 `Release source policy changed` 失败并只能废弃重来。
+
+已完成的发布不受影响：它不再被重新校验。指纹是该 `sourceSha` 树的函数——包含该树自己的 `contract`、`quality` 与策略 blob——因此从同一棵树重算必定得到记录值，与之后的 main 指纹不同不构成问题。
