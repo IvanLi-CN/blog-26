@@ -90,13 +90,16 @@ export async function readPublicRoute(url: URL, signal: AbortSignal): Promise<Pu
   // Only the console renders on demand; the static Demo reads the route payload
   // Astro prerendered next to every page. The read stays a real request so the
   // Demo connection/delay policy and the client-navigation contract both apply.
+  // The static build writes route files with `encodeURI` semantics, which keep
+  // `+` literal. `encodeURIComponent` would turn it into `%2B` and 404 on tags
+  // such as `USB-C PD + PPS`, so encode the path segments with `encodeURI`.
   const endpoint =
     process.env.BLOG_BUILD_TARGET === "console"
       ? toPublicApiUrl(
           `/api/public/page?path=${encodeURIComponent(requestUrl.pathname + requestUrl.search)}`
         )
       : toPublicSitePath(
-          `/_content/routes/${route.path === "/" ? "index" : route.path.slice(1)}.json`
+          encodeURI(`/_content/routes/${route.path === "/" ? "index" : route.path.slice(1)}.json`)
         );
   const response = await webDemoFetch(endpoint, { signal, cache: "no-store" });
   if (response.status === 404) return { kind: "notFound", data: {} };

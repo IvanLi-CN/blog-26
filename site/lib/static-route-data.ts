@@ -19,9 +19,14 @@ export async function getStaticRouteDataEntries() {
   for (const item of await getPlaybookStaticPaths()) routes.push(`/playbook/${item.params.path}`);
   return [...new Set([...routes, "/playbook", "/search", "/404"])].map((path) => ({
     params: {
+      // The client requests these files with `encodeURI`, which keeps `+`
+      // literal. `decodeURI` leaves `%2B` escaped, so a tag such as
+      // `USB-C PD + PPS` would be written as `%2B` on disk and never match that
+      // request. Restoring the one reserved character the client leaves literal
+      // makes the file name equal the requested path.
       route: decodeURI(
         `_content/routes/${path === "/" ? "index" : path.replace(/^\/+|\/+$/g, "")}`
-      ),
+      ).replaceAll("%2B", "+"),
     },
     props: { publicPath: path },
   }));
