@@ -552,10 +552,12 @@ export async function validateCandidatePolicy(
     observeMergedReleaseMerges(github, await readPolicyLedger(github, store)),
     head
   );
+  // `surfaces` is already grouped by id, so no de-duplication is needed here.
   const contracts = assessment.classification.surfaces.map((surface) => surface.id);
+  const reasons = assessment.classification.reasons;
   return `Verified ${assessment.impact} impact for ${
     Object.keys(assessment.changed).length
   } source changes${
-    contracts.length ? ` across ${[...new Set(contracts)].join(", ")}` : " with no contract change"
-  }`;
+    contracts.length ? ` across ${contracts.join(", ")}` : " with no contract change"
+  }${reasons.length ? `; ${reasons.join("; ")}` : ""}`;
 }

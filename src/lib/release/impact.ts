@@ -37,6 +37,14 @@ export const contractSurfaces: readonly ContractSurface[] = [
   { id: "public-api", pattern: /^site\/pages\/api\//, reason: "Public API route handler" },
 ] as const;
 
+/**
+ * Tests sit inside contract directories but are not published contracts; deleting or
+ * renaming one must stay `patch` rather than look like a withdrawn API surface.
+ */
+function isTestPath(path: string): boolean {
+  return /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(path) || /(?:^|\/)__tests__\//.test(path);
+}
+
 const impactRank: Record<Impact, number> = { patch: 0, minor: 1, major: 2 };
 
 export function raiseImpact(current: Impact, next: Impact): Impact {
@@ -48,14 +56,21 @@ export function raiseImpact(current: Impact, next: Impact): Impact {
  * or when persisted data is discarded. Additive DDL keeps prior readers working.
  */
 export function destructiveMigration(sql: string): boolean {
-  const statement = sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
-  if (/\bDROP\s+(TABLE|COLUMN)\b/i.test(statement)) return true;
-  if (/\bRENAME\s+(COLUMN|TO)\b/i.test(statement)) return true;
+  // Strip comments before literals so an unterminated `/*` inside a `--` comment cannot
+  // swallow the statements that follow it.
+  const uncommented = sql.replace(/--[^\n]*/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ");
+  // Blank string literals so keywords quoted as data never look like DDL.
+  const statement = uncommented.replace(/'(?:[^']|'')*'/g, "''");
+  // SQLite lets `COLUMN` be omitted, so `DROP legacy` and `RENAME c TO d` are real DDL.
+  if (/\bDROP\s+(?:TABLE|COLUMN)\b/i.test(statement)) return true;
+  if (/\bDROP\s+[`"[]?\w/i.test(statement)) return true;
+  if (/\bRENAME\s+(?:COLUMN\s+)?(?:[`"[]?[\w$]+\s+)?TO\b/i.test(statement)) return true;
   if (/\bALTER\s+COLUMN\b/i.test(statement)) return true;
   // A new NOT NULL column cannot be written by prior readers unless it has a default.
-  // drizzle-kit emits `DEFAULT <v> NOT NULL`, so the exemption must ignore ordering.
+  // drizzle-kit emits `ADD `<name>` ... NOT NULL` without `COLUMN`, and orders the
+  // default before `NOT NULL`, so both omissions must be tolerated.
   for (const clause of statement.split(";")) {
-    if (!/\bADD\s+COLUMN\b/i.test(clause) || !/\bNOT\s+NULL\b/i.test(clause)) continue;
+    if (!/\bADD\s+(?:COLUMN\s+)?\S/i.test(clause) || !/\bNOT\s+NULL\b/i.test(clause)) continue;
     if (/\bDEFAULT\b/i.test(clause)) continue;
     return true;
   }
@@ -85,7 +100,9 @@ export function classifySourceChanges(
   const surfacePaths = new Map<ContractId, Set<string>>();
 
   for (const path of Object.keys(changed).sort()) {
-    const surface = contractSurfaces.find((candidate) => candidate.pattern.test(path));
+    const surface = contractSurfaces.find(
+      (candidate) => !isTestPath(path) && candidate.pattern.test(path)
+    );
     if (surface) {
       const paths = surfacePaths.get(surface.id) ?? new Set<string>();
       paths.add(path);
@@ -121,13 +138,22 @@ export function classifySourceChanges(
   };
 }
 
-/** `Release-Impact:` is the single channel for raising the derived floor. */
-const overridePattern = /^[ \t]*Release-Impact:[ \t]*(patch|minor|major)[ \t]*$/gim;
+/**
+ * `Release-Impact:` is the single channel for raising the derived floor. It is read
+ * only from a trailer block: the last paragraph, unindented, so a quoted example in
+ * commit prose cannot silently promote an entire release.
+ */
+const overridePattern = /^Release-Impact:[ \t]*(patch|minor|major)[ \t]*$/gm;
+
+function trailerBlock(message: string): string {
+  const paragraphs = message.split(/\n[ \t]*\n/);
+  return (paragraphs[paragraphs.length - 1] ?? "").trimEnd();
+}
 
 export function requestedImpact(messages: string[]): Impact {
   let requested: Impact = "patch";
   for (const message of messages) {
-    for (const match of message.matchAll(overridePattern)) {
+    for (const match of trailerBlock(message).matchAll(overridePattern)) {
       const value = match[1];
       if (!value) continue;
       requested = raiseImpact(requested, impactSchema.parse(value.toLowerCase()));

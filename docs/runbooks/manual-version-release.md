@@ -14,7 +14,7 @@
 
 ## 输入与流程
 
-从 main 手动运行 **Manual Product Release**（`.github/workflows/manual-product-release.yml`）。它是唯一的手动 release 入口，唯一可选文本输入 `version` 接受留空、`stable`、`alpha`、`beta`、`rc` 或完整 SemVer。留空等同 `stable`，不接受 `auto`。快捷值按整个待发布区间的最高 verified API/state 影响自动分配；完整版本精确指定，必须满足必要核心版本并高于全部已发布、预留与废弃版本。原始大小写与 metadata 保留，但 metadata 不改变排序，不能仅换 metadata 创建新身份。
+从 main 手动运行 **Manual Product Release**（`.github/workflows/manual-product-release.yml`）。它是唯一的手动 release 入口，唯一可选文本输入 `version` 接受留空、`stable`、`alpha`、`beta`、`rc` 或完整 SemVer。留空等同 `stable`，不接受 `auto`。快捷值按整个待发布区间推导出的影响自动分配；完整版本精确指定，必须满足必要核心版本并高于全部已发布、预留与废弃版本。原始大小写与 metadata 保留，但 metadata 不改变排序，不能仅换 metadata 创建新身份。
 
 版本准备先写持久预留，再创建仅修改 VERSION 的 PR 并启用自动合并。GitHub 等全部 required checks 通过后合并。**Product Release**（`.github/workflows/product-release.yml`）不接受第二个人工版本输入，而是消费已登记且通过确切 main CI/E2E 检查的 release identity，构建并冻结两种产物，发布 GitHub Release 和 GHCR 镜像。正式版随后将同一静态产物部署到 EdgeOne，验证后推进 latest；所有带预发布标识的版本仅发布产物，Release 标记 prerelease，不部署站点、不推进正式 latest，也不接收 EdgeOne 部署密钥。
 
@@ -22,7 +22,7 @@
 
 旧的 PR-label/label-gate/release workflow 只作为迁移历史保留，不是当前操作入口；当前发布真相是手动 `version` 请求、登记身份和 Product Release 的消费边界。
 
-例如正式基线为 `2.7.0`、verified impact 为 minor，连续新请求可分配 `2.8.0-alpha.1` → `2.8.0-alpha.2` → `2.8.0-beta.1` → `2.8.0-rc.1` → `2.8.0`，允许跳过阶段。同核心进入 beta 后再请求 alpha 会停止；可显式填写更高的完整目标，例如 `2.9.0-alpha.1`。每个完整版本有独立身份、发布 PR、确切合并来源及冻结字节，不能将预发布产物直接改标正式版。Git tag 为 `v` 加完整版本；镜像 tag 同样带 `v`，仅将 metadata 分隔符 `+` 映射为 `_`，长度超出 registry 限制时预留前拒绝。
+例如正式基线为 `2.7.0`、推导 impact 为 minor，连续新请求可分配 `2.8.0-alpha.1` → `2.8.0-alpha.2` → `2.8.0-beta.1` → `2.8.0-rc.1` → `2.8.0`，允许跳过阶段。同核心进入 beta 后再请求 alpha 会停止；可显式填写更高的完整目标，例如 `2.9.0-alpha.1`。每个完整版本有独立身份、发布 PR、确切合并来源及冻结字节，不能将预发布产物直接改标正式版。Git tag 为 `v` 加完整版本；镜像 tag 同样带 `v`，仅将 metadata 分隔符 `+` 映射为 `_`，长度超出 registry 限制时预留前拒绝。
 
 ## EdgeOne 静态产物与 STEP 预览验收
 
@@ -51,15 +51,15 @@ curl -fsSL -D - -o /dev/null \
 
 GitHub 适配器固定 REST API `2022-11-28`，按该字段合同核验 PR 与真实合并来源。升级 API 版本前必须先核验 PR 元数据与恢复所需字段；`2026-03-10` 已删除所有 PR 响应中的 `merge_commit_sha`，不得通过放松来源校验来兼容。[GitHub breaking changes](https://docs.github.com/en/rest/about-the-rest-api/breaking-changes)。
 
-发布影响由 `src/lib/release/impact.ts` 从已发布基线与候选来源的差异直接推导，不需要任何人工维护的分类文件。推导结果是候选提交的确定函数：同一提交永远得到同一 `impact` 与 `evidenceDigest`，因此已预留的发布可以随时重新核验。
+发布影响由 `src/lib/release/impact.ts` 从已发布基线与候选来源的差异直接推导，不需要任何人工维护的分类文件。推导以已登记的发布基线、候选提交树和区间内的提交正文为输入：以同一基线重算，永远得到同一 `impact` 与 `evidenceDigest`，因此已预留的发布可以随时重新核验。
 
-`contractSurfaces` 声明公开契约面（`drizzle/**`、`src/lib/schema.ts`、`src/server/public-api/**`、`src/server/routers/**`、`src/server/version-api.ts`、`src/lib/*contract*.ts`、`site/pages/api/**`）。文档、测试、样式和内部模块不在其中，它们无法改变已发布契约，因此推导为 `patch`。
+`contractSurfaces` 声明公开契约面（`drizzle/<name>.sql`、`src/lib/schema.ts`、`src/server/public-api/**`、`src/server/routers/**`、`src/server/version-api.ts`、`src/lib/<name>-contract.ts|contracts.ts`、`site/pages/api/**`）；逐条正则以 `src/lib/release/impact.ts` 为准。文档、测试、样式和内部模块不在其中，它们无法改变已发布契约，因此推导为 `patch`；契约面目录内的 `*.test.ts` 同样被排除。
 
 推导下界是 `patch`。破坏性迁移（`DROP TABLE|COLUMN`、`RENAME`、`ALTER COLUMN`、无默认值的 `NOT NULL` 新增列、删除已应用迁移）会把下界提升到 `minor`，因为旧版本不再能读取持久化状态。`major` 从不自动推导：它是业务决定，必须由提交正文的 `Release-Impact: major` 显式请求。
 
-提交正文中的一行 `Release-Impact: patch|minor|major` 是唯一的人工上调通道，且只能上调、不能下调。分类结果写入 `ledger` 的 `impact` 字段并决定版本号下界，因此版本基线可回溯到确切提交，而不依赖提交描述或 PR 数量。
+提交正文中的一行 `Release-Impact: patch|minor|major` 是唯一的人工上调通道，且只能上调、不能下调。分类结果写入 `ledger` 的 `impact` 字段并决定版本号下界，因此版本基线可回溯到确切提交，而不依赖 PR 数量或人工维护的记录文件。该 trailer 只对预留时 `baselineSha..sourceSha` 区间内的提交生效；预留之后追加的 trailer 不改变已登记的 `impact`。
 
-预发布不替换正式语义基线。期间登记过的 VERSION-only 差异必须通过签名、发布 PR 和确切父提交验证，随后从业务语义覆盖中单独核验；它不会使原业务文件的见证失效。未知 VERSION 修改仍阻断发布。
+预发布不替换正式语义基线。期间登记过的 VERSION-only 差异必须通过签名、发布 PR 和确切父提交验证，随后从业务语义覆盖中单独核验；它不改变业务语义差异的推导范围。未知 VERSION 修改仍阻断发布。
 
 ## 恢复
 

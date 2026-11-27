@@ -82,7 +82,7 @@
 
 ## Remaining Gates
 
-- T8 binds the full local check set, assistant E2E, dual-origin identity, migration/privacy checks, Web Demo build and visual evidence to the candidate SHA recorded in the `## Verification` section of this file. Remote PR CI/E2E and formal Tier 4 review remain required for PR readiness.
+- T8 binds the full local check set, assistant E2E, dual-origin identity, migration/privacy checks, Web Demo build and visual evidence to the candidate SHA recorded in the corresponding PR; this file records the commands and their pass/fail outcome, not the SHA. Remote PR CI/E2E and formal Tier 4 review remain required for PR readiness.
 - Live-provider acceptance is deferred and unverified. Do not invoke the opt-in provider runner without separate explicit owner authorization.
 - Real GitHub OAuth, production migration/backfill, deployment and post-deploy cache/cookie checks remain release gates; they are not implied by deterministic tests or Web Demo fixtures.
 

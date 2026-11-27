@@ -39,7 +39,8 @@ describe("derived release impact", () => {
       diff(
         "docs/solutions/admin/llm-settings-runtime-config.md",
         "apps/admin/src/styles.css",
-        "src/server/services/llm-settings.ts"
+        "src/server/services/llm-settings.ts",
+        "tests/lib/manual-release-policy.test.ts"
       ),
       read
     );
@@ -57,6 +58,10 @@ describe("derived release impact", () => {
 
   test("an additive migration stays patch; a destructive one raises to minor", () => {
     expect(classifySourceChanges(diff("drizzle/0039_add_column.sql"), read).impact).toBe("patch");
+    // drizzle-kit emits `DEFAULT <v> NOT NULL`, so the NOT NULL branch must exempt it.
+    expect(classifySourceChanges(diff("drizzle/0040_default_column.sql"), read).impact).toBe(
+      "patch"
+    );
     const destructive = classifySourceChanges(diff("drizzle/0038_drop_legacy_column.sql"), read);
     expect(destructive.impact).toBe("minor");
     expect(destructive.surfaces).toEqual([
@@ -140,8 +145,17 @@ describe("derived release impact", () => {
       diff("src/server/services/llm-settings.ts", "apps/admin/src/styles.css"),
       read
     );
-    expect(sourceEvidenceDigest(base, diff("src/server/services/llm-settings.ts"), one)).toBe(
-      sourceEvidenceDigest(base, diff("src/server/services/llm-settings.ts"), same)
+    // Key order must not leak into the digest: both maps carry the same paths and blobs.
+    const forward = {
+      "src/server/services/llm-settings.ts": code,
+      "apps/admin/src/styles.css": code,
+    };
+    const reversed = {
+      "apps/admin/src/styles.css": code,
+      "src/server/services/llm-settings.ts": code,
+    };
+    expect(sourceEvidenceDigest(base, forward, one)).toBe(
+      sourceEvidenceDigest(base, reversed, same)
     );
     expect(sourceEvidenceDigest(base, diff("src/server/services/llm-settings.ts"), one)).not.toBe(
       sourceEvidenceDigest(base, diff("apps/admin/src/styles.css"), other)
@@ -156,6 +170,13 @@ describe("derived release impact", () => {
     );
     // It must also bind the derived contract surfaces.
     const surface = classifySourceChanges(diff("src/server/public-api/router.ts"), read);
+    // It must bind the derived impact, which a trailer alone can raise.
+    expect(sourceEvidenceDigest(base, diff("src/server/public-api/router.ts"), surface)).not.toBe(
+      sourceEvidenceDigest(base, diff("src/server/public-api/router.ts"), {
+        ...surface,
+        impact: "minor",
+      })
+    );
     expect(sourceEvidenceDigest(base, diff("src/server/public-api/router.ts"), surface)).not.toBe(
       sourceEvidenceDigest(base, diff("src/server/public-api/router.ts"), {
         ...surface,
