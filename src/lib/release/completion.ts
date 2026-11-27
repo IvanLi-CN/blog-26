@@ -414,7 +414,19 @@ export async function resolveCompletedRelease(
   verifyTrustedTags(github, current.ledger);
   if (!matched.prNumber) throw new Error("Release PR proof is missing");
   assertMerge(github, matched, github.pull(matched.prNumber), run.head_sha);
-  if (!mainChecksPassed(github, run.head_sha, quality)) return undefined;
+  // A single main evaluation event now wakes Product Release, so the sibling workflow may still be
+  // running when it arrives; wait for the remaining required checks instead of dropping the release.
+  const gateDeadline = Date.now() + 20 * 60_000;
+  while (!mainChecksPassed(github, run.head_sha, quality)) {
+    const result = mainEvaluationResult(github, run.head_sha, quality);
+    if (result.state === "failed")
+      throw new Error("Required main evaluation failed; retry its original CI run");
+    if (github.reference("heads/main") !== run.head_sha) return undefined;
+    if (Date.now() >= gateDeadline) return undefined;
+    const { promise, resolve } = Promise.withResolvers<void>();
+    setTimeout(resolve, 15_000);
+    await promise;
+  }
   if (matched.stage !== "pr_open") {
     if (!canRebind) return matched;
     if (!bind) return { ...matched, releaseRunId };

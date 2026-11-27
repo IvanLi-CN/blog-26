@@ -74,6 +74,11 @@ async function output(values: Record<string, string>) {
     if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
   }
 }
+async function delay(ms: number): Promise<void> {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  setTimeout(resolve, ms);
+  return promise;
+}
 function failureLocation(app: GitHubRelease, runId: number, attempt: number) {
   return classifyWorkflowFailure(
     app.pages(`${app.root}/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100`, "jobs")
@@ -245,7 +250,17 @@ if (command === "notification") {
     );
     if (!entry?.prNumber) throw new Error("Registered release preparation was not found");
     assertPolicyIdentity(contract, quality, entry.policyDigest);
-    const evaluationDeadline = Date.now() + 75 * 60_000;
+    // A release must finish in 30 minutes by design; the 90-minute job timeout is only a backstop
+    // that records why a run overran it, so every wait below stops at the shared design deadline.
+    const designDeadline = Date.now() + 30 * 60_000;
+    const startedAt = Date.now();
+    const budgetExceeded = (phase: string) =>
+      new Error(
+        `Release followup exceeded its ${Math.round((Date.now() - startedAt) / 60_000)}-minute ${phase} budget`
+      );
+    const phaseDeadline = (minutes: number) =>
+      Math.min(designDeadline, Date.now() + minutes * 60_000);
+    const evaluationDeadline = phaseDeadline(20);
     while (true) {
       const pull = app.pull(entry.prNumber);
       assertReleasePull(app, entry, pull);
@@ -258,13 +273,10 @@ if (command === "notification") {
       }
       if (pull.state !== "open" || app.reference("heads/main") !== entry.sourceSha)
         throw new Error("Preparation source changed before release checks completed");
-      if (Date.now() >= evaluationDeadline)
-        throw new Error(
-          "Exact-head release evaluations did not complete before the followup deadline"
-        );
-      await new Promise((done) => setTimeout(done, 10_000));
+      if (Date.now() >= evaluationDeadline) throw budgetExceeded("exact-head evaluation");
+      await delay(10_000);
     }
-    const mergeDeadline = Date.now() + 20 * 60_000;
+    const mergeDeadline = phaseDeadline(5);
     let mergePropagationDeadline: number | undefined;
     while (true) {
       // Main can advance before the PR API exposes merged=true; allow the two observations to converge briefly.
@@ -276,6 +288,21 @@ if (command === "notification") {
         assertMerge(app, entry, pull, pull.merge_commit_sha);
         for (const workflow of ["ci.yml", "e2e.yml"] as const)
           app.dispatchEvaluation(workflow, "main", pull.merge_commit_sha);
+        // Dispatch-made evaluations cannot chain into Product Release through workflow_run, so
+        // this job verifies the required main gates and starts the release itself.
+        const releaseDeadline = phaseDeadline(5);
+        while (true) {
+          const result = mainEvaluationResult(app, pull.merge_commit_sha, quality);
+          if (result.state === "passed") break;
+          if (result.state === "failed")
+            throw new Error("Required main evaluation failed; retry its original CI run");
+          if (app.reference("heads/main") !== pull.merge_commit_sha)
+            throw new Error("Main moved before release checks completed");
+          if (Date.now() >= releaseDeadline) throw budgetExceeded("main release check");
+          await delay(10_000);
+        }
+        assertPolicyIdentity(contract, quality, entry.policyDigest);
+        app.dispatchProductRelease();
         break;
       }
       if (state === "source_changed") throw new Error("Preparation source changed before merge");
@@ -284,11 +311,8 @@ if (command === "notification") {
         if (Date.now() >= mergePropagationDeadline)
           throw new Error("Preparation source changed before merge");
       } else mergePropagationDeadline = undefined;
-      if (Date.now() >= mergeDeadline)
-        throw new Error(
-          "Auto-merge has not completed; rerun this same followup after resolving the protected gate"
-        );
-      await new Promise((done) => setTimeout(done, 10_000));
+      if (Date.now() >= mergeDeadline) throw budgetExceeded("auto-merge");
+      await delay(10_000);
     }
   }
 } else if (command === "resolve") {
