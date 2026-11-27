@@ -62,6 +62,12 @@ if (phase === "upgrade") {
   for (const entry of journal.entries)
     copyFileSync(`drizzle/${entry.tag}.sql`, join(prior, `${entry.tag}.sql`));
   migrate(drizzle(sqlite), { migrationsFolder: prior });
+  // The vector needs a real owning post: post_embeddings.post_id carries a foreign key
+  // after 0038, and the migration drops rows whose post no longer exists.
+  sqlite.run(
+    "INSERT INTO posts(id,slug,type,title,body,publish_date,content_hash,file_path) VALUES(?,?,?,?,?,?,?,?)",
+    ["legacy-parent", "legacy", "post", "Legacy", "legacy body", 1, "old-hash", "legacy.md"]
+  );
   sqlite.run(
     "INSERT INTO post_embeddings(id,post_id,slug,type,model_name,dim,content_hash,chunk_index,vector,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
     [
