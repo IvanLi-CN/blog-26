@@ -83,9 +83,10 @@ test("page evidence mode is selected at build time", async () => {
     "bun scripts/preview-web-demo.ts"
   );
   expect(astroConfig).toContain("const serverRuntime = consoleBuild;");
-  expect(astroConfig).toContain(
-    'adapter: serverRuntime ? node({ mode: "middleware" }) : undefined'
-  );
+  // The console Demo is spawned directly by `scripts/preview-web-demo.ts`, so it
+  // keeps the standalone adapter; the live console stays middleware.
+  expect(astroConfig).toContain("const standaloneRuntime = consoleBuild && webDemoRuntime;");
+  expect(astroConfig).toContain('node({ mode: standaloneRuntime ? "standalone" : "middleware" })');
   expect(astroConfig).toContain('output: serverRuntime ? "server" : "static"');
   expect(astroConfig).toContain('"**/web-demo-site-dist/**"');
   expect(astroConfig).toContain('"**/web-demo-admin-dist/**"');
