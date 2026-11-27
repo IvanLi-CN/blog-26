@@ -48,7 +48,6 @@ export const qualitySchema = z
       .strict(),
     required_checks: z.array(z.string().min(1)).min(1),
     main_required_checks: z.array(z.string().min(1)).min(1),
-    informational_checks: z.array(z.string()),
     expected_pr_workflows: z.array(
       z.object({ workflow: z.string(), jobs: z.array(z.string()) }).strict()
     ),

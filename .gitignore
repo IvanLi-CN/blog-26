@@ -139,3 +139,7 @@ web-demo-site-dev-dist/
 
 # Rebuildable, validated project media cache
 .cache/project-media/
+
+# Python bytecode from repository helper scripts
+__pycache__/
+*.pyc
