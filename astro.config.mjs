@@ -20,7 +20,9 @@ if (buildTarget !== "public" && buildTarget !== "console") {
 }
 const consoleBuild = buildTarget === "console";
 const webDemoRuntime = process.env.WEB_DEMO_BUILD === "true";
-const serverRuntime = consoleBuild || webDemoRuntime;
+// The public Web Demo is a static artifact. `WEB_DEMO_BUILD` selects the demo
+// fixtures and Inspector; only the console still needs a Node server runtime.
+const serverRuntime = consoleBuild;
 const webDemoEdition = webDemoRuntime
   ? JSON.parse(
       await readFile(
@@ -91,7 +93,7 @@ const publicMdxPrefix = "\0shared-public-mdx:";
 
 export default defineConfig({
   integrations: [react(), mdx()],
-  adapter: serverRuntime ? node({ mode: webDemoRuntime ? "standalone" : "middleware" }) : undefined,
+  adapter: serverRuntime ? node({ mode: "middleware" }) : undefined,
   output: serverRuntime ? "server" : "static",
   trailingSlash: serverRuntime ? "ignore" : "always",
   // The console serves the public API on a separate origin (ivanli.cc ->

@@ -47,6 +47,11 @@ async function assertFile(path: string) {
   if (!entry?.isFile()) throw new Error(`Web Demo build is missing ${relative(repoRoot, path)}`);
 }
 
+async function assertMissing(path: string) {
+  const entry = await stat(path).catch(() => undefined);
+  if (entry) throw new Error(`Static Web Demo must not include ${relative(repoRoot, path)}`);
+}
+
 async function assertDirectory(path: string) {
   const entry = await stat(path).catch(() => undefined);
   if (!entry?.isDirectory()) {
@@ -141,9 +146,10 @@ async function main() {
   );
 
   await Promise.all([
-    assertFile(join(siteDist, "server", "entry.mjs")),
+    // The public Demo is a static artifact: it must ship pages and no server entry.
+    assertFile(join(siteDist, "index.html")),
+    assertMissing(join(siteDist, "server", "entry.mjs")),
     assertFile(join(consoleSiteDist, "server", "entry.mjs")),
-    assertDirectory(join(siteDist, "client")),
     assertDirectory(join(consoleSiteDist, "client")),
     assertFile(join(adminDist, "index.html")),
   ]);
