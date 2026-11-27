@@ -86,11 +86,12 @@ export async function prepareWebDemoInputs() {
     CONSOLE_WEB_DEMO_BUILD: "false",
     PUBLIC_API_BASE_URL: "",
     PUBLIC_ASSISTANT_LAUNCHER_DEFAULT: "true",
-    // The Demo has no live metrics source: an empty base URL renders the
-    // deterministic poster/fallback state instead of requesting a fake host.
-    PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: "",
-    PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: "",
-    PUBLIC_OCTO_RILL_METRICS_BASE_URL: "",
+    // `webDemoFetch` mocks `/api/public/metrics/v1/*` by path, so these only
+    // shape the visible endpoint. They must stay absolute: an empty base URL
+    // removes the panel entirely instead of letting the Demo mock answer.
+    PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: "https://metrics.example.test",
+    PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: "https://metrics.example.test",
+    PUBLIC_OCTO_RILL_METRICS_BASE_URL: "https://metrics.example.test",
   };
 
   await run("prepare deterministic local content", ["run", "migrate"], env);

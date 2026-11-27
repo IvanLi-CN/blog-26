@@ -1,10 +1,31 @@
 import { expect, type Page, test } from "@playwright/test";
 
-const routeApi = (url: string) => new URL(url).pathname === "/api/public/page";
+// The console answers on demand through `/api/public/page`; the static Demo reads
+// the route payload the build wrote next to each page. Both are one page read.
+const routeReadPattern = "**/{api/public/page,_content/routes/**}";
+/** The public path a route read targets, whichever endpoint the build uses. */
+function readPublicPath(url: string) {
+  const parsed = new URL(url);
+  if (parsed.pathname === "/api/public/page") return parsed.searchParams.get("path") ?? "";
+  const route = parsed.pathname.slice("/_content/routes/".length, -".json".length);
+  // The static route files drop the trailing slash, while every assertion below
+  // compares against the canonical route path that keeps it.
+  return route === "index" ? "/" : `/${route}/`;
+}
+const routeApi = (url: string) => {
+  const { pathname } = new URL(url);
+  return pathname === "/api/public/page" || pathname.startsWith("/_content/routes/");
+};
 async function ready(page: Page) {
   await page.waitForFunction(
     () =>
       !document.querySelector('astro-island[component-url*="PublicRouter"]')?.hasAttribute("ssr")
+  );
+  // Hydration can finish before React takes over navigation. Wait until the
+  // router has claimed the current route so a click cannot be swallowed by the
+  // still-static document.
+  await page.waitForFunction(
+    () => document.querySelector("main.nature-main")?.getAttribute("aria-busy") === "false"
   );
 }
 async function clickRoute(page: Page, path: string) {
@@ -55,14 +76,16 @@ test("client navigation renders the destination skeleton for every async route f
     });
     let held = false;
     const routeHandler = async (route: import("@playwright/test").Route) => {
-      const requestPath = new URL(route.request().url()).searchParams.get("path") ?? "";
-      if (!held && requestPath.startsWith(path)) {
+      // A query-only route family such as `/search/?q=fixture` shares one route
+      // payload, so compare the pathname without its query string.
+      const requestPath = readPublicPath(route.request().url()).split("?")[0] ?? "";
+      if (!held && requestPath.startsWith(path.split("?")[0] ?? "")) {
         held = true;
         await gate;
       }
       await route.continue();
     };
-    await page.route("**/api/public/page**", routeHandler);
+    await page.route(routeReadPattern, routeHandler);
     try {
       await clickRoute(page, path);
       await expect.poll(() => held, { message: `expected a gated read for ${path}` }).toBe(true);
@@ -74,7 +97,7 @@ test("client navigation renders the destination skeleton for every async route f
     }
     await expect(page.locator("main.nature-main")).toHaveAttribute("aria-busy", "false");
     await expect(page.locator("html[data-public-navigation-pending]")).toHaveCount(0);
-    await page.unroute("**/api/public/page**", routeHandler);
+    await page.unroute(routeReadPattern, routeHandler);
   }
 
   await clickRoute(page, "/about/");
@@ -99,14 +122,14 @@ test("tags navigation skeleton keeps the grouped tag index geometry", async ({ p
   });
   let held = false;
   const routeHandler = async (route: import("@playwright/test").Route) => {
-    const requestPath = new URL(route.request().url()).searchParams.get("path") ?? "";
+    const requestPath = readPublicPath(route.request().url());
     if (!held && requestPath.startsWith("/tags/")) {
       held = true;
       await gate;
     }
     await route.continue();
   };
-  await page.route("**/api/public/page**", routeHandler);
+  await page.route(routeReadPattern, routeHandler);
   try {
     await clickRoute(page, "/tags/");
     await expect.poll(() => held, { message: "expected a gated tags read" }).toBe(true);
@@ -135,7 +158,7 @@ test("tags navigation skeleton keeps the grouped tag index geometry", async ({ p
     release();
   }
   await expect(page.locator("main.nature-main")).toHaveAttribute("aria-busy", "false");
-  await page.unroute("**/api/public/page**", routeHandler);
+  await page.unroute(routeReadPattern, routeHandler);
 });
 
 test("public header stays on one row beside the open Web Demo Inspector", async ({ page }) => {
@@ -313,9 +336,7 @@ test("online CSR fetches structured data, keeps theme and uses fresh reads on hi
   await expect(page.locator("html")).toHaveAttribute("data-ui-theme", "dark");
   await expect(page.getByRole("radio", { name: "管理员", exact: true })).toBeChecked();
   expect(
-    requests.filter((url) =>
-      new URL(url).searchParams.get("path")?.startsWith("/posts/code-block-fixture/")
-    ).length
+    requests.filter((url) => readPublicPath(url).startsWith("/posts/code-block-fixture/")).length
   ).toBe(2);
   expect(documents).toEqual([]);
 });
@@ -336,12 +357,8 @@ test("delay and cancellation cannot let an old route overwrite the newest one", 
     document.querySelector<HTMLAnchorElement>('header a[aria-label="标签"]')?.click();
   });
   await expect(page.locator("main h1")).toContainText("标签");
-  expect(reads.some((url) => new URL(url).searchParams.get("path")?.startsWith("/projects/"))).toBe(
-    false
-  );
-  expect(reads.some((url) => new URL(url).searchParams.get("path")?.startsWith("/tags/"))).toBe(
-    true
-  );
+  expect(reads.some((url) => readPublicPath(url).startsWith("/projects/"))).toBe(false);
+  expect(reads.some((url) => readPublicPath(url).startsWith("/tags/"))).toBe(true);
 });
 
 test("static about and unknown routes do not manufacture offline failures", async ({ page }) => {

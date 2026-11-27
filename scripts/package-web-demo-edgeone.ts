@@ -41,7 +41,9 @@ async function assertMissing(path: string, label: string) {
 async function assertNoBackendReferences(root: string) {
   // Bare `/api/public/assets/` also appears as a client-side prefix check, which
   // never issues a request. Only a concrete media path is a real dependency.
-  const patterns = [/\/api\/public\/assets\/(?:post|memo)\//gu, /metrics\.example\.test/gu];
+  // `metrics.example.test` is not a dependency either: `webDemoFetch` answers
+  // `/api/public/metrics/v1/*` in-page and never reaches that origin.
+  const patterns = [/\/api\/public\/assets\/(?:post|memo)\//gu];
   const offenders: string[] = [];
   for await (const entry of new Bun.Glob("**/*.{html,json,js,css,svg,xml,txt}").scan({
     cwd: root,

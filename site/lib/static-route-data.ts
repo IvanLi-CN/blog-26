@@ -1,3 +1,4 @@
+import { getMemoListWebDemoRecords } from "./memo-list-web-demo";
 import { getPlaybookStaticPaths } from "./playbook";
 import { matchPublicRoute } from "./public-route";
 import { getSnapshot, getStaticPageEntries } from "./public-site";
@@ -9,6 +10,12 @@ export async function getStaticRouteDataEntries() {
   const routes = getStaticPageEntries(snapshot).filter((path) =>
     matchPublicRoute(toPublicSitePath(path))
   );
+  // The Demo memo pages come from the generated list fixture rather than the
+  // snapshot, so their route payloads must be emitted from the same source.
+  // Otherwise a prerendered memo page has no route JSON to navigate to.
+  if (process.env.WEB_DEMO_BUILD === "true" && process.env.CONSOLE_WEB_DEMO_BUILD !== "true") {
+    for (const memo of getMemoListWebDemoRecords()) routes.push(`/memos/${memo.slug}`);
+  }
   for (const item of await getPlaybookStaticPaths()) routes.push(`/playbook/${item.params.path}`);
   return [...new Set([...routes, "/playbook", "/search", "/404"])].map((path) => ({
     params: {

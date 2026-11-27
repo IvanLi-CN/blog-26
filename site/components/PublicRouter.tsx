@@ -87,8 +87,9 @@ export async function readPublicRoute(url: URL, signal: AbortSignal): Promise<Pu
     requestUrl.searchParams.set("d_scene", scene.scene);
     requestUrl.searchParams.set("d_data", scene.data);
   }
-  // Only the console renders on demand; the static public Demo reads the
-  // route data Astro prerendered next to every page.
+  // Only the console renders on demand; the static Demo reads the route payload
+  // Astro prerendered next to every page. The read stays a real request so the
+  // Demo connection/delay policy and the client-navigation contract both apply.
   const endpoint =
     process.env.BLOG_BUILD_TARGET === "console"
       ? toPublicApiUrl(
