@@ -129,7 +129,7 @@ describe("prerelease workflow deployment boundary", () => {
   test("product release can be resumed from the uniquely registered merged identity", () => {
     expect(release.on.workflow_dispatch).toEqual({});
     expect(release.on.workflow_run).toEqual({
-      workflows: ["CI/CD Pipeline", "E2E Tests"],
+      workflows: ["E2E Tests"],
       types: ["completed"],
       branches: ["main"],
     });

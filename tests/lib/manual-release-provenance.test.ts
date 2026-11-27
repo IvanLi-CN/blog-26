@@ -280,6 +280,28 @@ describe("trusted release evaluation", () => {
     ]);
   });
 
+  test("dispatches the product release that a generated evaluation cannot chain into", () => {
+    const writes: { endpoint: string; payload: unknown }[] = [];
+    const github = new GitHubRelease(
+      contract,
+      "github-actions",
+      transport((endpoint, method, payload) => {
+        if (method === "POST") {
+          writes.push({ endpoint, payload });
+          return null;
+        }
+        throw new Error(`Unexpected read ${endpoint}`);
+      })
+    );
+    github.dispatchProductRelease();
+    expect(writes).toEqual([
+      {
+        endpoint: "repos/IvanLi-CN/blog-26/actions/workflows/product-release.yml/dispatches",
+        payload: { ref: "main" },
+      },
+    ]);
+  });
+
   test("publishes exact-head release checks idempotently through the Actions app", () => {
     const writes: { endpoint: string; payload: unknown }[] = [];
     const runs: unknown[] = [];

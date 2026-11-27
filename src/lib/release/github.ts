@@ -254,6 +254,12 @@ export class GitHubRelease {
     this.api(`${this.root}/actions/workflows/${workflow}/dispatches`, "POST", { ref: branch });
   }
 
+  dispatchProductRelease(): void {
+    this.api(`${this.root}/actions/workflows/product-release.yml/dispatches`, "POST", {
+      ref: this.contract.branch,
+    });
+  }
+
   dispatchReleaseFollowup(releaseId: string, prNumber: number, headSha: string): void {
     this.api(`${this.root}/actions/workflows/release-merge-followup.yml/dispatches`, "POST", {
       ref: this.contract.branch,
