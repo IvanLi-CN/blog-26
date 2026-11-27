@@ -38,13 +38,6 @@
     "Playwright E2E (mcp)",
     "Playwright E2E (web-demo)"
   ],
-  "informational_checks": [
-    "Release Token Probe",
-    "Frozen Product Smoke (2.8.0)",
-    "Frozen Product Smoke (2.8.0-alpha.1)",
-    "Frozen Product Smoke (2.8.0-beta.1)",
-    "Frozen Product Smoke (2.8.0-rc.1+Candidate.001)"
-  ],
   "expected_pr_workflows": [
     {
       "workflow": "CI/CD Pipeline",

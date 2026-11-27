@@ -118,7 +118,11 @@ Product Release run 本身只有两类 abandon：没有任何 frozen artifact �
 
 ### REQ-MVR-012
 
-仓库 MUST 启用自动合并、main PR-only、严格 up-to-date、Verified commits、禁止 force/delete 和管理员受约束规则，不新增人工审批人数。发布身份 MUST 使用内置 `GITHUB_TOKEN` 与 `github-actions[bot]`，不得要求新增 App、私钥或 PAT。仓库 MUST 允许 Actions 创建 PR；代码 MUST NOT 调用审批接口或绕过 main 保护。准备和衔接按 job 声明必需的 contents/pull-requests/actions/checks 权限，GHCR 采用 job 级 packages:write，默认 Actions 只读，Playbook 来源 token 独立。实际配置、机器人 Verified 提交及非生产 Candidate Actions 运行 MUST 提供验收证据。
+实际配置、机器人 Verified 提交及非生产 Candidate Actions 运行 MUST 提供验收证据。
+
+### REQ-MVR-021
+
+发布策略指纹 `policyFingerprint` MUST 覆盖 `src/lib/release/**`、`scripts/product-release.ts`、发布相关工作流，以及 `.github/release-contract.json` 与 `.github/quality-gates.json`。指纹 MUST 是该 `sourceSha` 树的确定函数：从同一棵树（含其自身的 contract、quality 与策略 blob）重算 MUST 得到记录值。指纹 MUST NOT 跨树比较——contract 或 quality 的改动会改变指纹。已登记且尚未完成的发布 MUST 以自身准备树解析指纹；其 `mergeSha` 树含后续策略改动时，`assertPolicyIdentityAtSource` MUST 拒绝继续。已完成条目 MUST NOT 被后续运行重新校验。合并触及受覆盖路径的改动前，发版人 MUST 先确认账本无在途发布（`stage` 既非 `complete` 也非 `abandoned`）；在有在途发布时合并会让该发布以 `Release source policy changed` 失败，只能废弃重来。
 
 ## Verification
 
@@ -211,6 +215,12 @@ Product Release run 本身只有两类 abandon：没有任何 frozen artifact �
 - Method: 在不改变 production/latest 或生产内容指针的 pre-completion release identity 上执行一次 GitHub Actions 原运行 rerun drill，并保存原 run URL、run attempt、ledger 与 artifact 证据。
 - covers: `REQ-MVR-017`, `REQ-MVR-018`
 - Pass condition: rerun 继续原 Product Release run，run ID、版本、merge SHA、冻结 inputs 和已验证 products 不变，`run_attempt` 递增，预检与后续边界实际执行；不得生成新版本、successor identity 或生产指针变化。
+
+### VER-MVR-016
+
+- Method: 对账本中每次已完成发布，从该条目自身的 `sourceSha` 树读取 `.github/release-contract.json`、`.github/quality-gates.json` 与该树 blob 重算 `policyFingerprint`，与记录的 `policyDigest` 比对；再在账本上执行 runbook 的在途发布查询。
+- covers: `REQ-MVR-021`
+- Pass condition: 全部已完成发布在其自身 `sourceSha` 树上重算一致；已完成条目不被后续运行重新校验；在途查询在有发布未完成时输出该发布，无在途发布时输出 `no in-flight release`。
 
 ## Related ADRs
 

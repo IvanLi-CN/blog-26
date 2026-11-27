@@ -23,6 +23,9 @@
 - 补强 bootstrap recovery workflow：不可变 marker 写入前必须确认 target 位于 root-bound 单父 ledger 链、由 owner 经 `web-flow` Verified 提交并带机器人 Signed-off-by，拒绝不存在、越过 bootstrap root 或签名不可信的 target。
 - Bootstrap recovery workflow 改为复用 `GitHubLedgerStore.read`、`assertMerge` 与 `compareAndSwap`，在写入前拒绝损坏账本和错误 PR merge，并对已完成的相同 recovery 请求幂等退出。
 - 收紧 recovery preflight：必须绑定读取器发现的 owner legacy identity，严格校验 root/current ledger state 和 traversed digest 声明，同时保留历史 recovery wrapper 的向后兼容；修复未带 marker 的 owner head 被误判为幂等完成、Bun heredoc 静默跳过和 PR 读取权限缺失。
+- [PR #526](https://github.com/IvanLi-CN/blog-26/pull/526) 将发布影响从逐文件 blob 记录改为由已发布基线与候选来源的差异直接推导：删除 `docs/version-impact/` 下的 147 份手工记录与 `impactRecordSchema`/`verifyImpactRecords` 覆盖检查，改为 `classifySourceChanges` 按契约面推导 `impact` 与 `evidenceDigest`，并保留提交正文 `Release-Impact:` 作为唯一上行通道。
+- [PR #529](https://github.com/IvanLi-CN/blog-26/pull/529) 让发布在合并衔接结束后自动开始：内置令牌抑制 release 合并的 `push` 事件，此前 `product-release` 的 4 次 `workflow_run` 触发全部来自 owner push、来自 dispatch 评测的为 0，导致 `pr_open` 必须人工续跑。改为由 `E2E Tests` 完成事件单一唤醒，`resolve` 在 required checks 未全绿时有界等待（20 分钟）并在失败时立即报错。
+- [PR #532](https://github.com/IvanLi-CN/blog-26/pull/532) 修复推导的漏判：`destructiveMigration` 原先要求 `ADD\s+COLUMN`，但 drizzle-kit 的 SQLite convertor 生成 `ALTER TABLE \`t\` ADD \`c\` ... NOT NULL`，使「无默认值 `NOT NULL` 新增列 → `minor`」对仓库实际使用的全部迁移失效；同时补齐 SQLite 短式 `DROP`/`RENAME`、契约面内 `*.test.ts` 豁免、仅从顶格 trailer 段读取 `Release-Impact:` 与符号链接拒绝。
 
 ## References
 
