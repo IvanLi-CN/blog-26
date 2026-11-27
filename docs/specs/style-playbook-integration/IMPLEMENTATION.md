@@ -74,7 +74,7 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 - Policy 公开资源文件已由同版公开 catalog 准备检索候选并返回安全路径，语义投影按 edition/model/content hash 异步去重；完整崩溃恢复与无 JavaScript 定位验收待验证，现有发布包无需读取私有源文件。
 - 管理员内容同步页已纳入 Playbook 来源、按来源刷新和独立语义状态；持久任务历史、取消与采用边界需要在 Agent VM 故障注入中验证。
 - 当前候选的 Playbook 纯函数、双包接收、管理员 API、SSR、静态/Web Demo/console 构建、视觉证据和格式检查已完成；新增页面截图为 current-only，待 owner 确认后才能冻结候选，受影响的独立审查与 live PR 当前 head 门禁仍待完成。实现覆盖不等同于交付完成。
-- 上游原生 Release 负责静态站可重复公开包；博客通过静态发布合同检查并部署，见 [公开包契约](./contracts/public-package.md) 和 [触发契约](./contracts/release-trigger.md)。这条链路不再定义动态 console 的来源。
+- 上游原生 Release 负责静态站可重复公开包；博客通过公开包契约校验，并由产品发布流程冻结 edition，见 [公开包契约](./contracts/public-package.md)。这条链路不定义动态 console 的来源。
 - 动态服务的目标配置是 `STYLE_PLAYBOOK_GITHUB_TOKEN`、`STYLE_PLAYBOOK_GITHUB_REPOSITORY` 和 `STYLE_PLAYBOOK_GITHUB_REF`；缺少 Token 为 `unconfigured`，不使用旧的 `PLAYBOOK_SOURCE_TOKEN`、`GH_TOKEN` 或 `PLAYBOOK_SYNC_ENABLED` provider 开关。
 - 动态 current/previous 数据库快照、GitHub 五分钟轮询、来源 hash 比较和管理员状态尚未由本工作区的运行时代码切换；模拟静态发布和本地 HTTP 结果不替代新动态合同的实现验收。
 - 本任务不触发真实 Release、不配置远端凭据；PR 合并按交付流程的 Step 5C 版本确认和 CI/review 门禁执行。上线顺序和暂停/回滚流程见 [发布 runbook](../../runbooks/style-playbook-publishing.md)。
@@ -96,7 +96,6 @@ Policy 公开资源使用 SSR 文件浏览器：可收起的原生目录树、�
 - [长期需求](./SPEC.md)
 - [GitHub 内容源契约](./contracts/github-source.md)
 - [公开包契约](./contracts/public-package.md)
-- [Release 触发契约](./contracts/release-trigger.md)
 - [研究基线与主题历史](./HISTORY.md)
 - [ADR 0011](../../adr/0011-published-playbook-read-model.md)
 - [ADR 0024](../../adr/0024-unified-search-and-playbook-sync-management.md)

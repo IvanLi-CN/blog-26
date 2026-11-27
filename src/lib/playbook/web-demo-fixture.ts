@@ -133,8 +133,6 @@ const stack = {
     "enable-recovery-auto-merge.yml",
     "manual-product-release.yml",
     "notify-release-failure.yml",
-    "playbook-content-rollback.yml",
-    "playbook-content-update.yml",
     "product-release.yml",
     "recover-published-release.yml",
     "recover-release-ledger.yml",

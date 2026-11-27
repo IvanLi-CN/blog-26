@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { load } from "js-yaml";
 import {
   createEdgeoneCacheConfig,
   findEdgeoneCacheRule,
@@ -17,125 +16,7 @@ import {
 import { parseSupplementSyncEndpoint } from "../../src/lib/playbook/supplement";
 import { getPublicStaticCacheControl } from "../../src/lib/public-static-cache-policy";
 
-type WorkflowStep = {
-  name?: string;
-  uses?: string;
-  if?: string;
-  run?: string;
-  with?: Record<string, unknown>;
-  env?: Record<string, unknown>;
-};
-
-type WorkflowJob = {
-  concurrency?: object;
-  steps?: WorkflowStep[];
-  needs?: unknown;
-  if?: string;
-};
-
 describe("playbook deployment boundaries", () => {
-  test("all production jobs share the same lock and automatic updates follow integration", async () => {
-    const update = load(
-      await readFile(".github/workflows/playbook-content-update.yml", "utf8")
-    ) as {
-      on: {
-        schedule: { cron: string }[];
-        workflow_dispatch: { inputs: { mode: { default: string } } };
-      };
-      jobs: { production: { if: string; concurrency: object; steps: WorkflowStep[] } };
-    };
-    const rollback = load(
-      await readFile(".github/workflows/playbook-content-rollback.yml", "utf8")
-    ) as { jobs: { rollback: { concurrency: object; steps: WorkflowStep[] } } };
-    expect(update.on.schedule[0].cron).toBe("17 * * * *");
-    expect(update.on.workflow_dispatch.inputs.mode.default).toBe("reconcile");
-    const lock = {
-      group: "blog26-edgeone-production",
-      "cancel-in-progress": false,
-      queue: "max",
-    };
-    expect(update.jobs.production.concurrency).toEqual(lock);
-    expect(rollback.jobs.rollback.concurrency).toEqual(lock);
-    expect(update.jobs.production.if).toContain("PLAYBOOK_INTEGRATION_ENABLED == 'true'");
-    const updateStep = update.jobs.production.steps.find(
-      (step) => step.run === "bun scripts/playbook-content-update.ts"
-    );
-    expect(updateStep?.env?.PLAYBOOK_INTEGRATION_ENABLED).toBe(
-      "$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED }}"
-    );
-    expect(updateStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN).toBe(
-      "$" + "{{ secrets.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN }}"
-    );
-    expect(updateStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_URL).toBe(
-      "$" + "{{ vars.PLAYBOOK_SUPPLEMENT_SYNC_URL || '' }}"
-    );
-    const rollbackPause = rollback.jobs.rollback.steps?.find(
-      (step) => step.name === "Require paused automatic updates"
-    );
-    expect(rollbackPause?.env?.ENABLED).toBe("$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED }}");
-    expect(rollbackPause?.run).toBe('test "$ENABLED" != true');
-    const rollbackStep = rollback.jobs.rollback.steps?.find(
-      (step) => step.run === "bun scripts/playbook-content-update.ts"
-    );
-    expect(rollbackStep?.env?.PLAYBOOK_INTEGRATION_ENABLED).toBe(
-      "$" + "{{ vars.PLAYBOOK_INTEGRATION_ENABLED }}"
-    );
-    expect(rollbackStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN).toBe(
-      "$" + "{{ secrets.PLAYBOOK_SUPPLEMENT_SYNC_TOKEN }}"
-    );
-    expect(rollbackStep?.env?.PLAYBOOK_SUPPLEMENT_SYNC_URL).toBe(
-      "$" + "{{ vars.PLAYBOOK_SUPPLEMENT_SYNC_URL || '' }}"
-    );
-    const updateScript = await readFile("scripts/playbook-content-update.ts", "utf8");
-    expect(updateScript).toContain('process.env.PLAYBOOK_INTEGRATION_ENABLED === "true"');
-    expect(updateScript).toContain("Initial Playbook edition must be deployed through");
-    expect(updateScript).toContain("/api/admin/playbook/supplement");
-    expect(updateScript).toContain("PLAYBOOK_SUPPLEMENT_SYNC_TOKEN");
-    expect(updateScript).toContain('supplementStatus = "invalid"');
-    expect(updateScript).toContain("let supplementRelationConflict = false");
-    expect(updateScript).toContain("supplementRelationConflict = true");
-    expect(updateScript).toContain("Ignoring relation-conflicting optional Playbook supplement");
-    expect(updateScript).toContain("if (supplementRelationConflict)");
-    expect(updateScript).toContain("supplementRelationConflict,");
-    expect(updateScript).toContain("supplementStatus =");
-    expect(updateScript).toContain('"unavailable"');
-    expect(updateScript).toContain("Ignoring invalid optional Playbook supplement");
-    expect(updateScript).toContain("existing overlay remains deployed");
-    expect(updateScript).not.toContain("Playbook supplement verification failed");
-    expect(updateScript).toContain("shouldSyncSupplement(current, selected.manifest)");
-    expect(updateScript).toContain('supplementStatus === "invalid"');
-    expect(updateScript).toContain('supplementStatus === "absent"');
-    expect(updateScript).toContain("public pointer is unavailable");
-    expect(updateScript).toContain(
-      "Playbook supplement sync deferred; public edition remains deployed"
-    );
-    expect(updateScript).toContain(
-      "Ignoring optional Playbook supplement after merge failure; public edition remains deployed"
-    );
-    expect(updateScript).toContain("currentSourceMatches");
-    expect(updateScript).toContain("supplementStaged = true");
-    expect(updateScript).toContain("supplementSynced = syncResult.currentSourceMatches");
-    expect(updateScript).toContain("supplementSyncError");
-    expect(updateScript).toContain(
-      "Playbook supplement sync failed after public deployment; public edition remains deployed"
-    );
-    expect(updateScript).toContain(
-      "throw new Error(\n    `Playbook supplement sync failed after public deployment"
-    );
-    expect(updateScript).toContain("assertPlaybookRendererCompatibility");
-    expect(updateScript).toContain("createPlaybookEdition");
-    expect(updateScript).toContain("publicRelationIndexFromCatalog");
-    expect(updateScript).toContain("publicRelationIndex,");
-    expect(updateScript).toContain("mergePlaybookSupplement(publicEdition, supplementEnvelope)");
-    expect(PLAYBOOK_RENDERER_CAPABILITY_PATH).toBe(
-      "src/lib/playbook/public-package-capabilities.json"
-    );
-
-    for (const job of [update.jobs.production, rollback.jobs.rollback]) {
-      const checkout = job.steps?.find((step) => step.uses === "actions/checkout@v7");
-      expect(checkout?.with?.["persist-credentials"]).toBe(false);
-    }
-  });
   test("content updates gate the dual-visibility package on the deployed renderer", () => {
     expect(() => assertPlaybookRendererCapabilities({})).toThrow(
       "does not support the current public package"
@@ -216,40 +97,12 @@ describe("playbook deployment boundaries", () => {
       parseSupplementSyncEndpoint("https://user:password@console.example.test/api/admin/supplement")
     ).toThrow("credential-free HTTPS");
   });
-  test("private source reads use the scoped PAT secret without minting GitHub Apps", async () => {
-    const updateText = await readFile(".github/workflows/playbook-content-update.yml", "utf8");
-    const rollbackText = await readFile(".github/workflows/playbook-content-rollback.yml", "utf8");
-    const update = load(updateText) as { jobs: { production: WorkflowJob } };
-    const rollback = load(rollbackText) as { jobs: { rollback: WorkflowJob } };
-    const sourceTokenSecret = "$" + "{{ secrets.PLAYBOOK_SOURCE_TOKEN }}";
-
-    expect(
-      update.jobs.production.steps?.find(
-        (step) => step.run === "bun scripts/playbook-content-update.ts"
-      )?.env?.GH_TOKEN
-    ).toBe(sourceTokenSecret);
-    expect(
-      rollback.jobs.rollback.steps?.find(
-        (step) => step.run === "bun scripts/playbook-content-update.ts"
-      )?.env?.GH_TOKEN
-    ).toBe(sourceTokenSecret);
-    for (const source of [updateText, rollbackText]) {
-      expect(source).not.toContain("create-github-app-token");
-      expect(source).not.toContain("PLAYBOOK_SOURCE_APP_");
-    }
-  });
   test("the public pointer is fixed in code and is not a GitHub Actions setting", async () => {
     const schemaText = await readFile("src/lib/playbook/schema.ts", "utf8");
-    const updateText = await readFile(".github/workflows/playbook-content-update.yml", "utf8");
-    const update = load(updateText) as { jobs: { production: WorkflowJob } };
-    const updateStep = update.jobs.production.steps?.find(
-      (step) => step.run === "bun scripts/playbook-content-update.ts"
-    );
 
     expect(schemaText).toContain(
       'PLAYBOOK_PUBLIC_POINTER_URL = "https://ivanli.cc/_content/playbook/manifest.json"'
     );
-    expect(updateStep?.env).not.toHaveProperty("PLAYBOOK_MANIFEST_URL");
     for (const [file, expectedConsumer] of [
       ["scripts/fetch-initial-playbook.ts", "readPublicPointer(PLAYBOOK_PUBLIC_POINTER_URL)"],
       ["scripts/prepare-playbook-edition.ts", "const manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL"],
@@ -257,7 +110,6 @@ describe("playbook deployment boundaries", () => {
         "scripts/prepare-console-playbook-seed.ts",
         "options.manifestUrl || PLAYBOOK_PUBLIC_POINTER_URL",
       ],
-      ["scripts/playbook-content-update.ts", "const manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL"],
       ["src/lib/playbook/cache.ts", "manifestUrl = PLAYBOOK_PUBLIC_POINTER_URL"],
     ]) {
       const source = await readFile(file, "utf8");
