@@ -105,6 +105,29 @@ async function writeEdgeoneRoutingFiles() {
   );
 }
 
+/** Re-reads both routing files, so a rename or a path change fails the package. */
+async function assertRoutingFiles() {
+  const assetsConfig = JSON.parse(
+    await readFile(join(artifactDir, ".edgeone-assets-config.json"), "utf8")
+  ) as { needsFallback?: boolean };
+  if (assetsConfig.needsFallback !== false) {
+    throw new Error("EdgeOne asset config must disable the SPA fallback heuristic");
+  }
+  const routes = JSON.parse(
+    await readFile(join(artifactDir, ".edgeone", "routes.json"), "utf8")
+  ) as {
+    routes?: { status?: number; dest?: string }[];
+    conf?: { rewrites?: { source?: string; destination?: string }[] };
+  };
+  if (routes.routes?.find((route) => route.status === 404)?.dest !== "/404.html") {
+    throw new Error("EdgeOne route table must end unmatched paths on /404.html with status 404");
+  }
+  const adminRewrite = routes.conf?.rewrites?.find((rewrite) => rewrite.source === "/admin/*");
+  if (adminRewrite?.destination !== "/admin/index.html") {
+    throw new Error("EdgeOne route table must keep the /admin/* shell rewrite");
+  }
+}
+
 async function writeedgeoneConfig() {
   // The two routing files are platform input, not published assets: counting
   // them would add a pointless header rule and spend one of the 30 allowed.
@@ -147,6 +170,7 @@ async function main() {
 
   console.log("== write EdgeOne routing files ==");
   await writeEdgeoneRoutingFiles();
+  await assertRoutingFiles();
 
   console.log("== write edgeone.json ==");
   const config = await writeedgeoneConfig();
@@ -158,7 +182,7 @@ async function main() {
   const files = await countFiles(artifactDir);
   console.log(
     `\nEdgeOne Web Demo artifact ready: ${relative(repoRoot, artifactDir)} ` +
-      `(${files} files, ${config.headers.length} cache rules, site ${publicSiteUrl})`
+      `(${files} files, ${config.headers.length} cache rules, 404 fallback, site ${publicSiteUrl})`
   );
   console.log(`version.json: ${versionSource.trim()}`);
 }
