@@ -30,7 +30,7 @@
 
 数据接口分为两条独立链路：静态站继续使用固定公开包、版本数据和部署指针；动态服务使用 GitHub 内容提供方、公开导出、数据库 current/previous 完整快照和本地搜索投影。动态服务不得读取静态站指针、静态 JSON、静态 HTML 或 Release 资产作为内容来源；受保护补充包接收入口只属于静态发布链路，不能改变动态服务的采用结果。具体动态边界遵循 [GitHub 内容源契约](./contracts/github-source.md)。
 
-静态站公开包与部署 edition 的固定格式见 [公开包契约](./contracts/public-package.md)，跨仓静态发布的参与方、接口、输入、凭据、补漏与结果处理见 [Release 触发契约](./contracts/release-trigger.md)。动态服务的来源、校验、采用、重试和权限边界见 [GitHub 内容源契约](./contracts/github-source.md)。
+静态站公开包与部署 edition 的固定格式见 [公开包契约](./contracts/public-package.md)；静态站的 Playbook edition 由产品发布流程在发版时冻结，不存在独立的跨仓 dispatch 链路。动态服务的来源、校验、采用、重试和权限边界见 [GitHub 内容源契约](./contracts/github-source.md)。
 
 ```mermaid
 flowchart LR
@@ -66,7 +66,7 @@ Policy Skill 的公开文本文件必须能在页面内直接查看，预览区�
 
 ### REQ-PBI-004 — 静态站独立发布
 
-博客内容 workflow 每小时检查一次上游稳定 Release；发布资产齐全且通过校验后，自动选择最高的就绪稳定 SemVer 并构建、部署公共静态站，同时按静态发布合同处理补充投影。静态站的调度、启停和回滚开关由静态发布合同定义，不得被动态 GitHub 内容提供方配置代替。博客使用已发布的稳定前端渲染器和明确身份的文章/Memo 公开快照；未经应用发布门禁的最新 `main` 不得自动作为静态渲染器。人工重试与上游通知继续复用静态发布合同，不能触发动态服务读取静态站。
+静态站的 Playbook edition MUST 由产品发布流程在发版时从上游就绪稳定 Release 冻结，并随该次发布一并部署；不存在独立的每小时同步 workflow。博客使用已发布的稳定前端渲染器和明确身份的文章/Memo 公开快照；未经应用发布门禁的最新 `main` 不得自动作为静态渲染器。静态站的更新节奏由应用发布节奏决定，不能触发动态服务读取静态站。
 
 ### REQ-PBI-005 — 内容与应用发布分离
 
@@ -340,7 +340,6 @@ Playbook 的自动与手动尝试必须进入同一可持久读取的来源历�
 - [实现状态](./IMPLEMENTATION.md)
 - [研究基线与主题历史](./HISTORY.md)
 - [GitHub 内容源契约](./contracts/github-source.md)
-- [Release 触发契约](./contracts/release-trigger.md)
 - [应用发布契约](../manual-version-release/SPEC.md)
 - [既有搜索契约](../search-full-text-fallback/SPEC.md)
 
