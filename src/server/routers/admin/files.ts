@@ -31,6 +31,7 @@ import {
   isLocalContentEnabled,
 } from "../../../config/paths";
 import { clearSearchCache } from "../../../lib/ai/search-cache";
+import { isDatabaseContentAuthority } from "../../../lib/content-authority";
 import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
 import { db } from "../../../lib/db";
 import { postEmbeddings, posts, vectorizedFiles } from "../../../lib/schema";
@@ -1287,6 +1288,10 @@ async function deleteLocalEntries(
 }
 
 async function ensureContentSourcesRegistered(manager: ReturnType<typeof getContentSourceManager>) {
+  // Never register a filesystem scanner under database authority: the file tree
+  // is retired and a registered source would let a stray caller scan the media
+  // root.
+  if (isDatabaseContentAuthority()) return;
   const desiredBasePath = resolve(requireLocalBasePath());
   const desiredPathMappings = getActiveLocalPathMappings();
   const existingLocalSource = manager.getSource("local");
@@ -1313,6 +1318,16 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
 async function ensureSourceReady(manager: ReturnType<typeof getContentSourceManager>) {
   await ensureContentSourcesRegistered(manager);
 
+  // The file tree is retired under database authority (ADR 0043). Throwing here
+  // rejects every file endpoint before any filesystem mutation, instead of
+  // letting a mutation succeed and then no-op the projection sync.
+  if (isDatabaseContentAuthority()) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "内容库已是权威，本地内容文件树已停用。",
+    });
+  }
+
   const source = manager.getSource("local");
   if (!source) {
     throw new TRPCError({
@@ -1338,13 +1353,18 @@ async function ensureSourceReady(manager: ReturnType<typeof getContentSourceMana
 
 export const filesRouter = createTRPCRouter({
   getSources: adminProcedure.query(async () => {
-    if (!isLocalContentEnabled()) {
+    // Database authority retires the content file tree (ADR 0043): reporting the
+    // local source as enabled would let the editor write Markdown that no scan
+    // would ever adopt.
+    if (isDatabaseContentAuthority() || !isLocalContentEnabled()) {
       return [
         {
           name: "local",
           type: "local",
           enabled: false,
-          description: "本地文件系统未启用",
+          description: isDatabaseContentAuthority()
+            ? "内容库已是权威，本地内容文件树已停用"
+            : "本地文件系统未启用",
         } satisfies DataSource,
       ];
     }
