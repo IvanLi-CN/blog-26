@@ -51,5 +51,7 @@ describe("content authority gate", () => {
     expect(result.success).toBe(true);
     expect(result.stats.totalProcessed).toBe(0);
     expect(result.errors).toEqual([]);
+    // A gated sync must not open a content task at all; the pre-fix path did.
+    expect(result.taskId).toBeUndefined();
   });
 });

@@ -309,7 +309,14 @@ export async function saveAuthoredContent(
 /** Remove the authored row and every database projection that points at it. */
 export async function deleteAuthoredContent(id: string): Promise<void> {
   db.transaction((tx) => {
-    tx.delete(memoClippings).where(eq(memoClippings.memoId, id)).run();
+    // Keep the clipping row as a tombstone. The clipping runtime resolves the
+    // manifest id from this row after the authored document is gone, which is
+    // how the file flow retired a deleted Memo's manifest; deleting the row
+    // would leave the manifest permanently enabled on disk.
+    tx.update(memoClippings)
+      .set({ deleted: true, updatedAt: Date.now() })
+      .where(eq(memoClippings.memoId, id))
+      .run();
     tx.delete(contentRepoBaselines).where(eq(contentRepoBaselines.contentId, id)).run();
     tx.delete(posts).where(eq(posts.id, id)).run();
   });

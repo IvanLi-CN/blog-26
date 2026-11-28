@@ -1573,7 +1573,8 @@ export const memosRouter = router({
             title: resolvedTitle,
             public: isPublic,
             tags,
-            author: ctx.user?.email || "admin@example.com",
+            // Only a create names the author; an edit must keep the original.
+            author: existingMemo.author ?? undefined,
             dataSource: "database",
             source: "database",
           });

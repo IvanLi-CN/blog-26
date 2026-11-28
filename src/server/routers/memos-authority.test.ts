@@ -190,6 +190,34 @@ test("updating and deleting a memo under database authority touch only the row",
   expect(db.select().from(posts).where(eq(posts.id, created.id)).get()).toBeUndefined();
   expect(await markdownFilesUnderMediaRoot()).toEqual([]);
 });
+test("an edit keeps the original author while a clipping delete keeps a tombstone", async () => {
+  const created = await caller().create({
+    content: "https://sqrin.app/\n\n#剪藏",
+    tags: ["剪藏"],
+    isPublic: false,
+    attachments: [],
+  });
+  const before = db.select().from(posts).where(eq(posts.id, created.id)).get();
+
+  await caller().update({
+    id: created.id,
+    content: "https://sqrin.app/\n\n改过的备注\n\n#剪藏",
+    tags: ["剪藏"],
+    isPublic: false,
+    attachments: [],
+  });
+  expect(db.select().from(posts).where(eq(posts.id, created.id)).get()?.author).toBe(
+    before?.author
+  );
+
+  // The clipping runtime resolves the manifest id from this row after the
+  // authored document is gone; dropping it would strand an enabled manifest.
+  await caller().delete({ id: created.id });
+  expect(db.select().from(posts).where(eq(posts.id, created.id)).get()).toBeUndefined();
+  expect(
+    db.select().from(memoClippings).where(eq(memoClippings.memoId, created.id)).get()?.deleted
+  ).toBe(true);
+});
 test("system-share publish refuses a deterministic path held by an unrelated Memo", async () => {
   const submissionId = randomUUID();
   const leaseToken = randomUUID();
