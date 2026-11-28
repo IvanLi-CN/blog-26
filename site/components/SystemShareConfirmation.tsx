@@ -13,6 +13,7 @@ import {
 } from "@/lib/system-share";
 import { webDemoFetch } from "@/lib/web-demo-fetch";
 import { toPublicApiUrl } from "../lib/runtime-urls";
+import { queueSystemShareSuccessNotice } from "../lib/system-share-notice";
 import {
   clearPendingSystemShare,
   ensurePendingSystemShareOriginal,
@@ -21,11 +22,7 @@ import {
   replacePendingSystemShare,
   updatePendingSystemShare,
 } from "../lib/system-share-store";
-import {
-  showSystemShareError,
-  showSystemShareProgress,
-  showSystemShareSuccess,
-} from "./SystemShareToast";
+import { showSystemShareError, showSystemShareProgress } from "./SystemShareToast";
 import "./SystemShareConfirmation.css";
 
 type AuthUser = { isAdmin?: boolean } | null;
@@ -49,7 +46,6 @@ type PublishResponse = {
 };
 
 const SYSTEM_SHARE_RETURN_PATH = "/share";
-const SYSTEM_SHARE_SUCCESS_HOLD_MS = 1150;
 
 function adminContinuationHref() {
   return `/admin/?returnTo=${encodeURIComponent(SYSTEM_SHARE_RETURN_PATH)}`;
@@ -143,6 +139,25 @@ function projectPendingForEditor(value: PendingSystemShare): PendingSystemShare 
   };
 }
 
+function SharePageHeader() {
+  return (
+    <header className="system-share-page-header flex flex-wrap items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="nature-title mt-2 text-3xl sm:text-4xl">发布 Memo</h1>
+      </div>
+      <a
+        className="nature-icon-button inline-flex shrink-0"
+        href="/"
+        aria-label="返回首页"
+        title="返回首页"
+        data-testid="system-share-home"
+      >
+        <House className="size-5" aria-hidden="true" />
+      </a>
+    </header>
+  );
+}
+
 export default function SystemShareConfirmation() {
   const [pending, setPending] = useState<PendingSystemShare | null>(null);
   const [originalPending, setOriginalPending] = useState<PendingSystemShare | null>(null);
@@ -153,7 +168,6 @@ export default function SystemShareConfirmation() {
   const [originalOpen, setOriginalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submitLock = useRef(false);
-  const redirectTimer = useRef<number | null>(null);
   const submitRef = useRef<() => Promise<void>>(async () => undefined);
   const memoEditorRef = useRef<MilkdownEditorRef>(null);
   const initializedSubmissionId = useRef<string | null>(null);
@@ -213,7 +227,6 @@ export default function SystemShareConfirmation() {
       });
     return () => {
       active = false;
-      if (redirectTimer.current !== null) window.clearTimeout(redirectTimer.current);
     };
   }, []);
 
@@ -359,19 +372,28 @@ export default function SystemShareConfirmation() {
         body: form,
       });
       setSuccessLocked(true);
-      showSystemShareSuccess(result.duplicate ? "已恢复此前发布的内容" : "发布成功", () => {
-        redirectTimer.current = window.setTimeout(async () => {
-          try {
-            await clearPendingSystemShare(pending.submissionId);
-          } catch (cleanupError) {
-            console.warn(
-              "[system-share] failed to clear the published pending share",
-              cleanupError
-            );
-          }
-          window.location.replace(`/memos/${encodeURIComponent(result.memo.slug)}`);
-        }, SYSTEM_SHARE_SUCCESS_HOLD_MS);
+      // UX.md: results arrive immediately and the success notice is delivered
+      // once across the navigation, so the confirmation page never stalls to
+      // display it. Clearing the slot is bounded so slow storage cannot delay
+      // the navigation the administrator already completed.
+      const detailPath = `/memos/${encodeURIComponent(result.memo.slug)}`;
+      queueSystemShareSuccessNotice(
+        result.duplicate ? "已恢复此前发布的内容" : "发布成功",
+        detailPath
+      );
+      let releaseCleanup = () => undefined;
+      const cleanupDeadline = new Promise<void>((resolve) => {
+        releaseCleanup = resolve;
       });
+      const timer = window.setTimeout(releaseCleanup, 250);
+      await Promise.race([
+        clearPendingSystemShare(pending.submissionId).catch((cleanupError) => {
+          console.warn("[system-share] failed to clear the published pending share", cleanupError);
+        }),
+        cleanupDeadline,
+      ]);
+      window.clearTimeout(timer);
+      window.location.replace(detailPath);
     } catch (nextError) {
       if (nextError instanceof SystemShareHttpError && [401, 403].includes(nextError.status)) {
         showSystemShareError(
@@ -394,25 +416,97 @@ export default function SystemShareConfirmation() {
 
   if (loading) {
     return (
-      <main className="nature-container px-4 py-12" data-testid="system-share-loading">
-        正在读取待处理分享…
+      <main
+        className="nature-container system-share-page max-w-4xl"
+        data-testid="system-share-loading"
+        aria-busy="true"
+      >
+        <SharePageHeader />
+        <div className="nature-panel system-share-reading-panel">
+          <div className="quick-memo-edit-header system-share-memo-editor-header">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="quick-memo-edit-title">编辑 Memo</h2>
+              <p className="system-share-reading-status" role="status">
+                <span className="nature-spinner system-share-reading-spinner" aria-hidden="true" />
+                <span className="system-share-reading-title">正在读取待处理分享…</span>
+              </p>
+              <p className="system-share-reading-copy">正在校验登录状态并恢复这次分享，请稍候。</p>
+            </div>
+          </div>
+          <div className="system-share-reading-body" aria-hidden="true">
+            <div className="system-share-memo-editor-body">
+              <div className="system-share-memo-editor-content-column min-w-0">
+                <section className="system-share-memo-editor-content-section">
+                  <span className="block text-sm font-medium">Memo 内容</span>
+                  <div className="system-share-reading-editor">
+                    <span className="nature-skeleton system-share-reading-line" />
+                    <span className="nature-skeleton system-share-reading-line" />
+                    <span className="nature-skeleton system-share-reading-line system-share-reading-line-short" />
+                  </div>
+                  <div className="system-share-reading-meta">
+                    <span className="nature-skeleton system-share-reading-hint" />
+                    <span className="nature-skeleton system-share-reading-hint" />
+                  </div>
+                </section>
+              </div>
+              <aside className="system-share-memo-attachments">
+                <section>
+                  <div className="system-share-attachments-header">
+                    <span className="block text-sm font-medium">附件</span>
+                    <span className="nature-skeleton system-share-reading-action" />
+                  </div>
+                  <div className="system-share-reading-row" />
+                </section>
+              </aside>
+            </div>
+          </div>
+          <div className="system-share-reading-footer" aria-hidden="true">
+            <span className="nature-skeleton system-share-reading-switch" />
+            <div className="system-share-reading-actions">
+              <span className="nature-skeleton system-share-reading-action" />
+              <span className="nature-skeleton system-share-reading-action" />
+            </div>
+          </div>
+        </div>
       </main>
     );
   }
 
   if (error && !pending) {
     return (
-      <main className="nature-container px-4 py-12" data-testid="system-share-error">
-        <p role="alert">{error}</p>
+      <main
+        className="nature-container system-share-page max-w-2xl"
+        data-testid="system-share-error"
+      >
+        <SharePageHeader />
+        <div className="nature-panel system-share-state-panel">
+          <h2 className="nature-title text-2xl">无法读取待处理分享</h2>
+          <p className="system-share-state-copy" role="alert">
+            {error}
+          </p>
+          <button
+            className="nature-button nature-button-primary"
+            type="button"
+            onClick={() => window.location.reload()}
+          >
+            重新加载
+          </button>
+        </div>
       </main>
     );
   }
 
   if (!pending) {
     return (
-      <main className="nature-container px-4 py-12" data-testid="system-share-empty">
-        <h1 className="nature-title text-3xl">没有待处理分享</h1>
-        <p className="nature-muted mt-3">分享内容不存在，或已经过期。</p>
+      <main
+        className="nature-container system-share-page max-w-2xl"
+        data-testid="system-share-empty"
+      >
+        <SharePageHeader />
+        <div className="nature-panel system-share-state-panel">
+          <h2 className="nature-title text-2xl">没有待处理分享</h2>
+          <p className="system-share-state-copy">分享内容不存在，或已经过期。</p>
+        </div>
       </main>
     );
   }
@@ -449,20 +543,7 @@ export default function SystemShareConfirmation() {
 
   return (
     <main className="nature-container system-share-page max-w-4xl" data-testid="system-share-page">
-      <header className="system-share-page-header flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="nature-title mt-2 text-3xl sm:text-4xl">发布 Memo</h1>
-        </div>
-        <a
-          className="nature-icon-button inline-flex shrink-0"
-          href="/"
-          aria-label="返回首页"
-          title="返回首页"
-          data-testid="system-share-home"
-        >
-          <House className="size-5" aria-hidden="true" />
-        </a>
-      </header>
+      <SharePageHeader />
 
       <details
         className="nature-panel system-share-original mb-3 overflow-hidden"

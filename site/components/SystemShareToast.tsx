@@ -2,13 +2,25 @@
 
 import { Check, LoaderCircle, LogIn, RefreshCw, TriangleAlert, X } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
-import { type Id, ToastContainer, type ToastOptions, toast } from "react-toastify";
+import { type Id, ToastContainer, type ToastOptions, toast, Zoom } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { consumeSystemShareSuccessNotice } from "../lib/system-share-notice";
 import "./SystemShareToast.css";
 
 export const SYSTEM_SHARE_TOAST_ID = "system-share-publish";
 
 type ToastTone = "progress" | "success" | "error";
+
+/**
+ * The notice docks under the chrome that owns the top of the current page: the
+ * `发布 Memo` header on the confirmation route, the public site header on the
+ * destination Memo page. Measuring the rendered chrome lets the device safe
+ * area be inherited instead of restated. Once that chrome scrolls away the
+ * notice stays at the top safe area, so scrolling never moves the notice
+ * relative to the user. See UX.md.
+ */
+const NOTICE_GAP_PX = 8;
+const FALLBACK_INSET_PX = 12;
 
 function focusToastTestId(testId: string) {
   if (typeof document === "undefined") return;
@@ -30,20 +42,14 @@ function ToastBody({
   onRetry,
   actionLabel = "重试",
   onClose,
-  onMount,
 }: {
   tone: ToastTone;
   message: ReactNode;
   onRetry?: () => void;
   actionLabel?: string;
   onClose?: () => void;
-  onMount?: () => void;
 }) {
   const Icon = tone === "progress" ? LoaderCircle : tone === "success" ? Check : TriangleAlert;
-
-  useEffect(() => {
-    onMount?.();
-  }, [onMount]);
 
   function handleRetry() {
     onRetry?.();
@@ -115,57 +121,92 @@ function ToastBody({
 
 export function SystemShareToastViewport() {
   useEffect(() => {
-    if (typeof document === "undefined" || typeof ResizeObserver === "undefined") return;
-    const container = document.querySelector<HTMLElement>(".system-share-toast-container");
-    if (!container) return;
+    // The confirmation document hands its success notice to the destination;
+    // only the destination path consumes it, once.
+    const message = consumeSystemShareSuccessNotice(window.location.pathname);
+    if (message) showSystemShareSuccess(message);
+  }, []);
 
+  useEffect(() => {
+    if (typeof document === "undefined" || typeof ResizeObserver === "undefined") return;
     const root = document.documentElement;
     let frame = 0;
-    const updateHeight = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const toastElement = container.querySelector<HTMLElement>(".system-share-toast");
-        if (!toastElement) {
-          root.style.removeProperty("--system-share-toast-height");
-          return;
-        }
-        root.style.setProperty(
-          "--system-share-toast-height",
-          `${Math.ceil(toastElement.getBoundingClientRect().height)}px`
-        );
-      });
+    // While a notice is on screen its offset is latched, so scrolling cannot
+    // move it relative to the user. Once no notice is present the next one
+    // docks again under the chrome that currently owns the top of the page.
+    let noticeOffset: number | null = null;
+
+    const updateOffset = () => {
+      const container = document.querySelector<HTMLElement>(".system-share-toast-container");
+      const hasNotice = Boolean(container?.querySelector(".system-share-toast"));
+      if (hasNotice && noticeOffset !== null) {
+        root.style.setProperty("--system-share-notice-top", `${noticeOffset}px`);
+        return;
+      }
+      const anchor =
+        document.querySelector<HTMLElement>(".system-share-page-header") ??
+        document.querySelector<HTMLElement>(".nature-site-header[data-public-header]");
+      const anchorBottom = anchor?.getBoundingClientRect().bottom;
+      // Chrome that already scrolled off cannot be docked against; the notice
+      // then keeps the top safe-area inset instead of landing in the content.
+      noticeOffset =
+        typeof anchorBottom === "number" && anchorBottom > 0
+          ? Math.round(anchorBottom + NOTICE_GAP_PX)
+          : FALLBACK_INSET_PX;
+      root.style.setProperty("--system-share-notice-top", `${noticeOffset}px`);
     };
 
-    const resizeObserver = new ResizeObserver(updateHeight);
-    const mutationObserver = new MutationObserver(updateHeight);
-    resizeObserver.observe(container);
-    mutationObserver.observe(container, { childList: true, subtree: true });
-    updateHeight();
+    const clearLatchedOffset = () => {
+      noticeOffset = null;
+      schedule();
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(updateOffset);
+    };
+
+    // Both anchors mount after this viewport, so observe the document rather
+    // than reading a header that does not exist yet.
+    const observer = new ResizeObserver(schedule);
+    observer.observe(document.body);
+    // A dismissed notice must not keep its old dock for the next one.
+    const container = document.querySelector(".system-share-toast-container");
+    const mutationObserver = new MutationObserver(() => {
+      if (!container?.querySelector(".system-share-toast")) clearLatchedOffset();
+      else schedule();
+    });
+    if (container) mutationObserver.observe(container, { childList: true, subtree: true });
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", clearLatchedOffset);
+    schedule();
 
     return () => {
       cancelAnimationFrame(frame);
-      resizeObserver.disconnect();
+      observer.disconnect();
       mutationObserver.disconnect();
-      root.style.removeProperty("--system-share-toast-height");
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", clearLatchedOffset);
+      root.style.removeProperty("--system-share-notice-top");
     };
   }, []);
 
   return (
     <ToastContainer
       containerId={SYSTEM_SHARE_TOAST_ID}
-      position="top-right"
+      position="bottom-center"
+      transition={Zoom}
       newestOnTop
       closeOnClick={false}
-      pauseOnFocusLoss
-      pauseOnHover
+      pauseOnFocusLoss={false}
+      pauseOnHover={false}
       draggable={false}
       limit={1}
       icon={false}
       closeButton={false}
       toastClassName={() => "system-share-toast"}
       className="system-share-toast-container"
-      toastStyle={{ pointerEvents: "auto" }}
-      theme="colored"
+      theme="light"
     />
   );
 }
@@ -191,23 +232,22 @@ export function showSystemShareProgress(message = "正在发布…") {
   return id;
 }
 
-export function showSystemShareSuccess(message = "发布成功", onMount?: () => void) {
+export function showSystemShareSuccess(message = "发布成功") {
   const options: ToastOptions = {
     containerId: SYSTEM_SHARE_TOAST_ID,
     toastId: SYSTEM_SHARE_TOAST_ID,
     closeButton: false,
-    autoClose: false,
+    autoClose: 3200,
     closeOnClick: false,
     type: "success",
     role: "status",
     delay: 0,
   };
-  const render = <ToastBody tone="success" message={message} onMount={onMount} />;
+  const render = (
+    <ToastBody tone="success" message={message} onClose={() => dismissSystemShareToast()} />
+  );
   if (toast.isActive(SYSTEM_SHARE_TOAST_ID)) {
-    toast.update(SYSTEM_SHARE_TOAST_ID, {
-      ...options,
-      render,
-    });
+    toast.update(SYSTEM_SHARE_TOAST_ID, { ...options, render });
     return SYSTEM_SHARE_TOAST_ID;
   }
   return toast(render, options);
@@ -228,9 +268,7 @@ export function showSystemShareError(message: string, onRetry: () => void, actio
       tone="error"
       message={message}
       actionLabel={actionLabel}
-      onRetry={() => {
-        onRetry();
-      }}
+      onRetry={onRetry}
       onClose={() => dismissSystemShareToast()}
     />
   );
