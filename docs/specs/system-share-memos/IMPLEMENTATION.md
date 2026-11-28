@@ -20,7 +20,6 @@
 - 构建验证：当前候选的 `bun run console:build` 在本机通过，保留既有 Astro 路由和大 chunk warning。Agent VM 的 `bun run web-demo:build` 未完成：VM 内 `sharp@0.35.4` 的最小 PNG 转换无响应，且 VM 依赖安装在无缓存时无法完成；该阻塞不涉及本次页面代码。Agent VM 仍保留本次候选源码同步和失败命令证据，不能据此宣称 Web Demo 全量构建通过。
 - VM 全量测试结果：在注入当前候选 renderer commit 后执行 `bun run test` 返回 1065 pass、9 fail、4510 expect() calls。失败集中在仓库级原生搜索模块不可用、发布策略测试缺少同步工作目录中的 Git 元数据、两个公共投影用例超过 5000ms，以及一个启动恢复环境用例；这些与本主题无关的验证前置条件和超时仍未收口，当前结果不构成全量通过。
 - 当前候选浏览器验证：本机构建 `web-demo:build` 后用正式 console `/share` 预览执行 `tests/e2e/web-demo/system-share.spec.ts`，桌面 `1440x1000` 18 passed、移动 `393x852` 14 passed，均 0 failed；覆盖结构化读取态、通知不改变页面布局、四档宽度落位、滚动后位置不变、立即跳转与详情页成功通知、跳转前槽位清理、失败重试和响应丢失回放。仓库既有的 `Playwright E2E (web-demo)` 工作流仍是合入前的最终门禁。
-- 上一候选的 VM 浏览器验证：通过 SSH 反向转发访问热更新预览，执行同一套用例，移动端 9 passed、桌面端 9 passed，均 0 failed。覆盖编辑刷新、剪藏单编辑器、跳转前槽位清理、剪藏转普通闪念、失败 Toast 重试、响应丢失回放、槽位替换保护和访客本地槽位/认证返回；Toast 的移动端落位已由几何断言确认不遮挡标题、编辑区或发布控件，回放断言使用浏览器 DOM 变更时间记录提示显示。
 - Rollout facts: 控制台 manifest 已注册 `POST /share-target` multipart target，Service Worker 仅在 console runtime 注册；公共 manifest 不含 `share_target`，写入接口按请求运行时拒绝公共站点。
 
 ## Coverage / rollout summary
