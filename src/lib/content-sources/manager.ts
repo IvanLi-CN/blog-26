@@ -15,6 +15,7 @@ import {
 import { desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { clearSearchCache } from "@/lib/ai/search-cache";
+import { isDatabaseContentAuthority } from "@/lib/content-authority";
 import { notifyClippingChange } from "@/server/clipping/runtime";
 import { projectClippingMemo } from "@/server/clipping/store";
 import { db, initializeDB } from "../db";
@@ -187,6 +188,26 @@ export class ContentSourceManager {
   private async executeSync(isFullSync: boolean, resumeId?: string): Promise<SyncResult> {
     if (this.currentSync && this.currentSync.status === "running") {
       throw new Error("同步正在进行中，请等待完成");
+    }
+
+    // Under database authority the content library is the only writer. Any
+    // caller that still reaches the manager gets a terminal result instead of a
+    // filesystem scan that would replay library rows as file changes.
+    if (isDatabaseContentAuthority()) {
+      const now = Date.now();
+      // A recovered task must not stay interrupted forever: there is no work to
+      // replay once the library owns its own content.
+      if (resumeId) finishContentTask(resumeId, "unchanged");
+      console.log("⏭️ [content-source] 内容库已是权威，跳过内容源同步");
+      return {
+        success: true,
+        startTime: now,
+        endTime: now,
+        sources: [],
+        stats: { totalProcessed: 0, created: 0, updated: 0, deleted: 0, skipped: 0, errors: 0 },
+        errors: [],
+        logs: [],
+      };
     }
 
     const { task, reused } = await beginContentTask({

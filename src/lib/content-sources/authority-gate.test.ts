@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { LocalContentSource } from "./local";
 import { ContentSourceManager } from "./manager";
 import { ensureContentSourcesRegistered } from "./register";
 
@@ -33,5 +34,22 @@ describe("content authority gate", () => {
     const manager = new ContentSourceManager();
     await ensureContentSourcesRegistered(manager);
     expect(manager.getSources().map((source) => source.name)).toEqual(["local"]);
+  });
+
+  test("a registered local source cannot sync once the database is authoritative", async () => {
+    process.env.LOCAL_CONTENT_BASE_PATH = temporaryRoot;
+    process.env.CONTENT_AUTHORITY = "database";
+    const manager = new ContentSourceManager();
+    await manager.registerSource(
+      new LocalContentSource(
+        LocalContentSource.createDefaultConfig("local", 50, { contentPath: temporaryRoot })
+      )
+    );
+
+    const result = await manager.syncAll();
+
+    expect(result.success).toBe(true);
+    expect(result.stats.totalProcessed).toBe(0);
+    expect(result.errors).toEqual([]);
   });
 });
