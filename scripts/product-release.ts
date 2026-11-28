@@ -13,9 +13,10 @@ import {
   assertRetryableProductRelease,
   classifyMergeFollowup,
   evaluationChecksPassed,
-  followupPhaseBudgetError,
+  followupPhaseBudgetMessage,
   mainEvaluationResult,
   manualReleaseWorkflowRun,
+  planMergeFollowup,
   readQuality,
   releaseExecutionCheckout,
   releaseRecoveryEventSchema,
@@ -257,7 +258,7 @@ if (command === "notification") {
     // records why a run overran it. Budgets cover the measured distribution of the evaluation they
     // observe: preparation head E2E p90 8m46s, main E2E p90 8m09s and max 11m10s.
     const assertWithinBudget = (phase: string, minutes: number, startedAt: number) => {
-      const error = followupPhaseBudgetError(phase, minutes, startedAt);
+      const error = followupPhaseBudgetMessage(phase, minutes, startedAt);
       if (error) throw new Error(error);
     };
     let pull = app.pull(entry.prNumber);
@@ -265,21 +266,26 @@ if (command === "notification") {
     // A rerun that starts after the squash merge cannot repeat the preparation phase: main has
     // moved to the merge commit and the preparation branch is deleted, so the exact-head gates and
     // their attestations are no longer observable. Such a run resumes at the merge observation.
-    if (!pull.merged) {
+    if (planMergeFollowup(pull) === "attest_preparation") {
       const evaluationStartedAt = Date.now();
-      while (!pull.merged) {
+      while (true) {
         if (evaluationChecksPassed(app, sourceSha, quality.required_checks, releaseBranch(entry))) {
-          if (app.reference("heads/main") !== entry.sourceSha)
+          // Main can start the merge between the evaluation read and this point; that is a landed
+          // merge, not a moved source, so resume at the merge instead of failing the loud check.
+          pull = app.pull(entry.prNumber);
+          if (!pull.merged && app.reference("heads/main") !== entry.sourceSha)
             throw new Error("Preparation source changed before release checks were published");
-          app.publishReleaseChecks(entry.id, sourceSha, entry.prNumber, quality.required_checks);
+          if (!pull.merged)
+            app.publishReleaseChecks(entry.id, sourceSha, entry.prNumber, quality.required_checks);
           break;
         }
         if (pull.state !== "open" || app.reference("heads/main") !== entry.sourceSha)
           throw new Error("Preparation source changed before release checks completed");
         assertWithinBudget("exact-head evaluation", 20, evaluationStartedAt);
-        await delay(10_000);
+        // GITHUB_TOKEN allows 1,000 requests/hour/repository; a 20s cadence keeps a full-length
+        // wait near 300 requests while still noticing the merge within one poll.
+        await delay(20_000);
         pull = app.pull(entry.prNumber);
-        assertReleasePull(app, entry, pull);
       }
     }
     const mergeStartedAt = Date.now();
@@ -288,7 +294,6 @@ if (command === "notification") {
       // Main can advance before the PR API exposes merged=true; allow the two observations to converge briefly.
       const mainSha = app.reference("heads/main");
       pull = app.pull(entry.prNumber);
-      assertReleasePull(app, entry, pull);
       const state = classifyMergeFollowup(pull, mainSha, entry.sourceSha);
       if (state === "merged") break;
       if (state === "source_changed") throw new Error("Preparation source changed before merge");
@@ -298,7 +303,7 @@ if (command === "notification") {
           throw new Error("Preparation source changed before merge");
       } else mergePropagationDeadline = undefined;
       assertWithinBudget("auto-merge", 5, mergeStartedAt);
-      await delay(10_000);
+      await delay(20_000);
     }
     const mergeSha = pull.merge_commit_sha;
     if (!pull.merged || !mergeSha) throw new Error("Preparation source changed before merge");
@@ -316,9 +321,9 @@ if (command === "notification") {
       if (app.reference("heads/main") !== mergeSha)
         throw new Error("Main moved before release checks completed");
       assertWithinBudget("main release check", 20, releaseStartedAt);
-      await delay(10_000);
+      await delay(20_000);
     }
-    app.dispatchProductRelease();
+    app.dispatchProductRelease(mergeSha);
   }
 } else if (command === "resolve") {
   const app = github();

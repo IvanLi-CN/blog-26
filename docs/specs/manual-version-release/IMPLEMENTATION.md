@@ -50,4 +50,4 @@
 
 ## 合并衔接的阶段预算与重入
 
-`followup` 的阶段划分现在由一个判定驱动：先读准备 PR，未合并才执行「确证 exact-head 评估 → 发布检查见证」与「等待自动合并」；已合并则直接进入 `assertMerge` 与 merge SHA 的门禁核验，因为此时 main 已移动到合并提交、准备分支已删除，原阶段不可重现。门禁预算按观测分布设定（exact-head 与 main 各 20 分钟，自动合并 5 分钟），`followupPhaseBudgetError()` 只报告本阶段的预算与阶段内耗时，不再用整 run 起点；90 分钟作业超时保留为记录超时原因的兜底。`tests/lib/manual-release-provenance.test.ts` 覆盖阶段预算文本不与前一阶段累计。真实链路验收仍以下一次 Manual Product Release 的 followup 成功并出现 dispatch 触发的 Product Release run 为准。
+`followup` 的阶段划分现在由一个判定驱动：先读准备 PR，未合并才执行「确证 exact-head 评估 → 发布检查见证」与「等待自动合并」；已合并则直接进入 `assertMerge` 与 merge SHA 的门禁核验，因为此时 main 已移动到合并提交、准备分支已删除，原阶段不可重现。门禁预算按观测分布设定（exact-head 与 main 各 20 分钟，自动合并 5 分钟），`planMergeFollowup()` 承担「是否重走见证阶段」的判定，`followupPhaseBudgetMessage()` 只报告本阶段的预算与阶段内耗时，不再用整 run 起点；轮询间隔放宽到 20 秒，使一次满额等待的 API 请求量落在 `GITHUB_TOKEN` 每小时 1,000 次的仓库上限内。90 分钟作业超时保留为记录超时原因的兜底。`tests/lib/manual-release-provenance.test.ts` 覆盖重入判定、阶段预算文本不与前一阶段累计、以及同一 merge SHA 不重复派发 Product Release。真实链路验收仍以下一次 Manual Product Release 的 followup 成功并出现 dispatch 触发的 Product Release run 为准。

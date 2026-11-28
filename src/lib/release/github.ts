@@ -110,6 +110,7 @@ export function ghTransport(token = process.env.GH_TOKEN): GitHubTransport {
 export class GitHubRelease {
   readonly root: string;
   private readonly verified = new Set<string>();
+  private readonly workflowIds = new Map<string, number>();
 
   constructor(
     readonly contract: ReleaseContract,
@@ -151,6 +152,17 @@ export class GitHubRelease {
     const ref = refSchema.parse(raw);
     if (ref.object.type !== "commit") throw new Error("Expected a commit branch reference");
     return ref.object.sha;
+  }
+
+  // Long waits poll the same two workflows every iteration; their ids never change within a run.
+  workflowId(path: string): number {
+    const cached = this.workflowIds.get(path);
+    if (cached) return cached;
+    const id = z
+      .object({ id: z.number().int().positive(), path: z.string() })
+      .parse(this.api(`${this.root}/actions/workflows/${path}`)).id;
+    this.workflowIds.set(path, id);
+    return id;
   }
 
   commit(sha: string) {
@@ -254,12 +266,6 @@ export class GitHubRelease {
     this.api(`${this.root}/actions/workflows/${workflow}/dispatches`, "POST", { ref: branch });
   }
 
-  dispatchProductRelease(): void {
-    this.api(`${this.root}/actions/workflows/product-release.yml/dispatches`, "POST", {
-      ref: this.contract.branch,
-    });
-  }
-
   dispatchReleaseFollowup(releaseId: string, prNumber: number, headSha: string): void {
     this.api(`${this.root}/actions/workflows/release-merge-followup.yml/dispatches`, "POST", {
       ref: this.contract.branch,
@@ -268,6 +274,20 @@ export class GitHubRelease {
         pr_number: String(prNumber),
         head_sha: shaSchema.parse(headSha),
       },
+    });
+  }
+
+  dispatchProductRelease(expectedHead: string): void {
+    // Only the absence of a release run means the followup still owns starting it. An existing run —
+    // queued, running, succeeded or failed — continues or is abandoned through its own recovery
+    // path, never through a second run queued for the same merge identity.
+    const existing = this.pages(
+      `${this.root}/actions/workflows/product-release.yml/runs?head_sha=${shaSchema.parse(expectedHead)}&per_page=100`,
+      "workflow_runs"
+    ).map((raw) => z.object({ head_sha: shaSchema }).parse(raw));
+    if (existing.some((run) => run.head_sha === expectedHead)) return;
+    this.api(`${this.root}/actions/workflows/product-release.yml/dispatches`, "POST", {
+      ref: this.contract.branch,
     });
   }
 

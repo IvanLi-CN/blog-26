@@ -63,7 +63,7 @@ GitHub 适配器固定 REST API `2022-11-28`，按该字段合同核验 PR 与�
 
 ## 恢复
 
-**Release Merge Followup**（`.github/workflows/release-merge-followup.yml`）失败后不创建新身份，也不改变 ledger 绑定：用原 `release_id`、`pr_number` 和 `head_sha`（均为 preparation head）重新 dispatch 该 workflow。合并前失败的重跑会重新核验 preparation head 的 CI/E2E、发布检查见证并继续观察自动合并；合并后失败的重跑跳过见证阶段，直接从已登记的 merge SHA 等待 main required checks 并 dispatch Product Release。阶段预算为 exact-head 评估 20 分钟、自动合并 5 分钟、main 门禁 20 分钟；超时信息给出该阶段自身的预算和阶段内耗时，90 分钟作业超时只是记录超时原因的兜底。只有 ledger 已绑定该身份（stage 不再是 `pr_open`）时，才改用 **Retry Product Release**。若 main 在门禁完成前继续前进，followup 与 Product Release resolve 都会拒绝绑定：保持身份不变并交由 owner 判断，不能手工编辑 ledger。
+**Release Merge Followup**（`.github/workflows/release-merge-followup.yml`）失败后不创建新身份，也不改变 ledger 绑定：用原 `release_id`、`pr_number` 和 `head_sha`（均为 preparation head）重新 dispatch 该 workflow。合并前失败的重跑会重新核验 preparation head 的 CI/E2E、发布检查见证并继续观察自动合并；合并后失败的重跑跳过见证阶段，直接从已登记的 merge SHA 等待 main required checks 并 dispatch Product Release。阶段预算为 exact-head 评估 20 分钟、自动合并 5 分钟、main 门禁 20 分钟；超时信息给出该阶段自身的预算和阶段内耗时，90 分钟作业超时只是记录超时原因的兜底。只有 ledger 已绑定该身份（stage 不再是 `pr_open`）时，才改用 **Retry Product Release**。followup 在等待 main 门禁时若发现 main 已离开登记 merge SHA，会直接停止并保持身份；此时在该 merge SHA 的 main required checks 全部通过后，从 main 无输入 dispatch Product Release 仍可完成绑定（resolve 独立复核确切 merge SHA 与检查），不得手工编辑 ledger。
 
 Product Release 失败或取消后，默认运行 **Retry Product Release**（`.github/workflows/retry-product-release.yml`），只填写原 `release_id`。入口会核验 ledger identity、原 Product Release run ID、main、workflow path、merge SHA、当前未完成 stage 和失败/取消结论，然后调用 GitHub `rerun` API；这是同一个 run 的新 `run_attempt`，不是新的 Product Release run、版本、reservation 或 artifact。直接在 GitHub Actions 页面重跑原 Product Release run 具有相同合同，但不得新建一个 manual Product Release run 接管已冻结 identity。
 
