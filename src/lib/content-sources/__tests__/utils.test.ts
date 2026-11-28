@@ -335,6 +335,23 @@ describe("Memo Utils", () => {
       const slug = generateSlugFromPath("Memos/20260615_React Learning.md");
       expect(slug).toBe("react-learning");
     });
+
+    it("keeps a system-share UUID filename whose last segment is all digits", () => {
+      // ~0.35% of UUIDv4s end in 12 digits, which the timestamp rule used to
+      // truncate to a 12-digit slug and break the deterministic Memo identity.
+      const slug = generateSlugFromPath(
+        "Memos/system-share/9fb9195f-671e-47a5-a479-060084483241.md",
+        undefined,
+        "memo"
+      );
+      expect(slug).toBe("9fb9195f-671e-47a5-a479-060084483241");
+    });
+
+    it("still treats a numeric filename suffix as a legacy timestamp", () => {
+      expect(generateSlugFromPath("Memos/memo-1756460268805.md", undefined, "memo")).toBe(
+        "1756460268805"
+      );
+    });
   });
 
   describe("sanitizeContentItem", () => {
