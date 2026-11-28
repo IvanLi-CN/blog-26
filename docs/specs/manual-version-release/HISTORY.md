@@ -41,3 +41,4 @@
 - EdgeOne 不完整静态发布使 `version.json` 返回 200 空正文，归属检查报 JSON EOF。ADR 0040 补充基于已完成账本、GHCR 实际 digest 与同源 renderer 的严格恢复边界；原始冻结产物和版本身份保持不可变。
 
 - 修复 main evaluation 失败后废弃的准备缺少 `mergeSha`、导致后续来源投影误报未登记 VERSION 的恢复缺口；只有原 PR 的完整签名与精确合并证明通过后才保留业务语义，废弃身份不复活。
+- 合并衔接改为按阶段独立预算并可重入：准备 PR 已合并的重跑跳过已不可观测的确切 head 见证阶段，直接从登记的 merge SHA 核验 main required checks 并启动发布；exact-head 评估与 main 门禁各 20 分钟、自动合并 5 分钟，超时报出该阶段自身预算与阶段内耗时。运行手册补充 followup 失败后以原 `release_id` / `pr_number` / `head_sha` 重跑、以及 ledger 已绑定后改走 Retry Product Release 的处置边界。

@@ -20,6 +20,8 @@ jobs:
   followup:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    # The script bounds each phase on its own terms (exact-head 20m, auto-merge 5m, main gate 20m);
+    # this timeout is only the backstop that records why a run overran all of them.
     timeout-minutes: 90
     concurrency:
       group: release-merge-followup

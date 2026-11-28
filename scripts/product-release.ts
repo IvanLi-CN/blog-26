@@ -13,6 +13,7 @@ import {
   assertRetryableProductRelease,
   classifyMergeFollowup,
   evaluationChecksPassed,
+  followupPhaseBudgetError,
   mainEvaluationResult,
   manualReleaseWorkflowRun,
   readQuality,
@@ -249,71 +250,75 @@ if (command === "notification") {
           : item.id === payload.inputs.release_id)
     );
     if (!entry?.prNumber) throw new Error("Registered release preparation was not found");
+    // A release must finish under the policy it was registered with; unrelated release-tooling
+    // commits landing afterwards still fail closed here by design.
     assertPolicyIdentity(contract, quality, entry.policyDigest);
-    // A release must finish in 30 minutes by design; the 90-minute job timeout is only a backstop
-    // that records why a run overran it, so every wait below stops at the shared design deadline.
-    const designDeadline = Date.now() + 30 * 60_000;
-    const startedAt = Date.now();
-    const budgetExceeded = (phase: string) =>
-      new Error(
-        `Release followup exceeded its ${Math.round((Date.now() - startedAt) / 60_000)}-minute ${phase} budget`
-      );
-    const phaseDeadline = (minutes: number) =>
-      Math.min(designDeadline, Date.now() + minutes * 60_000);
-    const evaluationDeadline = phaseDeadline(20);
-    while (true) {
-      const pull = app.pull(entry.prNumber);
-      assertReleasePull(app, entry, pull);
-      if (evaluationChecksPassed(app, sourceSha, quality.required_checks, releaseBranch(entry))) {
-        if (app.reference("heads/main") !== entry.sourceSha)
-          throw new Error("Preparation source changed before release checks were published");
-        assertPolicyIdentity(contract, quality, entry.policyDigest);
-        app.publishReleaseChecks(entry.id, sourceSha, entry.prNumber, quality.required_checks);
-        break;
+    // Every wait stops at its own phase budget; the 90-minute job timeout is only the backstop that
+    // records why a run overran it. Budgets cover the measured distribution of the evaluation they
+    // observe: preparation head E2E p90 8m46s, main E2E p90 8m09s and max 11m10s.
+    const assertWithinBudget = (phase: string, minutes: number, startedAt: number) => {
+      const error = followupPhaseBudgetError(phase, minutes, startedAt);
+      if (error) throw new Error(error);
+    };
+    let pull = app.pull(entry.prNumber);
+    assertReleasePull(app, entry, pull);
+    // A rerun that starts after the squash merge cannot repeat the preparation phase: main has
+    // moved to the merge commit and the preparation branch is deleted, so the exact-head gates and
+    // their attestations are no longer observable. Such a run resumes at the merge observation.
+    if (!pull.merged) {
+      const evaluationStartedAt = Date.now();
+      while (!pull.merged) {
+        if (evaluationChecksPassed(app, sourceSha, quality.required_checks, releaseBranch(entry))) {
+          if (app.reference("heads/main") !== entry.sourceSha)
+            throw new Error("Preparation source changed before release checks were published");
+          app.publishReleaseChecks(entry.id, sourceSha, entry.prNumber, quality.required_checks);
+          break;
+        }
+        if (pull.state !== "open" || app.reference("heads/main") !== entry.sourceSha)
+          throw new Error("Preparation source changed before release checks completed");
+        assertWithinBudget("exact-head evaluation", 20, evaluationStartedAt);
+        await delay(10_000);
+        pull = app.pull(entry.prNumber);
+        assertReleasePull(app, entry, pull);
       }
-      if (pull.state !== "open" || app.reference("heads/main") !== entry.sourceSha)
-        throw new Error("Preparation source changed before release checks completed");
-      if (Date.now() >= evaluationDeadline) throw budgetExceeded("exact-head evaluation");
-      await delay(10_000);
     }
-    const mergeDeadline = phaseDeadline(5);
+    const mergeStartedAt = Date.now();
     let mergePropagationDeadline: number | undefined;
     while (true) {
       // Main can advance before the PR API exposes merged=true; allow the two observations to converge briefly.
       const mainSha = app.reference("heads/main");
-      const pull = app.pull(entry.prNumber);
+      pull = app.pull(entry.prNumber);
       assertReleasePull(app, entry, pull);
       const state = classifyMergeFollowup(pull, mainSha, entry.sourceSha);
-      if (state === "merged" && pull.merge_commit_sha) {
-        assertMerge(app, entry, pull, pull.merge_commit_sha);
-        for (const workflow of ["ci.yml", "e2e.yml"] as const)
-          app.dispatchEvaluation(workflow, "main", pull.merge_commit_sha);
-        // Dispatch-made evaluations cannot chain into Product Release through workflow_run, so
-        // this job verifies the required main gates and starts the release itself.
-        const releaseDeadline = phaseDeadline(5);
-        while (true) {
-          const result = mainEvaluationResult(app, pull.merge_commit_sha, quality);
-          if (result.state === "passed") break;
-          if (result.state === "failed")
-            throw new Error("Required main evaluation failed; retry its original CI run");
-          if (app.reference("heads/main") !== pull.merge_commit_sha)
-            throw new Error("Main moved before release checks completed");
-          if (Date.now() >= releaseDeadline) throw budgetExceeded("main release check");
-          await delay(10_000);
-        }
-        assertPolicyIdentity(contract, quality, entry.policyDigest);
-        app.dispatchProductRelease();
-        break;
-      }
+      if (state === "merged") break;
       if (state === "source_changed") throw new Error("Preparation source changed before merge");
       if (state === "merge_propagating") {
         mergePropagationDeadline ??= Date.now() + 60_000;
         if (Date.now() >= mergePropagationDeadline)
           throw new Error("Preparation source changed before merge");
       } else mergePropagationDeadline = undefined;
-      if (Date.now() >= mergeDeadline) throw budgetExceeded("auto-merge");
+      assertWithinBudget("auto-merge", 5, mergeStartedAt);
       await delay(10_000);
     }
+    const mergeSha = pull.merge_commit_sha;
+    if (!pull.merged || !mergeSha) throw new Error("Preparation source changed before merge");
+    assertMerge(app, entry, pull, mergeSha);
+    for (const workflow of ["ci.yml", "e2e.yml"] as const)
+      app.dispatchEvaluation(workflow, "main", mergeSha);
+    // Dispatch-made evaluations cannot chain into Product Release through workflow_run, so this
+    // job verifies the required main gates and starts the release itself.
+    const releaseStartedAt = Date.now();
+    while (true) {
+      const result = mainEvaluationResult(app, mergeSha, quality);
+      if (result.state === "passed") break;
+      if (result.state === "failed")
+        throw new Error("Required main evaluation failed; retry its original CI run");
+      if (app.reference("heads/main") !== mergeSha)
+        throw new Error("Main moved before release checks completed");
+      assertWithinBudget("main release check", 20, releaseStartedAt);
+      await delay(10_000);
+    }
+    app.dispatchProductRelease();
   }
 } else if (command === "resolve") {
   const app = github();

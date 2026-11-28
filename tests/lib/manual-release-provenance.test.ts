@@ -7,6 +7,7 @@ import contractJson from "../../.github/release-contract.json";
 import {
   assertRunSource,
   classifyMergeFollowup,
+  followupPhaseBudgetError,
   mainChecksPassed,
   qualitySchema,
 } from "../../src/lib/release/completion";
@@ -95,6 +96,24 @@ describe("trusted release evaluation", () => {
         sha
       )
     ).toBe("source_changed");
+  });
+  test("followup budgets report their own phase budget and in-phase time", () => {
+    const started = 1_000_000;
+    expect(
+      followupPhaseBudgetError("exact-head evaluation", 20, started, started + 19 * 60_000)
+    ).toBeUndefined();
+    expect(followupPhaseBudgetError("main release check", 20, started, started + 20 * 60_000)).toBe(
+      "Release followup exceeded its 20-minute main release check budget (1200s in phase)"
+    );
+    // A long preceding phase must not leak into the reported duration of a later one.
+    expect(
+      followupPhaseBudgetError(
+        "main release check",
+        20,
+        started + 30 * 60_000,
+        started + 51 * 60_000
+      )
+    ).toBe("Release followup exceeded its 20-minute main release check budget (1260s in phase)");
   });
   test("success on another SHA or a skipped required E2E job cannot publish", () => {
     let mode: "success" | "skipped" | "wrong-sha" = "success";

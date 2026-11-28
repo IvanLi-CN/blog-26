@@ -282,6 +282,23 @@ export function classifyMergeFollowup(
   return "pending";
 }
 
+/**
+ * The followup enforces one budget per phase. Measuring against the run start made the reported
+ * minutes meaningless and hid which phase actually overran, so the message names its own budget
+ * and the time spent inside that phase.
+ */
+export function followupPhaseBudgetError(
+  phase: string,
+  minutes: number,
+  startedAt: number,
+  now = Date.now()
+): string | undefined {
+  if (now < startedAt + minutes * 60_000) return undefined;
+  return `Release followup exceeded its ${minutes}-minute ${phase} budget (${Math.round(
+    (now - startedAt) / 1000
+  )}s in phase)`;
+}
+
 export function manualRecoveryRunCanTakeOver(
   entry: ReleaseEntry,
   previousRun: WorkflowRun,
