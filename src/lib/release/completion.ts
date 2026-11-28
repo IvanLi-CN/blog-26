@@ -216,9 +216,17 @@ export function evaluationChecksPassed(
   branch: string
 ): boolean {
   const result = evaluationChecksResult(github, sourceSha, required, branch);
+  assertNoFailedEvaluation(result);
+  return result.state === "passed";
+}
+
+/**
+ * A recorded run that already failed settles the gate even while another required workflow is still
+ * running, so every waiter must abort on it instead of polling until its own budget expires.
+ */
+export function assertNoFailedEvaluation(result: EvaluationChecksResult): void {
   if (result.failedRun && result.failedRun.conclusion !== "success")
     throw new Error("Required main evaluation failed; retry its original CI run");
-  return result.state === "passed";
 }
 
 export function manualReleaseWorkflowRun(
@@ -262,6 +270,9 @@ export function classifyMergeFollowup(
   mainSha: string | undefined,
   sourceSha: string
 ): MergeFollowupState {
+  // A merged pull may expose merged=true before GitHub materialises the merge commit; wait for the
+  // SHA instead of reading the null as a moved source.
+  if (pull.merged && !pull.merge_commit_sha) return "pending";
   if (pull.merged && pull.merge_commit_sha) {
     if (mainSha === pull.merge_commit_sha) return "merged";
     if (mainSha === sourceSha) return "pending";
@@ -440,6 +451,9 @@ export async function resolveCompletedRelease(
   while (true) {
     const result = mainEvaluationResult(github, run.head_sha, quality);
     if (result.state === "passed") break;
+    // A sibling workflow that already failed settles the gate while the other one is still polling.
+    assertNoFailedEvaluation(result);
+    // A required job that concluded non-success inside an otherwise green run also settles it.
     if (result.state === "failed")
       throw new Error("Required main evaluation failed; retry its original CI run");
     if (github.reference("heads/main") !== run.head_sha) return undefined;

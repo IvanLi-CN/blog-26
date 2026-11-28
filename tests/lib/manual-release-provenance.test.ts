@@ -5,10 +5,12 @@ import { z } from "zod";
 import qualityJson from "../../.github/quality-gates.json";
 import contractJson from "../../.github/release-contract.json";
 import {
+  assertNoFailedEvaluation,
   assertRunSource,
   classifyMergeFollowup,
   evaluationChecksPassed,
   followupPhaseBudgetMessage,
+  mainEvaluationResult,
   planMergeFollowup,
   qualitySchema,
 } from "../../src/lib/release/completion";
@@ -97,6 +99,61 @@ describe("trusted release evaluation", () => {
         sha
       )
     ).toBe("source_changed");
+    // A merged pull can expose merged=true before the merge commit exists; wait, do not abort.
+    expect(
+      classifyMergeFollowup(
+        { state: "closed", merged: true, merge_commit_sha: null },
+        mergeSha,
+        sha
+      )
+    ).toBe("pending");
+  });
+  test("a recorded failed run settles the gate while its sibling still runs", () => {
+    const github = new GitHubRelease(
+      contract,
+      "github-actions",
+      transport((endpoint) => {
+        const e2e = endpoint.includes("e2e.yml") || endpoint.includes("/20/");
+        if (endpoint.includes("/workflows/") && !endpoint.includes("/runs?"))
+          return { id: e2e ? 20 : 2, path: `.github/workflows/${e2e ? "e2e" : "ci"}.yml` };
+        if (endpoint.includes("/runs?"))
+          return [
+            {
+              workflow_runs: [
+                {
+                  ...run,
+                  id: e2e ? 200 : 1,
+                  workflow_id: e2e ? 20 : 2,
+                  path: `.github/workflows/${e2e ? "e2e" : "ci"}.yml`,
+                  status: e2e ? "completed" : "in_progress",
+                  conclusion: e2e ? "failure" : null,
+                },
+              ],
+            },
+          ];
+        if (endpoint.includes("/jobs?"))
+          return [
+            {
+              jobs: quality.main_required_checks
+                .filter((name) => name.startsWith("Playwright"))
+                .map((name) => ({
+                  name,
+                  head_sha: sha,
+                  status: "completed",
+                  conclusion: "failure",
+                })),
+            },
+          ];
+        throw new Error(`Unexpected read: ${endpoint}`);
+      })
+    );
+    // The aggregate is pending because the sibling CI run has not finished, but the failure is final.
+    const result = mainEvaluationResult(github, sha, quality);
+    expect(result.state).toBe("pending");
+    expect(result.failedRun?.conclusion).toBe("failure");
+    expect(() => assertNoFailedEvaluation(result)).toThrow(
+      "Required main evaluation failed; retry its original CI run"
+    );
   });
   test("a merged preparation resumes at the merge instead of re-attesting its head", () => {
     const mergeSha = "b".repeat(40);
