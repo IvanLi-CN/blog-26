@@ -76,7 +76,7 @@
 
 ### REQ-MVR-010
 
-准备 MUST 显式 dispatch 确切 preparation head 的 CI/E2E；合并衔接 MUST 核验全部确切 SHA 的评估作业，并由同一内置 `GITHUB_TOKEN` 通过 Checks API 发布带有发布身份和 PR 关联的成功检查见证，使保护规则能够识别该评估结果。该见证 MUST 只在确切 CI/E2E 成功、登记身份、PR 编号、PR head 和来源仍一致时发布；不得调用审批接口或绕过 main 保护。随后合并衔接 MUST 观察受保护的自动合并并显式 dispatch 同一 merge SHA 的 main CI/E2E。发布 MUST 由 CI/E2E 的 main push 或已验证 dispatch 完成事件自动衔接，核验确切 merge SHA 的全部 main required checks。为覆盖内置令牌抑制主线 push 事件的情况，Product Release MUST 提供无输入的受控 `workflow_dispatch` 恢复入口；该入口 MUST 从 release-ledger 自动解析唯一仍有效的已合并登记身份，重新核验 PR merge SHA 和确切 main required checks，身份缺失、不唯一、不一致或检查未通过时 MUST 安全退出，并 MUST NOT 接受或猜测版本、来源或产物输入。普通实现提交 MUST 跳过产品发布。PR 可取消过期运行；main 和发布评估 MUST 保留必需运行。重跑 MUST 使用原运行身份及策略。
+准备 MUST 显式 dispatch 确切 preparation head 的 CI/E2E；合并衔接 MUST 核验全部确切 SHA 的评估作业，并由同一内置 `GITHUB_TOKEN` 通过 Checks API 发布带有发布身份和 PR 关联的成功检查见证，使保护规则能够识别该评估结果。该见证 MUST 只在确切 CI/E2E 成功、登记身份、PR 编号、PR head 和来源仍一致时发布；不得调用审批接口或绕过 main 保护。随后合并衔接 MUST 观察受保护的自动合并并显式 dispatch 同一 merge SHA 的 main CI/E2E。发布 MUST 由 CI/E2E 的 main push 或已验证 dispatch 完成事件自动衔接，核验确切 merge SHA 的全部 main required checks。合并衔接 MUST 可重入：准备 PR 已合并时，重跑 MUST 跳过已不可观测的确切 head 见证阶段，直接从登记的 merge SHA 继续核验 main required checks 并启动发布；每个等待阶段 MUST 使用覆盖该评估观测分布的独立预算，预算值与观测依据 MUST 记录在实现的阶段划分中，超时 MUST 报出该阶段自身的预算与阶段内耗时。为覆盖内置令牌抑制主线 push 事件的情况，Product Release MUST 提供无输入的受控 `workflow_dispatch` 恢复入口；该入口 MUST 从 release-ledger 自动解析唯一仍有效的已合并登记身份，重新核验 PR merge SHA 和确切 main required checks，身份缺失、不唯一、不一致或检查未通过时 MUST 安全退出，并 MUST NOT 接受或猜测版本、来源或产物输入。普通实现提交 MUST 跳过产品发布。PR 可取消过期运行；main 和发布评估 MUST 保留必需运行。重跑 MUST 使用原运行身份及策略。
 
 ### REQ-MVR-011
 

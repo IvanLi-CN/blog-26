@@ -5,9 +5,13 @@ import { z } from "zod";
 import qualityJson from "../../.github/quality-gates.json";
 import contractJson from "../../.github/release-contract.json";
 import {
+  assertNoFailedEvaluation,
   assertRunSource,
   classifyMergeFollowup,
-  mainChecksPassed,
+  evaluationChecksPassed,
+  followupPhaseBudgetMessage,
+  mainEvaluationResult,
+  planMergeFollowup,
   qualitySchema,
 } from "../../src/lib/release/completion";
 import { GitHubRelease, type GitHubTransport } from "../../src/lib/release/github";
@@ -95,6 +99,97 @@ describe("trusted release evaluation", () => {
         sha
       )
     ).toBe("source_changed");
+    // A merged pull can expose merged=true before the merge commit exists; wait, do not abort.
+    expect(
+      classifyMergeFollowup(
+        { state: "closed", merged: true, merge_commit_sha: null },
+        mergeSha,
+        sha
+      )
+    ).toBe("pending");
+  });
+  test("a recorded failed run settles the gate while its sibling still runs", () => {
+    const github = new GitHubRelease(
+      contract,
+      "github-actions",
+      transport((endpoint) => {
+        const e2e = endpoint.includes("e2e.yml") || endpoint.includes("/20/");
+        if (endpoint.includes("/workflows/") && !endpoint.includes("/runs?"))
+          return { id: e2e ? 20 : 2, path: `.github/workflows/${e2e ? "e2e" : "ci"}.yml` };
+        if (endpoint.includes("/runs?"))
+          return [
+            {
+              workflow_runs: [
+                {
+                  ...run,
+                  id: e2e ? 200 : 1,
+                  workflow_id: e2e ? 20 : 2,
+                  path: `.github/workflows/${e2e ? "e2e" : "ci"}.yml`,
+                  status: e2e ? "completed" : "in_progress",
+                  conclusion: e2e ? "failure" : null,
+                },
+              ],
+            },
+          ];
+        if (endpoint.includes("/jobs?"))
+          return [
+            {
+              jobs: quality.main_required_checks
+                .filter((name) => name.startsWith("Playwright"))
+                .map((name) => ({
+                  name,
+                  head_sha: sha,
+                  status: "completed",
+                  conclusion: "failure",
+                })),
+            },
+          ];
+        throw new Error(`Unexpected read: ${endpoint}`);
+      })
+    );
+    // The aggregate is pending because the sibling CI run has not finished, but the failure is final.
+    const result = mainEvaluationResult(github, sha, quality);
+    expect(result.state).toBe("pending");
+    expect(result.failedRun?.conclusion).toBe("failure");
+    expect(() => assertNoFailedEvaluation(result)).toThrow(
+      "Required main evaluation failed; retry its original CI run"
+    );
+  });
+  test("a merged preparation resumes at the merge instead of re-attesting its head", () => {
+    const mergeSha = "b".repeat(40);
+    // The v4.3.2 rerun state: merged onto main, preparation branch already deleted.
+    expect(planMergeFollowup({ state: "closed", merged: true, merge_commit_sha: mergeSha })).toBe(
+      "observe_merge"
+    );
+    // Merge seen before main exposes it: still unobservable head, so keep observing.
+    expect(planMergeFollowup({ state: "closed", merged: true, merge_commit_sha: null })).toBe(
+      "observe_merge"
+    );
+    // A closed, unmerged preparation must never publish attestations again.
+    expect(planMergeFollowup({ state: "closed", merged: false, merge_commit_sha: null })).toBe(
+      "observe_merge"
+    );
+    expect(planMergeFollowup({ state: "open", merged: false, merge_commit_sha: null })).toBe(
+      "attest_preparation"
+    );
+  });
+  test("followup budgets report their own phase budget and in-phase time", () => {
+    const started = 1_000_000;
+    expect(
+      followupPhaseBudgetMessage("exact-head evaluation", 20, started, started + 19 * 60_000)
+    ).toBeUndefined();
+    expect(
+      followupPhaseBudgetMessage("main release check", 20, started, started + 20 * 60_000)
+    ).toBe("Release followup exceeded its 20-minute main release check budget (1200s in phase)");
+    // A long preceding phase must not leak into the reported duration of a later one.
+    expect(
+      followupPhaseBudgetMessage(
+        "main release check",
+        20,
+        started + 30 * 60_000,
+        started + 51 * 60_000
+      )
+    ).toBe("Release followup exceeded its 20-minute main release check budget (1260s in phase)");
   });
   test("success on another SHA or a skipped required E2E job cannot publish", () => {
     let mode: "success" | "skipped" | "wrong-sha" = "success";
@@ -136,11 +231,13 @@ describe("trusted release evaluation", () => {
         throw new Error(`Unexpected read: ${endpoint}`);
       })
     );
-    expect(mainChecksPassed(github, sha, quality)).toBe(true);
+    expect(evaluationChecksPassed(github, sha, quality.main_required_checks, "main")).toBe(true);
     mode = "skipped";
-    expect(mainChecksPassed(github, sha, quality)).toBe(false);
+    expect(evaluationChecksPassed(github, sha, quality.main_required_checks, "main")).toBe(false);
     mode = "wrong-sha";
-    expect(() => mainChecksPassed(github, sha, quality)).toThrow("different source");
+    expect(() => evaluationChecksPassed(github, sha, quality.main_required_checks, "main")).toThrow(
+      "different source"
+    );
   });
   test("human-authored ledger commits fail closed even when their signature is valid", () => {
     const github = new GitHubRelease(
@@ -290,10 +387,11 @@ describe("trusted release evaluation", () => {
           writes.push({ endpoint, payload });
           return null;
         }
+        if (endpoint.includes("product-release.yml/runs?")) return [{ workflow_runs: [] }];
         throw new Error(`Unexpected read ${endpoint}`);
       })
     );
-    github.dispatchProductRelease();
+    github.dispatchProductRelease(sha);
     expect(writes).toEqual([
       {
         endpoint: "repos/IvanLi-CN/blog-26/actions/workflows/product-release.yml/dispatches",
@@ -302,6 +400,32 @@ describe("trusted release evaluation", () => {
     ]);
   });
 
+  test("a rerun does not queue a second product release for the same merge", () => {
+    const writes: { endpoint: string; payload: unknown }[] = [];
+    const github = new GitHubRelease(
+      contract,
+      "github-actions",
+      transport((endpoint, method, payload) => {
+        if (method === "POST") {
+          writes.push({ endpoint, payload });
+          return null;
+        }
+        if (endpoint.includes("product-release.yml/runs?"))
+          return [
+            {
+              workflow_runs: [
+                { id: 4_612_000_001, head_sha: sha, event: "workflow_dispatch" },
+                { id: 4_611_000_002, head_sha: "c".repeat(40), event: "workflow_dispatch" },
+              ],
+            },
+          ];
+        throw new Error(`Unexpected read ${endpoint}`);
+      })
+    );
+    // The reused run is the one already at this merge SHA, never a run queued for another head.
+    expect(github.dispatchProductRelease(sha)).toBe(4_612_000_001);
+    expect(writes).toEqual([]);
+  });
   test("publishes exact-head release checks idempotently through the Actions app", () => {
     const writes: { endpoint: string; payload: unknown }[] = [];
     const runs: unknown[] = [];

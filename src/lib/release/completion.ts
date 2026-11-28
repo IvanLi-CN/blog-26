@@ -108,14 +108,6 @@ export function assertReleaseRecoverySource(entry: ReleaseEntry, run: WorkflowRu
     throw new Error("Failed release source identity changed");
 }
 
-export function mainChecksPassed(
-  github: GitHubRelease,
-  sourceSha: string,
-  quality: QualityPolicy
-): boolean {
-  return evaluationChecksPassed(github, sourceSha, quality.main_required_checks, "main");
-}
-
 export type EvaluationChecksState = "passed" | "failed" | "pending";
 
 export type EvaluationChecksResult = {
@@ -161,12 +153,10 @@ function evaluationChecksResult(
   let pending = false;
   let failedRun: WorkflowRun | undefined;
   for (const path of ["ci.yml", "e2e.yml"]) {
-    const workflow = z
-      .object({ id: z.number().int().positive(), path: z.string() })
-      .parse(github.api(`${github.root}/actions/workflows/${path}`));
+    const workflowId = github.workflowId(path);
     const runs = github
       .pages(
-        `${github.root}/actions/workflows/${workflow.id}/runs?branch=${encodeURIComponent(branch)}&head_sha=${sourceSha}&per_page=100`,
+        `${github.root}/actions/workflows/${workflowId}/runs?branch=${encodeURIComponent(branch)}&head_sha=${sourceSha}&per_page=100`,
         "workflow_runs"
       )
       .map((raw) => runSchema.parse(raw))
@@ -184,7 +174,7 @@ function evaluationChecksResult(
       selected.path !== `.github/workflows/${path}`
     )
       throw new Error("Required evaluation has an untrusted source");
-    if (selected.workflow_id !== workflow.id) throw new Error("Workflow identity changed");
+    if (selected.workflow_id !== workflowId) throw new Error("Workflow identity changed");
     if (selected.status !== "completed") {
       pending = true;
       continue;
@@ -226,9 +216,17 @@ export function evaluationChecksPassed(
   branch: string
 ): boolean {
   const result = evaluationChecksResult(github, sourceSha, required, branch);
+  assertNoFailedEvaluation(result);
+  return result.state === "passed";
+}
+
+/**
+ * A recorded run that already failed settles the gate even while another required workflow is still
+ * running, so every waiter must abort on it instead of polling until its own budget expires.
+ */
+export function assertNoFailedEvaluation(result: EvaluationChecksResult): void {
   if (result.failedRun && result.failedRun.conclusion !== "success")
     throw new Error("Required main evaluation failed; retry its original CI run");
-  return result.state === "passed";
 }
 
 export function manualReleaseWorkflowRun(
@@ -272,6 +270,9 @@ export function classifyMergeFollowup(
   mainSha: string | undefined,
   sourceSha: string
 ): MergeFollowupState {
+  // A merged pull may expose merged=true before GitHub materialises the merge commit; wait for the
+  // SHA instead of reading the null as a moved source.
+  if (pull.merged && !pull.merge_commit_sha) return "pending";
   if (pull.merged && pull.merge_commit_sha) {
     if (mainSha === pull.merge_commit_sha) return "merged";
     if (mainSha === sourceSha) return "pending";
@@ -280,6 +281,37 @@ export function classifyMergeFollowup(
   if (pull.state !== "open") return "source_changed";
   if (mainSha !== sourceSha) return "merge_propagating";
   return "pending";
+}
+
+export type MergeFollowupPlan = "attest_preparation" | "observe_merge";
+
+/**
+ * A preparation that already merged can never repeat the exact-head attestation: main has moved to
+ * the merge commit and the preparation branch is deleted. A closed, unmerged preparation likewise
+ * skips attestation and fails closed while observing the merge. Deciding this once at the entry
+ * point is what makes a rerun after the merge resumable instead of instantly unsatisfiable.
+ */
+export function planMergeFollowup(
+  pull: Pick<ReleasePull, "state" | "merged" | "merge_commit_sha">
+): MergeFollowupPlan {
+  return !pull.merged && pull.state === "open" ? "attest_preparation" : "observe_merge";
+}
+
+/**
+ * The followup enforces one budget per phase. Measuring against the run start made the reported
+ * minutes meaningless and hid which phase actually overran, so the message names its own budget
+ * and the time spent inside that phase.
+ */
+export function followupPhaseBudgetMessage(
+  phase: string,
+  minutes: number,
+  startedAt: number,
+  now = Date.now()
+): string | undefined {
+  if (now < startedAt + minutes * 60_000) return undefined;
+  return `Release followup exceeded its ${minutes}-minute ${phase} budget (${Math.round(
+    (now - startedAt) / 1000
+  )}s in phase)`;
 }
 
 export function manualRecoveryRunCanTakeOver(
@@ -416,8 +448,12 @@ export async function resolveCompletedRelease(
   // A single main evaluation event now wakes Product Release, so the sibling workflow may still be
   // running when it arrives; wait for the remaining required checks instead of dropping the release.
   const gateDeadline = Date.now() + 20 * 60_000;
-  while (!mainChecksPassed(github, run.head_sha, quality)) {
+  while (true) {
     const result = mainEvaluationResult(github, run.head_sha, quality);
+    if (result.state === "passed") break;
+    // A sibling workflow that already failed settles the gate while the other one is still polling.
+    assertNoFailedEvaluation(result);
+    // A required job that concluded non-success inside an otherwise green run also settles it.
     if (result.state === "failed")
       throw new Error("Required main evaluation failed; retry its original CI run");
     if (github.reference("heads/main") !== run.head_sha) return undefined;

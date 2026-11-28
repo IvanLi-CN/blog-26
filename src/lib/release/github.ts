@@ -110,6 +110,7 @@ export function ghTransport(token = process.env.GH_TOKEN): GitHubTransport {
 export class GitHubRelease {
   readonly root: string;
   private readonly verified = new Set<string>();
+  private readonly workflowIds = new Map<string, number>();
 
   constructor(
     readonly contract: ReleaseContract,
@@ -151,6 +152,17 @@ export class GitHubRelease {
     const ref = refSchema.parse(raw);
     if (ref.object.type !== "commit") throw new Error("Expected a commit branch reference");
     return ref.object.sha;
+  }
+
+  // Long waits poll the same two workflows every iteration; their ids never change within a run.
+  workflowId(path: string): number {
+    const cached = this.workflowIds.get(path);
+    if (cached) return cached;
+    const id = z
+      .object({ id: z.number().int().positive(), path: z.string() })
+      .parse(this.api(`${this.root}/actions/workflows/${path}`)).id;
+    this.workflowIds.set(path, id);
+    return id;
   }
 
   commit(sha: string) {
@@ -254,12 +266,6 @@ export class GitHubRelease {
     this.api(`${this.root}/actions/workflows/${workflow}/dispatches`, "POST", { ref: branch });
   }
 
-  dispatchProductRelease(): void {
-    this.api(`${this.root}/actions/workflows/product-release.yml/dispatches`, "POST", {
-      ref: this.contract.branch,
-    });
-  }
-
   dispatchReleaseFollowup(releaseId: string, prNumber: number, headSha: string): void {
     this.api(`${this.root}/actions/workflows/release-merge-followup.yml/dispatches`, "POST", {
       ref: this.contract.branch,
@@ -269,6 +275,26 @@ export class GitHubRelease {
         head_sha: shaSchema.parse(headSha),
       },
     });
+  }
+
+  dispatchProductRelease(expectedHead: string): number | undefined {
+    // Only the absence of a release run means the followup still owns starting it. An existing run —
+    // queued, running, succeeded or failed — continues or is abandoned through its own recovery
+    // path, never through a second run queued for the same merge identity. The returned run id lets
+    // the caller name the run an operator must resume instead of re-dispatching.
+    const head = shaSchema.parse(expectedHead);
+    const existing = this.pages(
+      `${this.root}/actions/workflows/product-release.yml/runs?head_sha=${head}&per_page=100`,
+      "workflow_runs"
+    )
+      .map((raw) => z.object({ id: z.number().int().positive(), head_sha: shaSchema }).parse(raw))
+      .filter((run) => run.head_sha === head)
+      .sort((a, b) => b.id - a.id);
+    if (existing[0]) return existing[0].id;
+    this.api(`${this.root}/actions/workflows/product-release.yml/dispatches`, "POST", {
+      ref: this.contract.branch,
+    });
+    return undefined;
   }
 
   rerunWorkflowRun(runId: number): void {

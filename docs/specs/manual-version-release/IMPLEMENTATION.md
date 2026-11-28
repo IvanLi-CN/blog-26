@@ -47,3 +47,7 @@
 `assertProductionOwner()` 仅对 HTTP 200 的零字节版本正文启用恢复：核验镜像实际 digest 与从同一 digest 固定引用读取的标签、已完成且已验证 latest 的正式登记、同源 Playbook renderer，再复用版本单调性检查。`production-owner-recovery.test.ts` 覆盖成功路径与摘要、renderer、登记阶段、latest、缺失镜像、损坏 JSON、较新产品和 bootstrap 边界。标签固定引用和 HTTP 201/204/205/206 拒绝路径也有回归覆盖。生产部署和页面正文仍须独立验收。
 
 业务来源投影支持从合入父分支沿 VERSION blob 保持不变的祖先路径寻找登记发布；仅普通文件参与该路径。嵌套识别强制调用原有来源认证，已废弃准备记录通过确切原 PR merge 认证恢复识别，不改写登记内容。`tests/lib/manual-release-nested-source.test.ts` 覆盖多层正常合并、认证拒绝、缺失认证、版本伪造、改写后恢复及版本值与登记不一致。
+
+## 合并衔接的阶段预算与重入
+
+`followup` 的阶段划分现在由一个判定驱动：先读准备 PR，仅当它仍未合并且仍开启时才执行「确证 exact-head 评估 → 发布检查见证」与「等待自动合并」；已合并则直接进入 `assertMerge` 与 merge SHA 的门禁核验，因为此时 main 已移动到合并提交、准备分支已删除，原阶段不可重现。已关闭但未合并的准备同样跳过见证，并在合并观测中按「来源已改变」失败关闭。门禁预算按观测分布设定：exact-head 20 分钟（preparation head E2E p50 7m06s、p90 8m46s、max 10m35s），main 20 分钟（main E2E p50 7m31s、p90 8m09s、max 11m10s；main CI 与 E2E 并行，取较慢一方），自动合并 5 分钟（观测从未超过一轮合并传播的 60 秒），`planMergeFollowup()` 承担「是否重走见证阶段」的判定，`followupPhaseBudgetMessage()` 只报告本阶段的预算与阶段内耗时，不再用整 run 起点；轮询间隔放宽到 20 秒，使一次满额等待的 API 请求量落在 `GITHUB_TOKEN` 每小时 1,000 次的仓库上限内。`GitHubRelease.dispatchProductRelease()` 在该 merge SHA 已有 Product Release run 时只复用、不重复排队，并把复用的 run id 交给 `followup` 打印。已合并但 merge SHA 尚未生成的窗口按 `pending` 继续等待，不报来源改变；等待 main 门禁时，任一必需 run 已完成且结论非 success（即使另一条仍在跑）即视为终局失败并立即中止，`resolve` 与 `followup` 共用 `assertNoFailedEvaluation()`。90 分钟作业超时保留为记录超时原因的兜底。`tests/lib/manual-release-provenance.test.ts` 覆盖重入判定、阶段预算文本不与前一阶段累计、以及同一 merge SHA 不重复派发 Product Release。真实链路验收仍以下一次 Manual Product Release 的 followup 成功并出现 dispatch 触发的 Product Release run 为准。
