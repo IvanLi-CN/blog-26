@@ -29,7 +29,7 @@
 - `REQ-CGS-007`：`checkContentRepo` 只解析 ref 与读取树清单，列出差异状态，不写库。`pullContentRepo` 处理 `to-pull` 的文章与 Memo：读取目标 blob、解析 frontmatter、写库并推进基线，随后清理搜索缓存；附件有变化的条目跳过并给出原因。
 - `REQ-CGS-007`、`REQ-CGS-008`、`REQ-CGS-009`、`REQ-CGS-015`（拉取/合并/远端新增删除/界面）覆盖 Memo 与文章：仓库路径 `Memos/<file>.md` 与 `blog/<slug>.md` 使用同一条拉取、合并与采纳路径，同步基线按内容类型记录 `kind`；仓库中存在而内容库没有的路径（含 Memo）由 `computeSyncStates` 列为 `remote-new`。
 - `REQ-CGS-013`：`scripts/content-cutover.ts`（`src/server/services/content-cutover.ts`）在服务停止时按扫描范围枚举文件，把文章规范化为 `blog/<slug>.md`、Memo 保留 `Memos/<file>.md`，将引用附件复制到 `<kind>/assets/` 并登记身份，写入 `content_authority` 标记；重复执行返回 `completed`。`CONTENT_AUTHORITY=database` 关闭本地源注册、增量/全量同步与判废，并保留 `LOCAL_CONTENT_BASE_PATH` 作为媒体根。`scripts/content-repo-seed.ts` 按单批上限分批推送，生成仓库初始提交；导入时缺失的附件只登记为报告项，不阻断导入，初始化推送会跳过仍缺附件的内容并逐项列出。
-- `REQ-CGS-001`：MCP 与剪藏在数据库权威下直接写库并记录媒体身份，不再写 Markdown 内容文件或触发扫描。
+- `REQ-CGS-001`：MCP、剪藏与管理端 Memo 路由在数据库权威下直接写库并记录媒体身份，不再写 Markdown 内容文件或触发扫描；`ContentSourceManager` 在权威下返回空结果而不扫描，因此任何遗留调用点都不能回放库内行。
 - `REQ-CGS-017`：推送、拉取与自动合并创建持久任务，`content_task_items` 按仓库路径记录状态、原因、附件计数与可重试性；推送按阶段推进并保存提交结果，全部推送超过单批上限时按路径分块提交；活动任务可取消，租约过期或进程退出后标为中断；失败与未处理项可重试。检查保持只读且不创建任务。
 - 未实现：`REQ-CGS-011`（合并保存的乐观并发校验）、`REQ-CGS-015`（内容文件读写接口的最终退役清单）、真实仓库与生产切换的现场验收。
 - Verification commands: `bun test src/lib/content-repo src/server/services/content-repo-progress.test.ts src/server/content-repo-http.test.ts`（55 pass）；`bun test apps/admin/src/pages/content-sync.test.tsx apps/admin/src/pages/content-merge.test.tsx`（24 pass）；`bun test apps/admin/src/demo/business-contracts.test.tsx`（12 pass）；`bun run test:admin-ui`（3 pass）；Web Demo `content-repo-progress.spec.ts`（5 pass）；`bun run db:migrations:validate`；`DB_PATH=<tmp> bun run migrate`；`bun run check`（Admin UI 边界与语义 token 通过，Biome 仅既有 warnings）。
@@ -44,7 +44,8 @@
 - 媒体身份在附件上传、推送采纳与导入搬迁时记录；MCP 正文内嵌的外链媒体仍不登记，读取时也不核对（`REQ-CGS-001`、`REQ-CGS-015`）。
 - 切换前内容仍有本地扫描与库编辑两个写入者；切换后写入者只有数据库（管理端、MCP、剪藏），扫描任务与判废路径不再运行（`REQ-CGS-001`、`REQ-CGS-013`）。
 - 与真实仓库的 smoke 验证尚未执行；当前只有注入式 transport 与纯函数测试。
-- 权威切换已具备代码与 runbook，等待维护窗口执行；执行前需要一个私有空仓库与可读写该单一仓库的 token。
+- 权威切换已在生产执行（线上 `CONTENT_AUTHORITY=database`），本地源扫描与判废路径已停用；系统分享发布曾经因为 `memos.create` 仍走“写文件后回放扫描”而失败，现已改为直接写库，并补上原因：管理端 Memo 路由与 `ContentSourceManager` 在权威下不再扫描。
+- 线上仍残留 5 行 `source=local` 的 `Project/*.md` 与 2 条指向不存在 `posts` 行的剪藏 manifest，属于切换前的旧数据，不影响新的写入路径。
 
 ## Related Changes
 

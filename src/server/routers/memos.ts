@@ -46,9 +46,15 @@ import {
   pickLegacyPublicImage,
   rewritePublicMemoAttachments,
 } from "@/server/public-media";
+import {
+  deleteAuthoredContent,
+  saveAuthoredContent,
+} from "@/server/services/content-authority-writer";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { isLocalContentEnabled, LOCAL_PATHS } from "../../config/paths";
-import { getContentSourceManager, LocalContentSource } from "../../lib/content-sources";
+import { isDatabaseContentAuthority } from "../../lib/content-authority";
+import { getContentSourceManager } from "../../lib/content-sources";
+import { ensureContentSourcesRegistered } from "../../lib/content-sources/register";
 import { generateMemoFilename, generateSlugFromPath } from "../../lib/content-sources/utils";
 import { db } from "../../lib/db";
 import { postEmbeddings, posts, systemShareSubmissions } from "../../lib/schema";
@@ -330,6 +336,20 @@ function belongsToSystemShare(memo: AuthoredMemo, submissionId: string) {
   );
 }
 
+/** The submission id a stored `metadata.systemShare` marker names, if any. */
+function systemShareSubmissionId(metadata: string | null | undefined): string | null {
+  if (!metadata) return null;
+  try {
+    const parsed: unknown = JSON.parse(metadata);
+    if (!parsed || typeof parsed !== "object" || !("systemShare" in parsed)) return null;
+    const marker = parsed.systemShare;
+    if (!marker || typeof marker !== "object" || !("submissionId" in marker)) return null;
+    return typeof marker.submissionId === "string" ? marker.submissionId : null;
+  } catch {
+    return null;
+  }
+}
+
 function writeSystemShareMemoAtomicallySync(
   fullPath: string,
   markdownContent: string,
@@ -419,50 +439,56 @@ function withSystemShareFileCommit<T>(
 }
 
 /**
- * 确保内容源已注册
+ * Database-authority counterpart of the file commit fence: publication is a row
+ * upsert, so the lease is revalidated in SQLite alone and no content file is
+ * created or removed.
  */
-async function _ensureContentSourcesRegistered(manager: any): Promise<void> {
-  try {
-    // 检查是否已有注册的内容源
-    const sourcesStatus = await manager.getAllSourcesStatus();
-    if (sourcesStatus.length > 0) {
-      if (process.env.DEBUG_MEMOS === "1") {
-        console.debug(`🔍 [memo-sync] 发现 ${sourcesStatus.length} 个已注册的内容源`);
-      }
-      return;
-    }
-
-    if (process.env.DEBUG_MEMOS === "1") {
-      console.debug("🔧 [memo-sync] 注册内容源...");
-    }
-
-    // 仅在启用对应内容源时注册，避免 FS-only 下的初始化失败
-    if (isLocalContentEnabled()) {
-      const basePath = LOCAL_PATHS.basePath;
-      if (basePath) {
-        const localCfg = LocalContentSource.createDefaultConfig("local", 50, {
-          contentPath: basePath,
-        });
-        await manager.registerSource(new LocalContentSource(localCfg));
-        if (process.env.DEBUG_MEMOS === "1") {
-          console.debug("✅ [memo-sync] local 内容源注册成功");
-        }
-      }
-    } else if (process.env.DEBUG_MEMOS === "1") {
-      console.debug("ℹ️ [memo-sync] 跳过注册 local 内容源：未启用");
-    }
-  } catch (error) {
-    console.error("⚠️ [memo-sync] 内容源注册失败:", error);
-    // 注册失败不应该阻止同步尝试，让同步函数自己处理
+function assertSystemShareLeaseOwned(commit: SystemShareCommit) {
+  const owned = db.transaction((tx) => {
+    const lease = tx
+      .select({ leaseToken: systemShareSubmissions.leaseToken })
+      .from(systemShareSubmissions)
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, commit.submissionId),
+          eq(systemShareSubmissions.state, "committing"),
+          eq(systemShareSubmissions.leaseToken, commit.leaseToken),
+          gt(systemShareSubmissions.leaseExpiresAt, Date.now())
+        )
+      )
+      .get();
+    if (!lease) return false;
+    tx.update(systemShareSubmissions)
+      .set({ updatedAt: Date.now() })
+      .where(
+        and(
+          eq(systemShareSubmissions.submissionId, commit.submissionId),
+          eq(systemShareSubmissions.state, "committing"),
+          eq(systemShareSubmissions.leaseToken, commit.leaseToken)
+        )
+      )
+      .run();
+    return true;
+  });
+  if (!owned) {
+    throw new TRPCError({ code: "CONFLICT", message: "该分享正在处理中，请稍后重试。" });
   }
 }
 
 /**
  * 触发增量数据同步并等待完成
+ *
+ * 数据库权威下没有可扫描的本地内容源，写入者直接落库，因此这里不触发扫描。
  */
 export async function triggerIncrementalSync(
   options: { throwOnError?: boolean } = {}
 ): Promise<void> {
+  if (isDatabaseContentAuthority()) {
+    if (process.env.DEBUG_MEMOS === "1") {
+      console.debug("⏭️ [memo-sync] 内容库已是权威，跳过本地增量同步");
+    }
+    return;
+  }
   try {
     if (process.env.DEBUG_MEMOS === "1") {
       console.debug("🔄 [memo-sync] 开始触发增量数据同步...");
@@ -476,7 +502,7 @@ export async function triggerIncrementalSync(
     });
 
     // 确保内容源已注册
-    await _ensureContentSourcesRegistered(manager);
+    await ensureContentSourcesRegistered(manager);
 
     // 执行增量同步
     const result = await manager.syncAll();
@@ -1124,6 +1150,115 @@ export const memosRouter = router({
       };
     };
 
+    let normalizedContent = rawContent;
+    let normalizedAttachments: Array<{ path: string; [k: string]: any }> = inputAttachments;
+
+    const respondWithMemo = async (row: MemoRow) => {
+      try {
+        const response = buildSafeMemoResponse(row, {
+          inputAttachments,
+          inputTags,
+          fallbackContent: normalizedContent,
+          fallbackTitle: title,
+          faultDegrade: forceDegrade,
+        });
+        const clipping = await clippingProjectionForRow(row);
+        return clipping
+          ? {
+              ...response,
+              title: clipping.title,
+              content: clipping.content,
+              clipping: clipping.reading,
+              authoredContent: clipping.authored.body.trim(),
+              authoredTitle:
+                typeof clipping.authored.frontmatter.title === "string"
+                  ? clipping.authored.frontmatter.title
+                  : "",
+            }
+          : response;
+      } catch (error) {
+        console.error("[memos.create] 构造响应失败，使用降级结构:", error);
+        return buildFallbackResponse(row.id);
+      }
+    };
+
+    // Database authority: the row is the canonical document, so the create
+    // writes it directly. Replaying a file scan here would re-read the row this
+    // call is about to insert and fail on every clipping memo.
+    if (isDatabaseContentAuthority()) {
+      const now = Date.now();
+      const fileName = systemShare
+        ? `system-share/${systemShare.submissionId}.md`
+        : generateMemoFilename(rawContent, title, now);
+      let memoId = buildMemoRelativePath(fileName, getLocalMemoRootPath()).replace(/\\+/g, "/");
+      if (!systemShare) {
+        // The file flow opened the memo with "wx" and failed on a same-day name
+        // collision. An upsert would silently merge two memos, so suffix instead.
+        const baseId = memoId;
+        for (
+          let suffix = 2;
+          db.select({ id: posts.id }).from(posts).where(eq(posts.id, memoId)).get();
+          suffix += 1
+        ) {
+          memoId = baseId.replace(/\.md$/u, `-${suffix}.md`);
+        }
+      } else if (db.select({ id: posts.id }).from(posts).where(eq(posts.id, memoId)).get()) {
+        // The file flow refused to take over a deterministic path owned by
+        // another submission. Keep that guard: an upsert here would overwrite a
+        // committed Memo with a different share's payload.
+        const owned = db
+          .select({ metadata: posts.metadata })
+          .from(posts)
+          .where(eq(posts.id, memoId))
+          .get();
+        if (systemShareSubmissionId(owned?.metadata) !== systemShare.submissionId) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "该分享对应的 Memo 路径已被其他内容占用。",
+          });
+        }
+      }
+      const normalized = normalizePersistedMemoInput({
+        content: rawContent,
+        attachments: inputAttachments,
+        markdownFilePath: memoId,
+      });
+      normalizedContent = normalized.content;
+      normalizedAttachments = normalized.attachments;
+      const frontmatter: Record<string, unknown> = {
+        title: recognizeMemoClipping(normalizedContent, { title, tags: inputTags }).enabled
+          ? (title ?? "")
+          : (title ?? extractTitleFromContent(normalizedContent)),
+        public: isPublic,
+        tags: inputTags,
+        attachments: normalizedAttachments,
+        authorEmail: ctx.user?.email || "admin@example.com",
+        publishDate: new Date(now).toISOString(),
+        ...(systemShare ? { systemShare } : {}),
+      };
+      const saved = await withClippingVisibilityLock(async () => {
+        await attachClippingReference(normalizedContent, frontmatter, ctx.user?.id ?? null, memoId);
+        if (systemShare) assertSystemShareLeaseOwned(systemShare);
+        return saveAuthoredContent({
+          kind: "memo",
+          id: memoId,
+          slug: generateSlugFromPath(memoId, undefined, "memo"),
+          filePath: memoId,
+          frontmatter,
+          body: normalizedContent,
+          title: typeof frontmatter.title === "string" ? frontmatter.title : undefined,
+          publishDate: now,
+          public: isPublic,
+          tags: inputTags,
+          author: ctx.user?.email || "admin@example.com",
+          dataSource: "database",
+          source: "database",
+        });
+      });
+      notifyClippingChange(memoId);
+      return respondWithMemo(saved.row);
+    }
+
     const candidates: Array<"local"> = [];
     if (isLocalContentEnabled()) candidates.push("local");
     if (candidates.length === 0) {
@@ -1136,8 +1271,6 @@ export const memosRouter = router({
     let createdId: string | null = null;
     let createdSource: "local" | null = null;
     let createdMemo: MemoRow | undefined;
-    let normalizedContent = rawContent;
-    let normalizedAttachments = inputAttachments;
     let lastError: unknown = null;
     let createdFullPath: string | null = null;
     let createdFreshFile = false;
@@ -1357,32 +1490,7 @@ export const memosRouter = router({
       return buildFallbackResponse(createdId);
     }
 
-    try {
-      const response = buildSafeMemoResponse(createdMemo, {
-        inputAttachments: normalizedAttachments,
-        inputTags,
-        fallbackContent: normalizedContent,
-        fallbackTitle: title,
-        faultDegrade: forceDegrade,
-      });
-      const clipping = await clippingProjectionForRow(createdMemo);
-      return clipping
-        ? {
-            ...response,
-            title: clipping.title,
-            content: clipping.content,
-            clipping: clipping.reading,
-            authoredContent: clipping.authored.body.trim(),
-            authoredTitle:
-              typeof clipping.authored.frontmatter.title === "string"
-                ? clipping.authored.frontmatter.title
-                : "",
-          }
-        : response;
-    } catch (error) {
-      console.error("[memos.create] 构造响应失败，使用降级结构:", error);
-      return buildFallbackResponse(createdId);
-    }
+    return respondWithMemo(createdMemo);
   }),
 
   // 更新 memo（仅管理员）
@@ -1452,6 +1560,33 @@ export const memosRouter = router({
           frontmatter.publishDate = existingPublishIso;
         }
 
+        // Database authority owns the document: persist the row and its
+        // projections, never a content file, and never replay a file scan.
+        if (isDatabaseContentAuthority()) {
+          const saved = await saveAuthoredContent({
+            kind: "memo",
+            id,
+            slug: existingMemo.slug,
+            filePath: existingMemo.filePath || existingMemo.id,
+            frontmatter,
+            body: normalized.content,
+            title: resolvedTitle,
+            public: isPublic,
+            tags,
+            // Only a create names the author; an edit must keep the original.
+            author: existingMemo.author ?? undefined,
+            dataSource: "database",
+            source: "database",
+          });
+          return {
+            row: saved.row,
+            existingMemo,
+            normalized,
+            clippingInput,
+            resolvedTitle,
+          };
+        }
+
         const markdownContent = buildMemoMarkdownDocument(normalized.content, frontmatter);
         const basePath = getLocalBasePathOrThrow();
         const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
@@ -1516,9 +1651,21 @@ export const memosRouter = router({
           throw error;
         }
 
-        return { existingMemo, normalized, clippingInput, resolvedTitle, updateData };
+        return {
+          row: { ...existingMemo, ...updateData } as MemoRow,
+          existingMemo,
+          normalized,
+          clippingInput,
+          resolvedTitle,
+        };
       });
-      const { existingMemo, normalized, clippingInput, resolvedTitle, updateData } = updateState;
+      const {
+        row: updatedRow,
+        existingMemo,
+        normalized,
+        clippingInput,
+        resolvedTitle,
+      } = updateState;
       clearSearchCache();
       notifyClippingChange(id);
 
@@ -1527,7 +1674,6 @@ export const memosRouter = router({
         await triggerIncrementalSync();
       }
 
-      const updatedRow: MemoRow = { ...existingMemo, ...updateData } as MemoRow;
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(updatedRow);
 
       const clipping = clippingInput.enabled ? await projectClippingMemo(id) : null;
@@ -1536,8 +1682,8 @@ export const memosRouter = router({
       return {
         id,
         slug: existingMemo.slug,
-        title: clipping ? clipping.title : updateData.title,
-        content: clipping?.content ?? updateData.body,
+        title: clipping ? clipping.title : updatedRow.title,
+        content: clipping?.content ?? updatedRow.body,
         ...(clipping
           ? {
               clipping: clipping.reading,
@@ -1545,7 +1691,7 @@ export const memosRouter = router({
               authoredTitle: resolvedTitle,
             }
           : {}),
-        isPublic: updateData.public,
+        isPublic: updatedRow.public,
         canComment,
         tags,
         attachments: normalized.attachments,
@@ -1572,7 +1718,20 @@ export const memosRouter = router({
     const isTestEnv = process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
 
     try {
-      if (isLocalContentEnabled()) {
+      if (isDatabaseContentAuthority()) {
+        await withClippingVisibilityLock(async () => {
+          const existingMemo = await db
+            .select()
+            .from(posts)
+            .where(and(eq(posts.id, id), eq(posts.type, "memo")))
+            .limit(1)
+            .then((result) => result[0]);
+          if (!existingMemo) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Memo 不存在" });
+          }
+          await deleteAuthoredContent(id);
+        });
+      } else if (isLocalContentEnabled()) {
         const basePath = getLocalBasePathOrThrow();
         await withClippingVisibilityLock(async () => {
           const existingMemo = await db
