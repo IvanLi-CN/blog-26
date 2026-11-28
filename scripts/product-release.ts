@@ -323,7 +323,12 @@ if (command === "notification") {
       assertWithinBudget("main release check", 20, releaseStartedAt);
       await delay(20_000);
     }
-    app.dispatchProductRelease(mergeSha);
+    const queued = app.dispatchProductRelease(mergeSha);
+    console.log(
+      queued
+        ? `Product Release for ${mergeSha} already exists as run ${queued}; resume that run instead of dispatching another`
+        : `Dispatched Product Release for ${mergeSha}`
+    );
   }
 } else if (command === "resolve") {
   const app = github();
