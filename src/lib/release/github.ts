@@ -277,18 +277,29 @@ export class GitHubRelease {
     });
   }
 
-  dispatchProductRelease(expectedHead: string): void {
+  dispatchProductRelease(expectedHead: string): number | undefined {
     // Only the absence of a release run means the followup still owns starting it. An existing run —
     // queued, running, succeeded or failed — continues or is abandoned through its own recovery
-    // path, never through a second run queued for the same merge identity.
+    // path, never through a second run queued for the same merge identity. The reuse is logged so a
+    // green followup that started nothing still points at the run the operator must resume.
+    const head = shaSchema.parse(expectedHead);
     const existing = this.pages(
-      `${this.root}/actions/workflows/product-release.yml/runs?head_sha=${shaSchema.parse(expectedHead)}&per_page=100`,
+      `${this.root}/actions/workflows/product-release.yml/runs?head_sha=${head}&per_page=100`,
       "workflow_runs"
-    ).map((raw) => z.object({ head_sha: shaSchema }).parse(raw));
-    if (existing.some((run) => run.head_sha === expectedHead)) return;
+    )
+      .map((raw) => z.object({ id: z.number().int().positive(), head_sha: shaSchema }).parse(raw))
+      .filter((run) => run.head_sha === head)
+      .sort((a, b) => b.id - a.id);
+    if (existing[0]) {
+      console.log(
+        `Product Release for ${head} already exists as run ${existing[0].id}; not dispatching another`
+      );
+      return existing[0].id;
+    }
     this.api(`${this.root}/actions/workflows/product-release.yml/dispatches`, "POST", {
       ref: this.contract.branch,
     });
+    return undefined;
   }
 
   rerunWorkflowRun(runId: number): void {

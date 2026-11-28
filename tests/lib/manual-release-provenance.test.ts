@@ -354,11 +354,19 @@ describe("trusted release evaluation", () => {
           return null;
         }
         if (endpoint.includes("product-release.yml/runs?"))
-          return [{ workflow_runs: [{ head_sha: sha, event: "workflow_dispatch" }] }];
+          return [
+            {
+              workflow_runs: [
+                { id: 4_612_000_001, head_sha: sha, event: "workflow_dispatch" },
+                { id: 4_611_000_002, head_sha: "c".repeat(40), event: "workflow_dispatch" },
+              ],
+            },
+          ];
         throw new Error(`Unexpected read ${endpoint}`);
       })
     );
-    github.dispatchProductRelease(sha);
+    // The reused run is the one already at this merge SHA, never a run queued for another head.
+    expect(github.dispatchProductRelease(sha)).toBe(4_612_000_001);
     expect(writes).toEqual([]);
   });
   test("publishes exact-head release checks idempotently through the Actions app", () => {
