@@ -33,7 +33,7 @@ Source lives under `src/`, shared UI under `src/components/`, libraries under `s
 
 ## Public UI
 
-- Before changing public layouts, containers, or controls, read [DESIGN.md](DESIGN.md), the responsive contract in [Nature UI Spec](docs/specs/nature-front-ui/SPEC.md#44-responsive-control-and-code-density), and [ADR 0003](docs/adr/0003-public-mobile-content-stream.md). Feature specs refine this shared contract; validate the changed surface against it at mobile and desktop sizes.
+- Before changing public layouts, containers, or controls, read [DESIGN.md](DESIGN.md) for visual language, [UX.md](UX.md) for global interaction rules, the responsive contract in [Nature UI Spec](docs/specs/nature-front-ui/SPEC.md#44-responsive-control-and-code-density), and [ADR 0003](docs/adr/0003-public-mobile-content-stream.md). Feature specs refine these shared contracts; they must not redefine them. Validate the changed surface at mobile and desktop sizes.
 
 ## Storybook and Web Demo
 

@@ -167,11 +167,11 @@
 
 ### REQ-SSM-021
 
-- A successful submission MUST show a success Publish State Toast on the confirmation page before navigating to the Publish Detail Page.
-- The success Toast MUST remain visible for approximately 800-1200 ms before navigation so the administrator can perceive the confirmation.
-- The client MUST navigate to `/memos/:slug` using the returned Memo slug after the success Toast has been shown; it MUST NOT navigate only to the Memo list.
+- A successful submission MUST navigate to the Publish Detail Page as soon as the response is received; the confirmation page MUST NOT delay navigation to display the success Toast.
+- The success Publish State Toast MUST be shown on the destination page so the confirmation is still perceivable after navigation, and it MUST dismiss itself without blocking reading or scrolling.
+- The client MUST navigate to `/memos/:slug` using the returned Memo slug; it MUST NOT navigate only to the Memo list.
 - Inputs: a successful system-share response containing Memo detail identity.
-- Outputs: a success Toast followed by the created Memo's detail page.
+- Outputs: the created Memo's detail page with a self-dismissing success Toast.
 
 ### REQ-SSM-022
 
@@ -234,6 +234,15 @@
 - Inputs: touch gestures and taps within the populated confirmation page.
 - Outputs: continuous page scrolling from the attachment region and working attachment controls.
 
+### REQ-SSM-030
+
+- While the pending share and session are being read, the confirmation route MUST render a structured reading state inside the normal page frame instead of a bare line of text: the `发布 Memo` page heading, a text status, and a skeleton that mirrors the editor, attachments, and publish-control layout.
+- The reading state MUST expose its busy status to assistive technology and MUST NOT announce the skeleton as content.
+- The Publish State Toast MUST obey the global feedback contract in [UX.md](../../../UX.md): it is a layout-neutral floating notice anchored to this page's top chrome, it stays out of the scrollable editor and away from the publish controls and attachment controls, and it keeps its semantics across the navigation to the Publish Detail Page.
+- The mobile confirmation flow fixes the Toast's concrete placement; wider viewports and the destination page reuse it unchanged rather than defining their own.
+- Inputs: route load and any publish-state Toast.
+- Outputs: an informatively staged loading surface and a Toast that never displaces page content.
+
 ## Verification
 
 ### VER-SSM-001
@@ -270,7 +279,7 @@
 
 - Method: browser interaction tests for publish state Toasts, retry actions, detail navigation, and completed-submission replay.
 - covers: `REQ-SSM-020`, `REQ-SSM-021`, `REQ-SSM-022`, `REQ-SSM-023`, `REQ-SSM-024`
-- Pass condition: progress and success are global Toasts, failures expose an in-Toast retry that reuses the same identity and edited values, first success and replay both navigate to one Memo detail page, and no duplicate Memo is created.
+- Pass condition: progress is a global Toast; success navigates to the created detail page without an artificial hold and the success Toast is shown there; failures expose an in-Toast retry that reuses the same identity and edited values; first success and replay both land on one Memo detail page, the pending slot is cleared before leaving, and no duplicate Memo is created.
 
 ### VER-SSM-007
 
@@ -296,6 +305,12 @@
 - covers: `REQ-SSM-028`, `REQ-SSM-029`
 - Pass condition: vertical swipes from every attachment-region starting area move the page while scroll range remains, and the publish controls can be reached. The editor retains a usable minimum height, keyboard open/close does not leave controls unreachable, and attachment taps plus editor input and text selection continue to work.
 
+### VER-SSM-011
+
+- Method: browser interaction tests on the official `/share` route for the pending-share reading state and for Toast-induced layout movement.
+- covers: `REQ-SSM-030`
+- Pass condition: the reading state renders the page heading, the `编辑 Memo` heading, a busy status, one spinner, and skeleton placeholders for the editor, attachment column, and publish controls, with the skeleton hidden from assistive technology; the page header and editor keep identical viewport positions before and during a visible publish Toast; no page padding or spacing variable is introduced for the Toast; at `1440x1000`, `768x1024`, `393x852`, and `360x740` the Toast starts at or below the page header's bottom edge (within 20px), stays within the upper half of the viewport, is centered on the content column, and ends above the publish button; the destination page's success Toast is likewise anchored below the public site header; with long content scrolled so the anchoring header is off screen, the Toast keeps the same screen position it had before the scroll.
+
 ## Related ADRs
 
 - [ADR 0003: Public mobile content stream](../../adr/0003-public-mobile-content-stream.md)
@@ -306,6 +321,7 @@
 - Required after candidate implementation and before production release: owner-reviewable captures from the official `/share` route at 390x844 and 1440x1000, covering populated, publishing, success, retryable failure, and resulting detail states. The current candidate's visual evidence is owner-confirmed; real-device keyboard, safe-area, and gesture acceptance remains tracked as a separate empirical requirement.
 - Mobile layout evidence MUST additionally cover the compact initial state at `360x740` and `393x852`, a content-overflow state, and attachment-origin touch scrolling as defined by `VER-SSM-008..010`. Earlier populated-state captures do not establish these layout and gesture pass conditions.
 - The current compact initial-state captures are `assets/system-share-mobile-layout-360.png` and `assets/system-share-mobile-layout-393.png`; both are from the formal `/share` Web Demo and include the compact `返回首页` escape control.
+- `REQ-SSM-030` evidence: `assets/system-share-mobile-loading.png` and `assets/system-share-desktop-loading.png` capture the staged reading state; `assets/system-share-mobile-publishing.png`, `assets/system-share-desktop-publishing.png`, `assets/system-share-mobile-success.png`, and `assets/system-share-desktop-success.png` show the floating Toast over unchanged page geometry, with the success notice rendered on the destination detail page.
 
 ## References
 

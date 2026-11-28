@@ -268,6 +268,8 @@ export function inferContentTypeFromPath(
   return "post";
 }
 
+const UUID_FILENAME_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * 生成 URL 友好的 slug
  * @param filePath 文件路径
@@ -296,6 +298,14 @@ export function generateSlugFromPath(
   if (newFormatMatch) {
     const titleSlug = newFormatMatch[2];
     return canonicalizeContentSlug(titleSlug, inferredContentType);
+  }
+
+  // A UUID filename is an identity, not a title: the system-share Memo path is
+  // `system-share/<uuid>.md`, and its last segment is 12 hex characters. When
+  // those characters happen to be all digits, the timestamp rule below would
+  // rewrite the identity into a 12-digit slug (~0.35% of UUIDs).
+  if (UUID_FILENAME_PATTERN.test(fileName)) {
+    return fileName.toLowerCase();
   }
 
   // 优先查找时间戳模式（如 -1756460268805）

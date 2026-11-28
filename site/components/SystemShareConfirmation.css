@@ -23,6 +23,197 @@ body.system-share-body {
   margin: 0;
 }
 
+/* The confirmation route reserves its bottom band for the publish action. The
+ * console-wide assistant launcher yields instead of stacking a second
+ * persistent overlay over that band. See UX.md, 控件与触达. */
+body:has(.system-share-page) .knowledge-assistant-fab {
+  display: none;
+}
+
+/* The reading and state surfaces sit in the normal page frame so the page does
+ * not jump between the waiting, empty, error, and populated states. The reading
+ * skeleton reuses the published form's own layout classes so the placeholder
+ * describes the page that is about to replace it. See UX.md, 等待与加载. */
+.system-share-reading-panel,
+.system-share-state-panel {
+  box-sizing: border-box;
+  display: flex;
+  min-block-size: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.system-share-state-panel {
+  gap: 12px;
+  padding: 20px;
+}
+
+.system-share-reading-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--nature-text-soft);
+}
+
+.system-share-reading-spinner {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+
+.system-share-reading-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.system-share-reading-copy,
+.system-share-state-copy {
+  margin: 0;
+  color: var(--nature-text-soft);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* The status and its explanatory copy read as one group against the title. */
+.system-share-reading-status {
+  order: 2;
+  margin-inline-start: auto;
+}
+
+@media (max-width: 639px) {
+  .system-share-reading-status {
+    margin-inline-start: 0;
+  }
+
+  .system-share-reading-copy {
+    padding-inline-start: calc(1rem + 8px);
+  }
+}
+
+.system-share-reading-copy {
+  order: 3;
+  flex-basis: 100%;
+  padding-inline-start: calc(1rem + 8px);
+}
+
+.system-share-reading-body {
+  display: flex;
+  min-block-size: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.system-share-reading-editor {
+  display: flex;
+  min-block-size: 12rem;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+  border: 1px solid var(--nature-line);
+  border-radius: var(--nature-radius-md);
+  background: var(--nature-surface-inset);
+  padding: 16px;
+}
+
+.system-share-reading-line {
+  width: 100%;
+  height: 0.8rem;
+}
+
+.system-share-reading-line-short {
+  width: 58%;
+}
+
+.system-share-reading-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-inline: 4px;
+}
+
+.system-share-reading-hint {
+  width: 4.5rem;
+  height: 0.6rem;
+}
+
+.system-share-reading-row {
+  width: 6rem;
+  height: 0.75rem;
+  margin-top: 12px;
+}
+
+.system-share-reading-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--nature-line);
+  padding: 10px 16px;
+}
+
+.system-share-reading-switch {
+  width: 3.5rem;
+  height: 1.5rem;
+  flex: none;
+}
+
+.system-share-reading-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.system-share-reading-action {
+  width: 5.5rem;
+  height: 2.75rem;
+  border-radius: 999px;
+}
+
+/* The reading skeleton sits on the light surface, so it uses the accent tint
+ * rather than the highlight tint that only reads on dark backgrounds. */
+.system-share-reading-panel .nature-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--nature-border-rgb), 0.16),
+    rgba(var(--nature-accent-rgb), 0.28),
+    rgba(var(--nature-border-rgb), 0.16)
+  );
+  background-size: 240% 100%;
+}
+
+.system-share-state-panel .nature-title {
+  margin: 0;
+}
+
+/* Mobile keeps the reading and state surfaces edge-to-edge like the form. */
+@media (max-width: 639px) {
+  .system-share-reading-panel,
+  .system-share-state-panel {
+    border-inline: 0;
+    border-radius: 0;
+  }
+
+  .system-share-reading-panel .system-share-memo-editor-header {
+    padding-inline: 16px;
+  }
+
+  .system-share-reading-footer {
+    padding-inline: 16px;
+  }
+}
+
+@media (max-width: 374px) {
+  .system-share-reading-panel .system-share-memo-editor-header,
+  .system-share-reading-footer {
+    padding-inline: 12px;
+  }
+}
+
 @media (max-width: 639px) {
   .system-share-page-header {
     min-block-size: 3rem;

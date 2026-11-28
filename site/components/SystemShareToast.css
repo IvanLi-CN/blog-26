@@ -1,38 +1,56 @@
-.system-share-toast-container {
+/* The publish notice is a floating overlay: it never reserves page space, so
+ * appearing or updating it cannot move the header, the editor, or the publish
+ * controls. It docks under whichever chrome owns the top of the current page,
+ * centered on the content column. See UX.md. */
+.Toastify__toast-container.system-share-toast-container {
   position: fixed;
-  top: max(1rem, env(safe-area-inset-top));
-  right: 1rem;
-  z-index: 90;
-  width: min(25rem, calc(100vw - 2rem));
+  top: var(--system-share-notice-top, max(0.75rem, env(safe-area-inset-top)));
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  z-index: 120;
+  width: max-content;
+  max-width: min(28rem, calc(100vw - 1.5rem));
   padding: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .system-share-toast {
+  width: 100%;
   min-height: 0;
-  margin: 0 0 0.75rem;
+  margin: 0;
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--nature-line-strong);
-  border-radius: 0.9rem;
-  background: var(--nature-panel);
+  border-radius: 0.95rem;
+  background: rgb(var(--nature-surface-rgb));
   color: var(--nature-text);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12px 30px rgba(18, 39, 29, 0.16);
+  /* Only the notice itself takes pointer input; the container never blocks the
+   * page around it. */
+  pointer-events: auto;
+}
+
+.system-share-toast .Toastify__progress-bar {
+  height: 2px;
+  background: var(--nature-accent-strong);
+  opacity: 0.5;
 }
 
 .system-share-toast-body {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  font-size: 0.925rem;
-  line-height: 1.45;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem 0.65rem 0.9rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
 .system-share-toast-icon {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
   flex: none;
-  margin-top: 0.1rem;
 }
 
 .system-share-toast-icon-progress {
@@ -41,11 +59,11 @@
 }
 
 .system-share-toast-icon-success {
-  color: var(--nature-success, #26734d);
+  color: var(--nature-success, #3f8f68);
 }
 
 .system-share-toast-icon-error {
-  color: var(--nature-danger, #b63b42);
+  color: var(--nature-danger, #b35c62);
 }
 
 .system-share-toast-copy {
@@ -54,7 +72,13 @@
   flex: 1;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.6rem;
+}
+
+.system-share-toast-copy > span {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
 }
 
 .system-share-toast-close {
@@ -66,12 +90,12 @@
   justify-content: center;
   border: 0;
   border-radius: 999px;
-  color: var(--nature-muted);
+  color: var(--nature-text-soft);
 }
 
 .system-share-toast-close:hover,
 .system-share-toast-close:focus-visible {
-  background: var(--nature-highlight);
+  background: rgba(var(--nature-highlight-rgb), 0.3);
   color: var(--nature-text);
 }
 
@@ -90,10 +114,10 @@
   min-height: 2.25rem;
   flex: none;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   border: 1px solid var(--nature-line-strong);
   border-radius: 999px;
-  padding: 0.35rem 0.7rem;
+  padding: 0.3rem 0.7rem;
   color: var(--nature-accent-strong);
   font-size: 0.82rem;
   font-weight: 700;
@@ -119,10 +143,42 @@
   outline-offset: 2px;
 }
 
-/* Toasts are global, so reserve their occupied area on the formal share page
- * instead of allowing an error action to cover the page title or editor. */
-body:has(.system-share-toast-container .system-share-toast) .system-share-page {
-  padding-top: calc(var(--system-share-toast-height, 5.5rem) + 1rem + env(safe-area-inset-top));
+/* The publish footer owns the bottom band on the confirmation route, so the
+ * Demo trigger docks in the page header row on narrow screens. */
+@media (max-width: 767px) {
+  body:has(.system-share-page) .web-demo-inspector-bubble {
+    top: max(12px, env(safe-area-inset-top));
+    right: calc(max(0.75rem, env(safe-area-inset-right)) + 3rem);
+    bottom: auto;
+    left: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .Toastify__toast-container.system-share-toast-container {
+    width: max-content;
+    max-width: calc(100vw - 1.5rem);
+    margin: 0;
+    /* The Toastify mobile rule resets the transform; keep the notice centered
+     * on the content column. */
+    transform: translateX(-50%);
+  }
+
+  .system-share-toast-container .Toastify__toast {
+    width: 100%;
+    margin: 0;
+    border-radius: 0.95rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .system-share-toast-copy {
+    flex-wrap: wrap;
+  }
+
+  .system-share-toast-retry {
+    margin-left: auto;
+  }
 }
 
 @keyframes system-share-toast-spin {
@@ -131,51 +187,12 @@ body:has(.system-share-toast-container .system-share-toast) .system-share-page {
   }
 }
 
-@media (max-width: 640px) {
-  .system-share-toast-container {
-    top: max(0.75rem, env(safe-area-inset-top));
-    right: 0.75rem;
-    left: 0.75rem;
-    width: auto;
-  }
-
-  .system-share-toast-copy {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0.55rem;
-  }
-
-  .system-share-toast-retry {
-    align-self: flex-start;
-  }
-
-  body:has(.system-share-page) .web-demo-inspector-bubble {
-    right: max(0.75rem, env(safe-area-inset-right));
-    top: max(0.75rem, env(safe-area-inset-top));
-    bottom: auto;
-    left: auto;
-  }
-
-  body:has(.system-share-toast-container .system-share-toast) .system-share-page {
-    padding-top: calc(var(--system-share-toast-height, 8.5rem) + 1rem + env(safe-area-inset-top));
-  }
-
-  body:has(.system-share-page):has(.system-share-toast) .web-demo-inspector-bubble {
-    top: calc(var(--system-share-toast-height, 8.5rem) + 1rem + env(safe-area-inset-top));
-    right: max(0.75rem, env(safe-area-inset-right));
-    bottom: auto;
-    left: auto;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .system-share-toast-icon-progress,
   .system-share-toast-container .Toastify__toast,
   .system-share-toast-container .Toastify__toast--animate,
-  .system-share-toast-container .Toastify__slide-enter--top-right,
-  .system-share-toast-container .Toastify__slide-exit--top-right,
-  .system-share-toast-container .Toastify__bounce-enter--top-right,
-  .system-share-toast-container .Toastify__bounce-exit--top-right {
+  .system-share-toast-container .Toastify__zoom-enter,
+  .system-share-toast-container .Toastify__zoom-exit {
     animation: none;
     transition: none;
   }
@@ -187,10 +204,8 @@ html[data-web-demo-motion="reduce"]
     .system-share-toast-icon-progress,
     .Toastify__toast,
     .Toastify__toast--animate,
-    .Toastify__slide-enter--top-right,
-    .Toastify__slide-exit--top-right,
-    .Toastify__bounce-enter--top-right,
-    .Toastify__bounce-exit--top-right
+    .Toastify__zoom-enter,
+    .Toastify__zoom-exit
   ) {
   animation: none;
   transition: none;

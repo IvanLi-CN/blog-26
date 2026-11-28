@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
+declare global {
+  interface Window {
+    recordSystemShareSuccessToast: () => void;
+  }
+}
+
 async function clearPendingShare(page: import("@playwright/test").Page) {
   await page.goto("/share?d_persona=admin&d_share=text", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("system-share-page")).toBeVisible({ timeout: 15_000 });
@@ -211,6 +217,143 @@ async function synthesizeTouchScroll(
 test.describe("Console system share Web Demo", () => {
   test.describe.configure({ timeout: 60_000 });
 
+  test("shows a structured reading state while the pending share loads", async ({ page }) => {
+    await clearPendingShare(page);
+    await page.goto("/share?d_persona=admin&d_share=url&d_delay=slow", {
+      waitUntil: "domcontentloaded",
+    });
+    const loading = page.getByTestId("system-share-loading");
+    await expect(loading).toBeVisible();
+    await expect(loading).toHaveAttribute("aria-busy", "true");
+    await expect(loading.getByRole("heading", { name: "发布 Memo" })).toBeVisible();
+    await expect(loading.getByRole("status")).toContainText("正在读取待处理分享…");
+    await expect(loading.locator(".nature-spinner")).toHaveCount(1);
+    // The placeholder mirrors the populated form: the editor surface and its
+    // attachment column exist already, so the page does not reshuffle on load.
+    await expect(loading.getByRole("heading", { name: "编辑 Memo" })).toBeVisible();
+    await expect(loading.locator(".system-share-reading-editor")).toBeVisible();
+    await expect(loading.locator(".system-share-memo-attachments")).toBeVisible();
+    await expect(loading.locator(".system-share-reading-footer")).toBeVisible();
+    await expect(loading.locator(".system-share-reading-body")).toHaveAttribute(
+      "aria-hidden",
+      "true"
+    );
+    await expectSharePage(page);
+    // The populated page reuses the same two structural regions.
+    await expect(page.getByRole("heading", { name: "编辑 Memo" })).toBeVisible();
+    await expect(page.locator(".system-share-memo-attachments")).toBeVisible();
+  });
+
+  test("keeps the page layout fixed while the publish notice appears", async ({ page }) => {
+    await clearPendingShare(page);
+    await page.goto("/share?d_persona=admin&d_share=text&d_delay=slow", {
+      waitUntil: "domcontentloaded",
+    });
+    await expectSharePage(page);
+    const before = await page.getByTestId("system-share-memo-editor").boundingBox();
+    const headerBefore = await page.locator(".system-share-page-header").boundingBox();
+    if (!before || !headerBefore) throw new Error("Missing confirmation layout");
+    const paddingBefore = await page
+      .getByTestId("system-share-page")
+      .evaluate((element) => getComputedStyle(element).paddingTop);
+    const heightBefore = await page.evaluate(
+      () => (document.scrollingElement ?? document.documentElement).scrollHeight
+    );
+    await page.getByTestId("system-share-submit").click();
+    await expect(page.getByTestId("system-share-toast-progress")).toBeVisible();
+    const during = await page.getByTestId("system-share-memo-editor").boundingBox();
+    const headerDuring = await page.locator(".system-share-page-header").boundingBox();
+    if (!during || !headerDuring) throw new Error("Missing layout after the notice appeared");
+    // A layout-neutral notice cannot move the page; the panel's own 2px hover
+    // lift is unrelated to the notice.
+    expect(Math.abs(during.y - before.y)).toBeLessThanOrEqual(3);
+    expect(Math.abs(headerDuring.y - headerBefore.y)).toBeLessThanOrEqual(3);
+    const heightDuring = await page.evaluate(
+      () => (document.scrollingElement ?? document.documentElement).scrollHeight
+    );
+    expect(heightDuring).toBe(heightBefore);
+    const paddingDuring = await page
+      .getByTestId("system-share-page")
+      .evaluate((element) => getComputedStyle(element).paddingTop);
+    expect(paddingDuring).toBe(paddingBefore);
+    await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/, { timeout: 15_000 });
+  });
+
+  test("keeps the publish notice fixed on screen while the page scrolls", async ({ page }) => {
+    // A short viewport guarantees real scroll range; the form fits 393x852.
+    await page.setViewportSize({ width: 393, height: 600 });
+    await clearPendingShare(page);
+    await page.goto(
+      `/share?d_persona=admin&d_share=text&d_scene=system-share-response-loss&d_delay=slow`,
+      { waitUntil: "domcontentloaded" }
+    );
+    await expectSharePage(page);
+    await page.getByTestId("system-share-submit").click();
+    const notice = page.getByTestId("system-share-toast-error");
+    await expect(notice).toBeVisible();
+    const before = await page.locator(".system-share-toast").boundingBox();
+    if (!before) throw new Error("Missing notice box");
+    const beforeScroll = await page.evaluate(() => window.scrollY);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(beforeScroll);
+    const after = await page.locator(".system-share-toast").boundingBox();
+    if (!after) throw new Error("Missing notice box after scrolling");
+    // Scrolling must not move the notice relative to the user.
+    expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(page.locator(".system-share-toast")).toHaveCount(1);
+  });
+
+  test("docks the publish notice under the page header at every width", async ({ page }) => {
+    for (const size of [
+      { width: 1440, height: 1000 },
+      { width: 768, height: 1024 },
+      { width: 393, height: 852 },
+      { width: 360, height: 740 },
+    ]) {
+      await page.setViewportSize(size);
+      await clearPendingShare(page);
+      await page.goto("/share?d_persona=admin&d_share=url&d_delay=slow", {
+        waitUntil: "domcontentloaded",
+      });
+      await expectSharePage(page);
+      await page.getByTestId("system-share-submit").click();
+      await expect(page.getByTestId("system-share-toast-progress")).toBeVisible();
+      // Measure the settled box; the zoom transition scales the card briefly.
+      await expect
+        .poll(
+          () =>
+            page
+              .locator(".system-share-toast")
+              .first()
+              .evaluate((element) => getComputedStyle(element).transform),
+          { timeout: 5_000 }
+        )
+        .toBe("none");
+      const geometry = await page.evaluate(() => {
+        const rect = (selector: string) => {
+          const element = document.querySelector<HTMLElement>(selector);
+          if (!element) throw new Error(`Missing element: ${selector}`);
+          const box = element.getBoundingClientRect();
+          return { top: box.top, bottom: box.bottom, left: box.left, right: box.right };
+        };
+        return {
+          viewport: { width: window.innerWidth, height: window.innerHeight },
+          notice: rect(".system-share-toast"),
+          header: rect(".system-share-page-header"),
+          submit: rect('[data-testid="system-share-submit"]'),
+        };
+      });
+      expect(geometry.notice.top).toBeGreaterThanOrEqual(geometry.header.bottom);
+      expect(geometry.notice.top).toBeLessThanOrEqual(geometry.header.bottom + 20);
+      expect(geometry.notice.bottom).toBeLessThan(geometry.viewport.height / 2);
+      const center = (geometry.notice.left + geometry.notice.right) / 2;
+      expect(Math.abs(center - geometry.viewport.width / 2)).toBeLessThanOrEqual(2);
+      expect(geometry.notice.bottom).toBeLessThan(geometry.submit.top);
+      await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/, { timeout: 15_000 });
+    }
+  });
+
   test("persists edits through refresh and publishes into the returned detail", async ({
     page,
   }) => {
@@ -252,10 +395,11 @@ test.describe("Console system share Web Demo", () => {
     await page.getByTestId("system-share-submit").click();
     await expect(page.getByTestId("system-share-toast-progress")).toBeVisible();
     await expect(editor).toHaveAttribute("contenteditable", "false");
-    await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
-    await expect(page).toHaveURL(/\/share\?/);
+    // The notice is delivered across the navigation instead of holding the
+    // confirmation page open.
     await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/, { timeout: 5_000 });
-    await expect(page.getByTestId("system-share-toast-success")).toHaveCount(0);
+    await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
+    await expect(page.getByTestId("system-share-toast-success")).toContainText("发布成功");
   });
 
   test("keeps a clipping URL in the single Memo content field", async ({ page }) => {
@@ -274,9 +418,7 @@ test.describe("Console system share Web Demo", () => {
     await expect(page.getByTestId("system-share-memo-editor-surface")).toContainText("#剪藏");
   });
 
-  test("retains the submission identity when refreshed during the success notice", async ({
-    page,
-  }) => {
+  test("clears the pending slot before navigating to the created Memo", async ({ page }) => {
     await clearPendingShare(page);
     const submissionId = randomUUID();
     await page.goto(`/share?d_persona=admin&d_share=url&d_submission=${submissionId}`, {
@@ -286,18 +428,14 @@ test.describe("Console system share Web Demo", () => {
     const editor = page.getByTestId("system-share-memo-editor").locator(".ProseMirror");
     await expect(editor).toContainText("#剪藏");
     expect(await readPendingIdentity(page)).toBe(submissionId);
-    await page.clock.install();
+    // The finished slot is cleared before leaving, so a reload of the detail
+    // page cannot reopen the published share.
     await page.getByTestId("system-share-submit").click();
-    await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
-    expect(await readPendingIdentity(page)).toBe(submissionId);
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await expectSharePage(page);
-    await expect(editor).toContainText("https://example.com/reading-note");
-    expect(await readPendingIdentity(page)).toBe(submissionId);
-    await expect(page).toHaveURL(/\/share\?/);
+    await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);
+    expect(await readPendingIdentity(page)).toBeNull();
   });
 
-  test("holds the success notice for one second before navigating to detail", async ({ page }) => {
+  test("navigates immediately and carries the notice to the detail page", async ({ page }) => {
     await clearPendingShare(page);
     let successToastShownAt = 0;
     await page.exposeFunction("recordSystemShareSuccessToast", () => {
@@ -306,10 +444,8 @@ test.describe("Console system share Web Demo", () => {
     await page.addInitScript(() => {
       const observer = new MutationObserver(() => {
         if (!document.querySelector('[data-testid="system-share-toast-success"]')) return;
-        void (
-          window as unknown as { recordSystemShareSuccessToast: () => void }
-        ).recordSystemShareSuccessToast();
-        observer.disconnect();
+        if (!window.location.pathname.startsWith("/memos/")) return;
+        void window.recordSystemShareSuccessToast();
       });
       observer.observe(document, { childList: true, subtree: true });
     });
@@ -322,14 +458,45 @@ test.describe("Console system share Web Demo", () => {
     );
     await expectSharePage(page);
     await page.getByTestId("system-share-submit").click();
+    await page.waitForURL(/\/memos\/console-demo-created-\d+$/, {
+      waitUntil: "domcontentloaded",
+      timeout: 15_000,
+    });
     await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
-    expect(page.url()).toMatch(/\/share\?/);
-    await page.waitForURL(/\/memos\/console-demo-created-\d+$/, { timeout: 5_000 });
     expect(successToastShownAt).toBeGreaterThan(0);
-    const successNoticeDuration = performance.now() - successToastShownAt;
-    expect(successNoticeDuration).toBeGreaterThanOrEqual(800);
-    expect(successNoticeDuration).toBeLessThan(1_400);
-    await expect(page.getByTestId("system-share-toast-success")).toHaveCount(0);
+    // Measure the settled box: the zoom transition briefly scales the card.
+    await expect
+      .poll(
+        () =>
+          page
+            .locator(".system-share-toast")
+            .first()
+            .evaluate((element) => getComputedStyle(element).transform),
+        { timeout: 5_000 }
+      )
+      .toBe("none");
+    // The destination anchors the notice below the public site header.
+    const destination = await page.evaluate(() => {
+      const rect = (selector: string) => {
+        const element = document.querySelector<HTMLElement>(selector);
+        if (!element) return null;
+        const box = element.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom };
+      };
+      return {
+        notice: rect(".system-share-toast"),
+        header: rect(".nature-site-header[data-public-header]"),
+      };
+    });
+    expect(destination.notice).not.toBeNull();
+    expect(destination.header).not.toBeNull();
+    if (!destination.notice || !destination.header) {
+      throw new Error("Missing destination notice or public header");
+    }
+    expect(destination.notice.top).toBeGreaterThanOrEqual(destination.header.bottom);
+    expect(destination.notice.top).toBeLessThanOrEqual(destination.header.bottom + 24);
+    // The notice dismisses itself instead of blocking the page.
+    await expect(page.getByTestId("system-share-toast-success")).toHaveCount(0, { timeout: 6_000 });
   });
 
   test("keeps a guest share local and preserves the return path for login", async ({ page }) => {
@@ -400,7 +567,6 @@ test.describe("Console system share Web Demo", () => {
       .click();
     await expect(page.getByTestId("system-share-toast-progress")).toBeVisible();
     await expect(page.getByTestId("system-share-toast-progress")).toBeFocused();
-    await expect(page.getByTestId("system-share-toast-success")).toBeVisible();
     await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);
     await expect(page.locator("body")).toContainText("重试后仍然保留的编辑内容");
   });
@@ -421,10 +587,10 @@ test.describe("Console system share Web Demo", () => {
       .getByTestId("system-share-toast-error")
       .getByRole("button", { name: "重试" })
       .click();
+    await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);
     await expect(page.getByTestId("system-share-toast-success")).toContainText("恢复此前发布", {
       timeout: 15_000,
     });
-    await expect(page).toHaveURL(/\/memos\/console-demo-created-\d+$/);
   });
 
   test("does not publish a stale confirmation after another share replaces the slot", async ({
