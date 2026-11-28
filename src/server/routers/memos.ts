@@ -336,6 +336,20 @@ function belongsToSystemShare(memo: AuthoredMemo, submissionId: string) {
   );
 }
 
+/** The submission id a stored `metadata.systemShare` marker names, if any. */
+function systemShareSubmissionId(metadata: string | null | undefined): string | null {
+  if (!metadata) return null;
+  try {
+    const parsed: unknown = JSON.parse(metadata);
+    if (!parsed || typeof parsed !== "object" || !("systemShare" in parsed)) return null;
+    const marker = parsed.systemShare;
+    if (!marker || typeof marker !== "object" || !("submissionId" in marker)) return null;
+    return typeof marker.submissionId === "string" ? marker.submissionId : null;
+  } catch {
+    return null;
+  }
+}
+
 function writeSystemShareMemoAtomicallySync(
   fullPath: string,
   markdownContent: string,
@@ -1187,6 +1201,21 @@ export const memosRouter = router({
           suffix += 1
         ) {
           memoId = baseId.replace(/\.md$/u, `-${suffix}.md`);
+        }
+      } else if (db.select({ id: posts.id }).from(posts).where(eq(posts.id, memoId)).get()) {
+        // The file flow refused to take over a deterministic path owned by
+        // another submission. Keep that guard: an upsert here would overwrite a
+        // committed Memo with a different share's payload.
+        const owned = db
+          .select({ metadata: posts.metadata })
+          .from(posts)
+          .where(eq(posts.id, memoId))
+          .get();
+        if (systemShareSubmissionId(owned?.metadata) !== systemShare.submissionId) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "该分享对应的 Memo 路径已被其他内容占用。",
+          });
         }
       }
       const normalized = normalizePersistedMemoInput({

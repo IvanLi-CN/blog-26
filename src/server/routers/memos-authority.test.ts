@@ -190,3 +190,46 @@ test("updating and deleting a memo under database authority touch only the row",
   expect(db.select().from(posts).where(eq(posts.id, created.id)).get()).toBeUndefined();
   expect(await markdownFilesUnderMediaRoot()).toEqual([]);
 });
+test("system-share publish refuses a deterministic path held by an unrelated Memo", async () => {
+  const submissionId = randomUUID();
+  const leaseToken = randomUUID();
+  const memoId = `Memos/system-share/${submissionId}.md`;
+  await db.insert(posts).values({
+    id: memoId,
+    slug: submissionId,
+    type: "memo",
+    title: "unrelated",
+    body: "unrelated body",
+    filePath: memoId,
+    publishDate: Date.now(),
+    draft: false,
+    public: false,
+    tags: "[]",
+    metadata: JSON.stringify({ content: "unrelated body" }),
+    dataSource: "database",
+    source: "database",
+    contentHash: "hash",
+  });
+  await db.insert(systemShareSubmissions).values({
+    submissionId,
+    memoId: null,
+    memoSlug: null,
+    classification: "memo",
+    state: "committing",
+    leaseToken,
+    leaseExpiresAt: Date.now() + 60_000,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  await expect(
+    caller().create({
+      content: "share payload",
+      tags: [],
+      isPublic: false,
+      attachments: [],
+      systemShare: { source: "system-share", submissionId, leaseToken },
+    })
+  ).rejects.toMatchObject({ code: "CONFLICT" });
+  expect(db.select().from(posts).where(eq(posts.id, memoId)).get()?.body).toBe("unrelated body");
+});
